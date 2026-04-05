@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Idea Swiper</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f11;
+    --surface: #1a1a1f;
+    --surface2: #222228;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0efe8;
+    --text2: #9998a0;
+    --text3: #55545c;
+    --like: #2ecc7a;
+    --like-bg: rgba(46,204,122,0.12);
+    --nope: #e8455a;
+    --nope-bg: rgba(232,69,90,0.12);
+    --super: #f5a623;
+    --super-bg: rgba(245,166,35,0.12);
+    --accent: #7c6af5;
+    --r: 16px;
+    --r-sm: 10px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  header {
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo span { color: var(--accent); }
+
+  .header-stats {
+    margin-left: auto;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text2);
+    font-weight: 500;
+  }
+
+  .stat-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ───── LEFT PANEL ───── */
+  .panel-left {
+    width: 280px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    gap: 12px;
+  }
+
+  .panel-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 2px;
+  }
+
+  #idea-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.6;
+    padding: 12px 14px;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    min-height: 180px;
+  }
+
+  #idea-input::placeholder { color: var(--text3); }
+  #idea-input:focus { border-color: var(--border2); }
+
+  .hint-text {
+    font-size: 11.5px;
+    color: var(--text3);
+    line-height: 1.5;
+  }
+
+  .btn-load {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 11px 16px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn-load:hover { opacity: 0.88; }
+  .btn-load:active { transform: scale(0.97); }
+
+  /* ───── CARD STAGE ───── */
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-bar-wrap {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(400px, 80%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.35s ease;
+    width: 0%;
+  }
+
+  .progress-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 500;
+  }
+
+  .card-stack {
+    position: relative;
+    width: 340px;
+    height: 240px;
+  }
+
+  .card {
+    position: absolute;
+    width: 340px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 28px 28px 24px;
+    cursor: grab;
+    transition: transform 0.08s ease;
+    will-change: transform;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 180px;
+  }
+
+  .card:active { cursor: grabbing; }
+
+  .card-behind-1 {
+    transform: scale(0.95) translateY(12px);
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .card-behind-2 {
+    transform: scale(0.90) translateY(22px);
+    opacity: 0.25;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .card-active {
+    z-index: 10;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .card-index {
+    font-size: 10px;
+    color: var(--text3);
+    font-weight: 500;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .card-text {
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 1.55;
+    color: var(--text);
+    font-style: italic;
+  }
+
+  .vote-overlay {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    right: 18px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+
+  .vote-badge {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    border-radius: 6px;
+    padding: 4px 10px;
+    opacity: 0;
+    transition: opacity 0.1s;
+    border: 2px solid;
+  }
+
+  .vote-badge.nope { color: var(--nope); border-color: var(--nope); background: var(--nope-bg); }
+  .vote-badge.like { color: var(--like); border-color: var(--like); background: var(--like-bg); }
+  .vote-badge.super { color: var(--super); border-color: var(--super); background: var(--super-bg); }
+
+  .action-buttons {
+    position: absolute;
+    bottom: 30px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .action-btn {
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, opacity 0.15s;
+    font-size: 20px;
+  }
+
+  .action-btn:hover { transform: scale(1.1); }
+  .action-btn:active { transform: scale(0.92); }
+
+  .btn-nope { width: 52px; height: 52px; background: var(--nope-bg); border: 1.5px solid var(--nope); }
+  .btn-super { width: 44px; height: 44px; background: var(--super-bg); border: 1.5px solid var(--super); }
+  .btn-like { width: 52px; height: 52px; background: var(--like-bg); border: 1.5px solid var(--like); }
+
+  .empty-state {
+    text-align: center;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .empty-state.visible { display: flex; }
+
+  .empty-icon { font-size: 40px; }
+  .empty-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--text); }
+  .empty-sub { font-size: 13px; color: var(--text2); max-width: 260px; line-height: 1.5; }
+
+  /* ───── RIGHT PANEL ───── */
+  .panel-right {
+    width: 260px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .results-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rtab {
+    flex: 1;
+    padding: 12px 6px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-align: center;
+    cursor: pointer;
+    color: var(--text3);
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .rtab.active-like { color: var(--like); border-bottom-color: var(--like); }
+  .rtab.active-nope { color: var(--nope); border-bottom-color: var(--nope); }
+  .rtab.active-super { color: var(--super); border-bottom-color: var(--super); }
+
+  .results-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .results-list::-webkit-scrollbar { width: 4px; }
+  .results-list::-webkit-scrollbar-track { background: transparent; }
+  .results-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+  .result-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--text);
+    line-height: 1.45;
+    position: relative;
+    animation: fadeIn 0.25s ease;
+  }
+
+  .result-item.is-like { border-left: 3px solid var(--like); }
+  .result-item.is-nope { border-left: 3px solid var(--nope); }
+  .result-item.is-super { border-left: 3px solid var(--super); }
+
+  .result-num {
+    font-size: 10px;
+    color: var(--text3);
+    margin-bottom: 3px;
+    font-weight: 500;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 30px 16px;
+    color: var(--text3);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .clear-btn {
+    margin: 10px;
+    padding: 7px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text3);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .clear-btn:hover { color: var(--nope); border-color: var(--nope); }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes flyLeft {
+    to { transform: translateX(-130%) rotate(-20deg); opacity: 0; }
+  }
+
+  @keyframes flyRight {
+    to { transform: translateX(130%) rotate(20deg); opacity: 0; }
+  }
+
+  @keyframes flyUp {
+    to { transform: translateY(-130%) rotate(-5deg) scale(1.05); opacity: 0; }
+  }
+
+  .flying-left { animation: flyLeft 0.38s ease forwards; }
+  .flying-right { animation: flyRight 0.38s ease forwards; }
+  .flying-up { animation: flyUp 0.38s ease forwards; }
+
+  .undo-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: var(--text3);
+    font-size: 11.5px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.15s, border-color 0.15s;
+    display: none;
+  }
+
+  .undo-btn:hover { color: var(--text); border-color: var(--border2); }
+
+  .key-hint {
+    position: absolute;
+    bottom: 90px;
+    font-size: 11px;
+    color: var(--text3);
+    display: flex;
+    gap: 16px;
+  }
+
+  .key-hint span { display: flex; align-items: center; gap: 5px; }
+  kbd {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text2);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">idea<span>swipe</span></div>
+  <div class="header-stats">
+    <div class="stat"><div class="stat-dot" style="background:var(--like)"></div><span id="cnt-like">0 liked</span></div>
+    <div class="stat"><div class="stat-dot" style="background:var(--super)"></div><span id="cnt-super">0 super</span></div>
+    <div class="stat"><div class="stat-dot" style="background:var(--nope)"></div><span id="cnt-nope">0 noped</span></div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT: Input -->
+  <div class="panel-left">
+    <div class="panel-label">Idea List</div>
+    <textarea id="idea-input" placeholder="Type one idea per line…
+
+• Build a coffee subscription app
+• City rooftop farm concept
+• AI-powered meal planner
+• Rent tool-sharing platform
+• Remote co-working in nature"></textarea>
+    <div class="hint-text">One idea per line. Press Load to start swiping.</div>
+    <button class="btn-load" onclick="loadIdeas()">Load Ideas →</button>
+  </div>
+
+  <!-- CENTER: Stage -->
+  <div class="stage">
+    <div class="progress-bar-wrap" id="progress-wrap" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-label" id="progress-label"></div>
+    </div>
+
+    <button class="undo-btn" id="undo-btn" onclick="undoLast()">↩ Undo</button>
+
+    <div class="card-stack" id="card-stack" style="display:none">
+      <div class="card card-behind-2" id="card-c"></div>
+      <div class="card card-behind-1" id="card-b"></div>
+      <div class="card card-active" id="card-a">
+        <div class="vote-overlay">
+          <div class="vote-badge nope" id="badge-nope">NOPE</div>
+          <div class="vote-badge like" id="badge-like">LIKE</div>
+        </div>
+        <div class="card-index" id="card-index"></div>
+        <div class="card-text" id="card-text"></div>
+        <div class="vote-badge super" id="badge-super" style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%)">SUPER ★</div>
+      </div>
+    </div>
+
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">✦</div>
+      <div class="empty-title">All done!</div>
+      <div class="empty-sub">All ideas reviewed. Check your results on the right panel.</div>
+    </div>
+
+    <div class="action-buttons" id="action-buttons" style="display:none">
+      <button class="action-btn btn-nope" onclick="vote('nope')" title="Nope (←)">✕</button>
+      <button class="action-btn btn-super" onclick="vote('super')" title="Super Like (↑)">★</button>
+      <button class="action-btn btn-like" onclick="vote('like')" title="Like (→)">♥</button>
+    </div>
+
+    <div class="key-hint" id="key-hint" style="display:none">
+      <span><kbd>←</kbd> Nope</span>
+      <span><kbd>↑</kbd> Super</span>
+      <span><kbd>→</kbd> Like</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: Results -->
+  <div class="panel-right">
+    <div class="results-tabs">
+      <button class="rtab active-like" id="tab-like" onclick="switchTab('like')">♥ Liked</button>
+      <button class="rtab" id="tab-super" onclick="switchTab('super')">★ Super</button>
+      <button class="rtab" id="tab-nope" onclick="switchTab('nope')">✕ Noped</button>
+    </div>
+    <div class="results-list" id="results-list">
+      <div class="no-results">Swipe to see results here.</div>
+    </div>
+    <button class="clear-btn" onclick="clearResults()">Clear results</button>
+  </div>
+
+</div>
+
+<script>
+let ideas = [];
+let current = 0;
+let results = { like: [], super: [], nope: [] };
+let history = [];
+let activeTab = 'like';
+let isDragging = false;
+let startX = 0, startY = 0, currentX = 0, currentY = 0;
+let animating = false;
+
+const cardA = document.getElementById('card-a');
+const cardB = document.getElementById('card-b');
+const cardC = document.getElementById('card-c');
+const cardText = document.getElementById('card-text');
+const cardIndex = document.getElementById('card-index');
+const badgeNope = document.getElementById('badge-nope');
+const badgeLike = document.getElementById('badge-like');
+const badgeSuper = document.getElementById('badge-super');
+
+function loadIdeas() {
+  const raw = document.getElementById('idea-input').value;
+  const lines = raw.split('\n').map(l => l.replace(/^[\s•\-*]+/, '').trim()).filter(l => l.length > 1);
+  if (!lines.length) { alert('Add at least one idea!'); return; }
+  ideas = lines;
+  results = { like: [], super: [], nope: [] };
+  history = [];
+  current = 0;
+  renderResults();
+  updateCounters();
+  startSwiping();
+}
+
+function startSwiping() {
+  document.getElementById('card-stack').style.display = 'block';
+  document.getElementById('action-buttons').style.display = 'flex';
+  document.getElementById('key-hint').style.display = 'flex';
+  document.getElementById('progress-wrap').style.display = 'flex';
+  document.getElementById('empty-state').classList.remove('visible');
+  updateCards();
+  setupDrag();
+}
+
+function updateCards() {
+  if (current >= ideas.length) { showEmpty(); return; }
+  document.getElementById('undo-btn').style.display = history.length ? 'block' : 'none';
+  const total = ideas.length;
+  const done = current;
+  document.getElementById('progress-fill').style.width = (done / total * 100) + '%';
+  document.getElementById('progress-label').textContent = `${done} / ${total}`;
+  cardText.textContent = ideas[current];
+  cardIndex.textContent = `Idea ${current + 1} of ${ideas.length}`;
+  badgeNope.style.opacity = '0';
+  badgeLike.style.opacity = '0';
+  badgeSuper.style.opacity = '0';
+  cardA.style.transform = '';
+  cardA.style.transition = '';
+  if (current + 1 < ideas.length) {
+    cardB.style.display = 'flex';
+    cardB.querySelector && (cardB.textContent = '');
+  } else { cardB.style.display = 'none'; }
+  if (current + 2 < ideas.length) {
+    cardC.style.display = 'flex';
+  } else { cardC.style.display = 'none'; }
+}
+
+function vote(type) {
+  if (animating || current >= ideas.length) return;
+  animating = true;
+  history.push({ idea: ideas[current], type });
+  results[type].push(ideas[current]);
+  current++;
+  const cls = type === 'like' ? 'flying-right' : type === 'nope' ? 'flying-left' : 'flying-up';
+  cardA.classList.add(cls);
+  updateCounters();
+  renderResults();
+  setTimeout(() => {
+    cardA.classList.remove(cls);
+    animating = false;
+    updateCards();
+  }, 390);
+}
+
+function undoLast() {
+  if (!history.length || animating) return;
+  const last = history.pop();
+  const arr = results[last.type];
+  const idx = arr.lastIndexOf(last.idea);
+  if (idx !== -1) arr.splice(idx, 1);
+  current--;
+  renderResults();
+  updateCounters();
+  updateCards();
+  document.getElementById('card-stack').style.display = 'block';
+  document.getElementById('action-buttons').style.display = 'flex';
+  document.getElementById('key-hint').style.display = 'flex';
+  document.getElementById('empty-state').classList.remove('visible');
+}
+
+function showEmpty() {
+  document.getElementById('card-stack').style.display = 'none';
+  document.getElementById('action-buttons').style.display = 'none';
+  document.getElementById('key-hint').style.display = 'none';
+  document.getElementById('empty-state').classList.add('visible');
+  document.getElementById('progress-fill').style.width = '100%';
+  document.getElementById('progress-label').textContent = `${ideas.length} / ${ideas.length} — all done!`;
+  document.getElementById('undo-btn').style.display = history.length ? 'block' : 'none';
+}
+
+function renderResults() {
+  const list = document.getElementById('results-list');
+  const items = results[activeTab];
+  if (!items.length) {
+    list.innerHTML = '<div class="no-results">Nothing here yet.<br>Start swiping!</div>';
+    return;
+  }
+  list.innerHTML = items.map((idea, i) => `
+    <div class="result-item is-${activeTab}">
+      <div class="result-num">#${i + 1}</div>
+      ${escapeHtml(idea)}
+    </div>
+  `).join('');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.rtab').forEach(t => t.className = 'rtab');
+  document.getElementById('tab-' + tab).className = 'rtab active-' + tab;
+  renderResults();
+}
+
+function updateCounters() {
+  document.getElementById('cnt-like').textContent = results.like.length + ' liked';
+  document.getElementById('cnt-super').textContent = results.super.length + ' super';
+  document.getElementById('cnt-nope').textContent = results.nope.length + ' noped';
+}
+
+function clearResults() {
+  if (!confirm('Clear all results?')) return;
+  results = { like: [], super: [], nope: [] };
+  renderResults();
+  updateCounters();
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowLeft') vote('nope');
+  if (e.key === 'ArrowRight') vote('like');
+  if (e.key === 'ArrowUp') vote('super');
+  if (e.key === 'z' && (e.ctrlKey || e.metaKey)) undoLast();
+});
+
+// Drag/swipe
+function setupDrag() {
+  const el = cardA;
+
+  function onStart(e) {
+    if (animating || current >= ideas.length) return;
+    isDragging = true;
+    const pt = e.touches ? e.touches[0] : e;
+    startX = pt.clientX; startY = pt.clientY;
+    currentX = 0; currentY = 0;
+    el.style.transition = 'none';
+  }
+
+  function onMove(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const pt = e.touches ? e.touches[0] : e;
+    currentX = pt.clientX - startX;
+    currentY = pt.clientY - startY;
+    const rotate = currentX * 0.08;
+    el.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${rotate}deg)`;
+    const threshold = 60;
+    const upThreshold = -70;
+    if (currentX > threshold) {
+      badgeLike.style.opacity = Math.min((currentX - threshold) / 60, 1);
+      badgeNope.style.opacity = '0';
+      badgeSuper.style.opacity = '0';
+    } else if (currentX < -threshold) {
+      badgeNope.style.opacity = Math.min((-currentX - threshold) / 60, 1);
+      badgeLike.style.opacity = '0';
+      badgeSuper.style.opacity = '0';
+    } else if (currentY < upThreshold) {
+      badgeSuper.style.opacity = Math.min((-currentY - upThreshold) / 60, 1);
+      badgeNope.style.opacity = '0';
+      badgeLike.style.opacity = '0';
+    } else {
+      badgeNope.style.opacity = '0';
+      badgeLike.style.opacity = '0';
+      badgeSuper.style.opacity = '0';
+    }
+  }
+
+  function onEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    const threshold = 90;
+    const upThreshold = 90;
+    if (currentX > threshold) { vote('like'); }
+    else if (currentX < -threshold) { vote('nope'); }
+    else if (currentY < -upThreshold) { vote('super'); }
+    else {
+      el.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1)';
+      el.style.transform = '';
+      badgeNope.style.opacity = '0';
+      badgeLike.style.opacity = '0';
+      badgeSuper.style.opacity = '0';
+    }
+  }
+
+  el.addEventListener('mousedown', onStart);
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onEnd);
+  el.addEventListener('touchstart', onStart, { passive: false });
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onEnd);
+}
+</script>
+</body>
+</html>

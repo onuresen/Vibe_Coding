@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IdeaSwipe v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0f11;
+  --surface: #1a1a1f;
+  --surface2: #222228;
+  --surface3: #2a2a32;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0efe8;
+  --text2: #9998a0;
+  --text3: #55545c;
+  --like: #2ecc7a;
+  --like-bg: rgba(46,204,122,0.12);
+  --nope: #e8455a;
+  --nope-bg: rgba(232,69,90,0.12);
+  --super: #f5a623;
+  --super-bg: rgba(245,166,35,0.12);
+  --accent: #7c6af5;
+  --accent-bg: rgba(124,106,245,0.12);
+  --gold: #f5c842;
+  --silver: #b0b8c8;
+  --bronze: #cd8c5a;
+  --r: 16px;
+  --r-sm: 10px;
+}
+
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+
+/* ── HEADER ── */
+header { padding: 13px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 17px; letter-spacing: -0.5px; }
+.logo span { color: var(--accent); }
+.header-stats { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+.stat { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text2); font-weight: 500; }
+.stat-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── LEFT PANEL ── */
+.panel-left { width: 268px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 18px; gap: 10px; }
+.panel-label { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text3); }
+#idea-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.65; padding: 11px 13px; resize: none; outline: none; transition: border-color 0.2s; min-height: 160px; }
+#idea-input::placeholder { color: var(--text3); }
+#idea-input:focus { border-color: var(--border2); }
+.hint-text { font-size: 11px; color: var(--text3); line-height: 1.5; }
+.btn-load { background: var(--accent); color: #fff; border: none; border-radius: var(--r-sm); padding: 10px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; }
+.btn-load:hover { opacity: 0.88; }
+.btn-load:active { transform: scale(0.97); }
+
+/* ── STAGE ── */
+.stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.progress-bar-wrap { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: min(380px, 80%); display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.progress-bar { width: 100%; height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.35s ease; width: 0%; }
+.progress-label { font-size: 11px; color: var(--text3); font-weight: 500; }
+
+.card-stack { position: relative; width: 340px; height: 240px; }
+.card { position: absolute; width: 340px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 26px 26px 22px; cursor: grab; will-change: transform; display: flex; flex-direction: column; justify-content: center; min-height: 180px; }
+.card:active { cursor: grabbing; }
+.card-behind-1 { transform: scale(0.95) translateY(12px); opacity: 0.5; pointer-events: none; z-index: 1; }
+.card-behind-2 { transform: scale(0.90) translateY(22px); opacity: 0.25; pointer-events: none; z-index: 0; }
+.card-active { z-index: 10; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.card-index { font-size: 10px; color: var(--text3); font-weight: 500; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; }
+.card-text { font-size: 17px; font-weight: 400; line-height: 1.55; color: var(--text); font-style: italic; }
+
+.vote-overlay { position: absolute; top: 18px; left: 18px; right: 18px; display: flex; justify-content: space-between; pointer-events: none; }
+.vote-badge { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; border-radius: 6px; padding: 4px 9px; opacity: 0; transition: opacity 0.1s; border: 2px solid; }
+.vote-badge.nope { color: var(--nope); border-color: var(--nope); background: var(--nope-bg); }
+.vote-badge.like { color: var(--like); border-color: var(--like); background: var(--like-bg); }
+.vote-badge.super { color: var(--super); border-color: var(--super); background: var(--super-bg); }
+
+.action-buttons { position: absolute; bottom: 28px; display: flex; gap: 14px; align-items: center; }
+.action-btn { border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.15s; font-size: 19px; }
+.action-btn:hover { transform: scale(1.1); }
+.action-btn:active { transform: scale(0.92); }
+.btn-nope { width: 50px; height: 50px; background: var(--nope-bg); border: 1.5px solid var(--nope); }
+.btn-super { width: 42px; height: 42px; background: var(--super-bg); border: 1.5px solid var(--super); }
+.btn-like { width: 50px; height: 50px; background: var(--like-bg); border: 1.5px solid var(--like); }
+
+.key-hint { position: absolute; bottom: 90px; font-size: 11px; color: var(--text3); display: flex; gap: 16px; }
+.key-hint span { display: flex; align-items: center; gap: 5px; }
+kbd { background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 1px 6px; font-size: 10px; font-family: 'DM Sans', sans-serif; color: var(--text2); }
+
+.undo-btn { position: absolute; top: 18px; right: 18px; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 11px; color: var(--text3); font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: color 0.15s, border-color 0.15s; display: none; }
+.undo-btn:hover { color: var(--text); border-color: var(--border2); }
+
+.empty-state { text-align: center; display: none; flex-direction: column; align-items: center; gap: 14px; }
+.empty-state.visible { display: flex; }
+.empty-icon { font-size: 38px; }
+.empty-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; }
+.empty-sub { font-size: 13px; color: var(--text2); max-width: 260px; line-height: 1.5; }
+.btn-tournament { background: var(--super-bg); border: 1.5px solid var(--super); color: var(--super); border-radius: var(--r-sm); padding: 10px 20px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.3px; }
+.btn-tournament:hover { opacity: 0.8; }
+
+/* ── ANIMATIONS ── */
+@keyframes flyLeft { to { transform: translateX(-130%) rotate(-20deg); opacity: 0; } }
+@keyframes flyRight { to { transform: translateX(130%) rotate(20deg); opacity: 0; } }
+@keyframes flyUp { to { transform: translateY(-130%) rotate(-5deg) scale(1.05); opacity: 0; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+.flying-left { animation: flyLeft 0.38s ease forwards; }
+.flying-right { animation: flyRight 0.38s ease forwards; }
+.flying-up { animation: flyUp 0.38s ease forwards; }
+
+/* ── RIGHT PANEL ── */
+.panel-right { width: 268px; flex-shrink: 0; border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.results-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.rtab { flex: 1; padding: 11px 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; text-align: center; cursor: pointer; color: var(--text3); border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; background: none; border-top: none; border-left: none; border-right: none; font-family: 'DM Sans', sans-serif; }
+.rtab.active-like { color: var(--like); border-bottom-color: var(--like); }
+.rtab.active-nope { color: var(--nope); border-bottom-color: var(--nope); }
+.rtab.active-super { color: var(--super); border-bottom-color: var(--super); }
+.rtab.active-rank { color: var(--accent); border-bottom-color: var(--accent); }
+
+.results-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.results-list::-webkit-scrollbar { width: 3px; }
+.results-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+.result-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 9px 11px; font-size: 12.5px; color: var(--text); line-height: 1.45; animation: fadeIn 0.22s ease; }
+.result-item.is-like { border-left: 3px solid var(--like); }
+.result-item.is-nope { border-left: 3px solid var(--nope); }
+.result-item.is-super { border-left: 3px solid var(--super); }
+.result-num { font-size: 10px; color: var(--text3); margin-bottom: 3px; font-weight: 500; }
+.no-results { text-align: center; padding: 28px 14px; color: var(--text3); font-size: 12px; line-height: 1.6; }
+
+.panel-footer { padding: 10px; display: flex; gap: 7px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.footer-btn { flex: 1; padding: 8px 6px; background: none; border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text3); font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: color 0.15s, border-color 0.15s; font-weight: 500; }
+.footer-btn:hover { color: var(--text); border-color: var(--border2); }
+.footer-btn.export-btn:hover { color: var(--accent); border-color: var(--accent); }
+.footer-btn.rank-btn:hover { color: var(--super); border-color: var(--super); }
+.footer-btn.clear-btn:hover { color: var(--nope); border-color: var(--nope); }
+
+/* ── RANKED RESULTS ── */
+.rank-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 9px 11px; font-size: 12.5px; color: var(--text); line-height: 1.45; animation: fadeIn 0.22s ease; display: flex; align-items: flex-start; gap: 9px; }
+.rank-medal { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-pos { font-size: 10px; font-weight: 600; margin-bottom: 2px; }
+.rank-score { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+/* ── TOURNAMENT OVERLAY ── */
+.tournament-overlay { position: fixed; inset: 0; background: rgba(10,10,12,0.92); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+.tournament-overlay.hidden { display: none; }
+.t-header { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); }
+.t-round { font-family: 'Syne', sans-serif; font-size: 11px; color: var(--text3); letter-spacing: 1px; }
+.t-progress { font-size: 12px; color: var(--text2); }
+.matchup { display: flex; align-items: center; gap: 16px; animation: popIn 0.25s ease; }
+.t-card { width: 220px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 22px 20px; cursor: pointer; text-align: center; font-size: 15px; font-style: italic; line-height: 1.5; color: var(--text); transition: border-color 0.2s, background 0.2s, transform 0.15s; min-height: 120px; display: flex; align-items: center; justify-content: center; }
+.t-card:hover { border-color: var(--accent); background: var(--accent-bg); transform: translateY(-2px); }
+.t-card:active { transform: scale(0.97); }
+.vs-label { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--text3); flex-shrink: 0; }
+.t-skip { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 7px 16px; color: var(--text3); font-size: 11.5px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: color 0.15s; }
+.t-skip:hover { color: var(--text2); }
+.t-bar-wrap { width: 340px; }
+.t-bar { height: 2px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.t-bar-fill { height: 100%; background: var(--super); border-radius: 99px; transition: width 0.3s ease; }
+.btn-close-t { position: absolute; top: 20px; right: 24px; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; color: var(--text3); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.btn-close-t:hover { color: var(--text); border-color: var(--border2); }
+</style>
+</head>
+<body>
+
+<!-- TOURNAMENT OVERLAY -->
+<div class="tournament-overlay hidden" id="tournament-overlay">
+  <button class="btn-close-t" onclick="closeTournament()">✕ Close</button>
+  <div class="t-header">Priority Tournament</div>
+  <div class="t-round" id="t-round">Round 1</div>
+  <div class="t-bar-wrap">
+    <div class="t-bar"><div class="t-bar-fill" id="t-bar-fill" style="width:0%"></div></div>
+  </div>
+  <div class="t-progress" id="t-progress">Pick the idea you'd pursue first</div>
+  <div class="matchup" id="matchup">
+    <div class="t-card" id="t-card-a" onclick="pickWinner(0)"></div>
+    <div class="vs-label">VS</div>
+    <div class="t-card" id="t-card-b" onclick="pickWinner(1)"></div>
+  </div>
+  <button class="t-skip" onclick="pickWinner(-1)">Tie / skip this one</button>
+</div>
+
+<header>
+  <div class="logo">idea<span>swipe</span> <span style="font-size:10px;color:var(--text3);font-weight:400;letter-spacing:1px;">v2</span></div>
+  <div class="header-stats">
+    <div class="stat"><div class="stat-dot" style="background:var(--like)"></div><span id="cnt-like">0 liked</span></div>
+    <div class="stat"><div class="stat-dot" style="background:var(--super)"></div><span id="cnt-super">0 super</span></div>
+    <div class="stat"><div class="stat-dot" style="background:var(--nope)"></div><span id="cnt-nope">0 noped</span></div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT -->
+  <div class="panel-left">
+    <div class="panel-label">Idea List</div>
+    <textarea id="idea-input" placeholder="One idea per line…
+
+Build a coffee subscription app
+City rooftop farm concept
+AI-powered meal planner
+Rent tool-sharing platform
+Remote co-working in nature
+Micro-mobility for suburbs
+On-demand tutoring market"></textarea>
+    <div class="hint-text">One idea per line. Press Load to start swiping.</div>
+    <button class="btn-load" onclick="loadIdeas()">Load Ideas →</button>
+  </div>
+
+  <!-- CENTER -->
+  <div class="stage">
+    <div class="progress-bar-wrap" id="progress-wrap" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-label" id="progress-label"></div>
+    </div>
+
+    <button class="undo-btn" id="undo-btn" onclick="undoLast()">↩ Undo</button>
+
+    <div class="card-stack" id="card-stack" style="display:none">
+      <div class="card card-behind-2" id="card-c"></div>
+      <div class="card card-behind-1" id="card-b"></div>
+      <div class="card card-active" id="card-a">
+        <div class="vote-overlay">
+          <div class="vote-badge nope" id="badge-nope">NOPE</div>
+          <div class="vote-badge like" id="badge-like">LIKE</div>
+        </div>
+        <div class="card-index" id="card-index"></div>
+        <div class="card-text" id="card-text"></div>
+        <div class="vote-badge super" id="badge-super" style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%)">SUPER ★</div>
+      </div>
+    </div>
+
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">✦</div>
+      <div class="empty-title">All done!</div>
+      <div class="empty-sub">Check your results, run the priority tournament, or export your session.</div>
+      <button class="btn-tournament" onclick="startTournament()" id="btn-start-t" style="display:none">⚡ Start Priority Tournament</button>
+    </div>
+
+    <div class="action-buttons" id="action-buttons" style="display:none">
+      <button class="action-btn btn-nope" onclick="vote('nope')" title="Nope (←)">✕</button>
+      <button class="action-btn btn-super" onclick="vote('super')" title="Super Like (↑)">★</button>
+      <button class="action-btn btn-like" onclick="vote('like')" title="Like (→)">♥</button>
+    </div>
+
+    <div class="key-hint" id="key-hint" style="display:none">
+      <span><kbd>←</kbd> Nope</span>
+      <span><kbd>↑</kbd> Super</span>
+      <span><kbd>→</kbd> Like</span>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="panel-right">
+    <div class="results-tabs">
+      <button class="rtab active-like" id="tab-like" onclick="switchTab('like')">♥ Liked</button>
+      <button class="rtab" id="tab-super" onclick="switchTab('super')">★ Super</button>
+      <button class="rtab" id="tab-nope" onclick="switchTab('nope')">✕ Noped</button>
+      <button class="rtab" id="tab-rank" onclick="switchTab('rank')">⚡ Ranked</button>
+    </div>
+    <div class="results-list" id="results-list">
+      <div class="no-results">Swipe ideas to see results here.</div>
+    </div>
+    <div class="panel-footer">
+      <button class="footer-btn rank-btn" onclick="startTournament()" title="Priority tournament">⚡ Rank</button>
+      <button class="footer-btn export-btn" onclick="exportSession()" title="Export session">↓ Export</button>
+      <button class="footer-btn clear-btn" onclick="clearResults()" title="Clear results">✕ Clear</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ── STATE ── */
+let ideas = [];
+let current = 0;
+let results = { like: [], super: [], nope: [] };
+let history = [];
+let activeTab = 'like';
+let isDragging = false;
+let startX = 0, startY = 0, currentX = 0, currentY = 0;
+let animating = false;
+let sessionStart = null;
+
+/* ranked results from tournament */
+let rankedResults = [];
+
+/* tournament state */
+let tPool = [];
+let tMatchups = [];
+let tMatchIdx = 0;
+let tScores = {};
+let tTotalMatchups = 0;
+
+const cardA = document.getElementById('card-a');
+const cardB = document.getElementById('card-b');
+const cardC = document.getElementById('card-c');
+const cardText = document.getElementById('card-text');
+const cardIndex = document.getElementById('card-index');
+const badgeNope = document.getElementById('badge-nope');
+const badgeLike = document.getElementById('badge-like');
+const badgeSuper = document.getElementById('badge-super');
+
+/* ── LOAD ── */
+function loadIdeas() {
+  const raw = document.getElementById('idea-input').value;
+  const lines = raw.split('\n').map(l => l.replace(/^[\s•\-*\d.]+/, '').trim()).filter(l => l.length > 1);
+  if (!lines.length) { alert('Add at least one idea!'); return; }
+  ideas = lines;
+  results = { like: [], super: [], nope: [] };
+  rankedResults = [];
+  history = [];
+  current = 0;
+  sessionStart = new Date();
+  renderResults();
+  updateCounters();
+  startSwiping();
+}
+
+function startSwiping() {
+  document.getElementById('card-stack').style.display = 'block';
+  document.getElementById('action-buttons').style.display = 'flex';
+  document.getElementById('key-hint').style.display = 'flex';
+  document.getElementById('progress-wrap').style.display = 'flex';
+  document.getElementById('empty-state').classList.remove('visible');
+  updateCards();
+  setupDrag();
+}
+
+function updateCards() {
+  if (current >= ideas.length) { showEmpty(); return; }
+  document.getElementById('undo-btn').style.display = history.length ? 'block' : 'none';
+  document.getElementById('progress-fill').style.width = (current / ideas.length * 100) + '%';
+  document.getElementById('progress-label').textContent = `${current} / ${ideas.length}`;
+  cardText.textContent = ideas[current];
+  cardIndex.textContent = `Idea ${current + 1} of ${ideas.length}`;
+  badgeNope.style.opacity = '0'; badgeLike.style.opacity = '0'; badgeSuper.style.opacity = '0';
+  cardA.style.transform = ''; cardA.style.transition = '';
+  cardB.style.display = current + 1 < ideas.length ? 'flex' : 'none';
+  cardC.style.display = current + 2 < ideas.length ? 'flex' : 'none';
+}
+
+/* ── VOTE ── */
+function vote(type) {
+  if (animating || current >= ideas.length) return;
+  animating = true;
+  history.push({ idea: ideas[current], type });
+  results[type].push(ideas[current]);
+  current++;
+  const cls = type === 'like' ? 'flying-right' : type === 'nope' ? 'flying-left' : 'flying-up';
+  cardA.classList.add(cls);
+  updateCounters();
+  renderResults();
+  setTimeout(() => { cardA.classList.remove(cls); animating = false; updateCards(); }, 390);
+}
+
+function undoLast() {
+  if (!history.length || animating) return;
+  const last = history.pop();
+  const arr = results[last.type];
+  const idx = arr.lastIndexOf(last.idea);
+  if (idx !== -1) arr.splice(idx, 1);
+  current--;
+  renderResults(); updateCounters(); updateCards();
+  document.getElementById('card-stack').style.display = 'block';
+  document.getElementById('action-buttons').style.display = 'flex';
+  document.getElementById('key-hint').style.display = 'flex';
+  document.getElementById('empty-state').classList.remove('visible');
+}
+
+function showEmpty() {
+  document.getElementById('card-stack').style.display = 'none';
+  document.getElementById('action-buttons').style.display = 'none';
+  document.getElementById('key-hint').style.display = 'none';
+  document.getElementById('empty-state').classList.add('visible');
+  document.getElementById('progress-fill').style.width = '100%';
+  document.getElementById('progress-label').textContent = `${ideas.length} / ${ideas.length} — all done!`;
+  document.getElementById('undo-btn').style.display = history.length ? 'block' : 'none';
+  const pool = [...results.super, ...results.like];
+  document.getElementById('btn-start-t').style.display = pool.length >= 2 ? 'block' : 'none';
+}
+
+/* ── RENDER RESULTS ── */
+function renderResults() {
+  const list = document.getElementById('results-list');
+  if (activeTab === 'rank') { renderRanked(); return; }
+  const items = results[activeTab];
+  if (!items.length) { list.innerHTML = '<div class="no-results">Nothing here yet.<br>Start swiping!</div>'; return; }
+  list.innerHTML = items.map((idea, i) => `
+    <div class="result-item is-${activeTab}">
+      <div class="result-num">#${i + 1}</div>${esc(idea)}
+    </div>`).join('');
+}
+
+function renderRanked() {
+  const list = document.getElementById('results-list');
+  if (!rankedResults.length) {
+    list.innerHTML = '<div class="no-results">Run the ⚡ tournament to rank your liked ideas by priority.</div>';
+    return;
+  }
+  const medals = ['🥇','🥈','🥉'];
+  list.innerHTML = rankedResults.map((item, i) => `
+    <div class="rank-item">
+      <div class="rank-medal">${medals[i] || ''}</div>
+      <div class="rank-info">
+        <div class="rank-pos" style="color:${i===0?'var(--gold)':i===1?'var(--silver)':i===2?'var(--bronze)':'var(--text3)'}">#${i+1}</div>
+        <div>${esc(item.idea)}</div>
+        <div class="rank-score">score ${item.score} pts${item.wasSuper?' · ★ super':''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.rtab').forEach(t => t.className = 'rtab');
+  document.getElementById('tab-' + tab).className = 'rtab active-' + tab;
+  renderResults();
+}
+
+function updateCounters() {
+  document.getElementById('cnt-like').textContent = results.like.length + ' liked';
+  document.getElementById('cnt-super').textContent = results.super.length + ' super';
+  document.getElementById('cnt-nope').textContent = results.nope.length + ' noped';
+}
+
+function clearResults() {
+  if (!confirm('Clear all results and rankings?')) return;
+  results = { like: [], super: [], nope: [] }; rankedResults = [];
+  renderResults(); updateCounters();
+}
+
+/* ── KEYBOARD ── */
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowLeft') vote('nope');
+  if (e.key === 'ArrowRight') vote('like');
+  if (e.key === 'ArrowUp') vote('super');
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') undoLast();
+});
+
+/* ── DRAG ── */
+function setupDrag() {
+  function onStart(e) {
+    if (animating || current >= ideas.length) return;
+    isDragging = true;
+    const pt = e.touches ? e.touches[0] : e;
+    startX = pt.clientX; startY = pt.clientY; currentX = 0; currentY = 0;
+    cardA.style.transition = 'none';
+  }
+  function onMove(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const pt = e.touches ? e.touches[0] : e;
+    currentX = pt.clientX - startX; currentY = pt.clientY - startY;
+    cardA.style.transform = `translate(${currentX}px,${currentY}px) rotate(${currentX * 0.08}deg)`;
+    const thr = 60, uthr = -70;
+    badgeLike.style.opacity  = currentX > thr  ? Math.min((currentX - thr) / 60, 1) : '0';
+    badgeNope.style.opacity  = currentX < -thr ? Math.min((-currentX - thr) / 60, 1) : '0';
+    badgeSuper.style.opacity = currentY < uthr  ? Math.min((-currentY - uthr) / 60, 1) : '0';
+    if (currentX > thr || currentX < -thr) badgeSuper.style.opacity = '0';
+    if (currentY < uthr) { badgeLike.style.opacity = '0'; badgeNope.style.opacity = '0'; }
+  }
+  function onEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    if (currentX > 90) vote('like');
+    else if (currentX < -90) vote('nope');
+    else if (currentY < -90) vote('super');
+    else {
+      cardA.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1)';
+      cardA.style.transform = '';
+      badgeNope.style.opacity = '0'; badgeLike.style.opacity = '0'; badgeSuper.style.opacity = '0';
+    }
+  }
+  cardA.addEventListener('mousedown', onStart);
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onEnd);
+  cardA.addEventListener('touchstart', onStart, { passive: false });
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onEnd);
+}
+
+/* ═══════════════════════════════════════
+   TOURNAMENT / PRIORITY SCORING
+   ═══════════════════════════════════════
+   Round-robin: every candidate faces every
+   other candidate once. Winner gets +2 pts,
+   tie gets +1 each, loser +0. Super-liked
+   ideas start with a 1pt bonus.
+*/
+function startTournament() {
+  const superSet = new Set(results.super);
+  tPool = [...new Set([...results.super, ...results.like])];
+  if (tPool.length < 2) { alert('Need at least 2 liked/super ideas to rank!'); return; }
+
+  /* init scores — super ideas start at +1 */
+  tScores = {};
+  tPool.forEach(idea => { tScores[idea] = superSet.has(idea) ? 1 : 0; });
+
+  /* build all unique pairs */
+  tMatchups = [];
+  for (let i = 0; i < tPool.length; i++)
+    for (let j = i + 1; j < tPool.length; j++)
+      tMatchups.push([tPool[i], tPool[j]]);
+
+  /* shuffle matchups for variety */
+  for (let i = tMatchups.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [tMatchups[i], tMatchups[j]] = [tMatchups[j], tMatchups[i]];
+  }
+
+  tMatchIdx = 0;
+  tTotalMatchups = tMatchups.length;
+  document.getElementById('tournament-overlay').classList.remove('hidden');
+  showMatchup();
+}
+
+function showMatchup() {
+  if (tMatchIdx >= tMatchups.length) { finishTournament(); return; }
+  const [a, b] = tMatchups[tMatchIdx];
+  const round = Math.floor(tMatchIdx / Math.max(tPool.length - 1, 1)) + 1;
+  document.getElementById('t-round').textContent = `Round-robin · Match ${tMatchIdx + 1} of ${tTotalMatchups}`;
+  document.getElementById('t-bar-fill').style.width = (tMatchIdx / tTotalMatchups * 100) + '%';
+  document.getElementById('t-progress').textContent = 'Which idea would you pursue first?';
+  document.getElementById('t-card-a').textContent = a;
+  document.getElementById('t-card-b').textContent = b;
+  /* re-trigger animation */
+  const m = document.getElementById('matchup');
+  m.style.animation = 'none'; requestAnimationFrame(() => { m.style.animation = ''; });
+}
+
+function pickWinner(side) {
+  /* side: 0=left, 1=right, -1=tie */
+  const [a, b] = tMatchups[tMatchIdx];
+  if (side === 0) tScores[a] += 2;
+  else if (side === 1) tScores[b] += 2;
+  else { tScores[a] += 1; tScores[b] += 1; }
+  tMatchIdx++;
+  showMatchup();
+}
+
+function finishTournament() {
+  const superSet = new Set(results.super);
+  rankedResults = tPool
+    .map(idea => ({ idea, score: tScores[idea], wasSuper: superSet.has(idea) }))
+    .sort((a, b) => b.score - a.score || (b.wasSuper ? 1 : 0) - (a.wasSuper ? 1 : 0));
+
+  document.getElementById('t-bar-fill').style.width = '100%';
+  closeTournament();
+  switchTab('rank');
+  renderRanked();
+}
+
+function closeTournament() {
+  document.getElementById('tournament-overlay').classList.add('hidden');
+}
+
+/* ═══════════════════════════════════════
+   SESSION EXPORT
+   ═══════════════════════════════════════ */
+function exportSession() {
+  const total = results.like.length + results.super.length + results.nope.length;
+  if (!total) { alert('Nothing to export yet — swipe some ideas first!'); return; }
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+  const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  const duration = sessionStart ? Math.round((now - sessionStart) / 60000) : '—';
+
+  let md = `# IdeaSwipe Session\n`;
+  md += `**Date:** ${dateStr} at ${timeStr}  \n`;
+  md += `**Duration:** ${duration} min  \n`;
+  md += `**Ideas reviewed:** ${total}  \n\n---\n\n`;
+
+  if (rankedResults.length) {
+    md += `## ⚡ Priority Ranking\n\n`;
+    rankedResults.forEach((item, i) => {
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+      md += `${medal} **${item.idea}**${item.wasSuper ? ' ★' : ''} — ${item.score} pts\n`;
+    });
+    md += '\n---\n\n';
+  }
+
+  if (results.super.length) {
+    md += `## ★ Super Liked (${results.super.length})\n\n`;
+    results.super.forEach((idea, i) => { md += `${i+1}. ${idea}\n`; });
+    md += '\n';
+  }
+
+  if (results.like.length) {
+    md += `## ♥ Liked (${results.like.length})\n\n`;
+    results.like.forEach((idea, i) => { md += `${i+1}. ${idea}\n`; });
+    md += '\n';
+  }
+
+  if (results.nope.length) {
+    md += `## ✕ Noped (${results.nope.length})\n\n`;
+    results.nope.forEach((idea, i) => { md += `${i+1}. ${idea}\n`; });
+    md += '\n';
+  }
+
+  md += `---\n*Exported from IdeaSwipe v2*\n`;
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fname = `ideaswipe-${now.toISOString().slice(0,10)}.md`;
+  a.href = url; a.download = fname; a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

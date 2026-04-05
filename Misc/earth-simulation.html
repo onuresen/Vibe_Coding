@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earth Simulation</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    user-select: none;
+  }
+  canvas { display: block; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+  #ui {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .btn {
+    background: rgba(255,255,255,0.08);
+    border: 0.5px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.75);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    padding: 7px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
+  }
+  .btn:hover { background: rgba(255,255,255,0.16); }
+  .btn.active { background: rgba(100,160,255,0.25); border-color: rgba(100,160,255,0.5); color: #a0c8ff; }
+  #info {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.08em;
+    pointer-events: none;
+  }
+  #coords {
+    position: fixed;
+    top: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: rgba(120,180,255,0.5);
+    letter-spacing: 0.06em;
+    pointer-events: none;
+    min-width: 180px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="info">DRAG TO ROTATE &nbsp;·&nbsp; SCROLL TO ZOOM</div>
+<div id="coords"></div>
+<canvas id="c"></canvas>
+<div id="ui">
+  <button class="btn active" id="btnClouds">☁ Clouds</button>
+  <button class="btn active" id="btnAtmo">◉ Atmosphere</button>
+  <button class="btn active" id="btnNight">🌙 Night Side</button>
+  <button class="btn" id="btnSpace">✦ Stars</button>
+</div>
+
+<script>
+(function(){
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const coords = document.getElementById('coords');
+
+let W, H, R;
+function resize(){
+  const s = Math.min(window.innerWidth, window.innerHeight, 820);
+  W = H = s;
+  canvas.width = W;
+  canvas.height = H;
+  R = W * 0.36;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// --- Feature toggles ---
+let showClouds = true, showAtmo = true, showNight = true, showStars = false;
+document.getElementById('btnClouds').addEventListener('click', e => { showClouds=!showClouds; e.target.classList.toggle('active'); });
+document.getElementById('btnAtmo').addEventListener('click', e => { showAtmo=!showAtmo; e.target.classList.toggle('active'); });
+document.getElementById('btnNight').addEventListener('click', e => { showNight=!showNight; e.target.classList.toggle('active'); });
+document.getElementById('btnSpace').addEventListener('click', e => { showStars=!showStars; e.target.classList.toggle('active'); });
+
+// --- Interaction ---
+let rotY = 0.4, rotX = 0.18;
+let drag = false, lastX, lastY, velX = 0.003, velY = 0;
+let zoom = 1.0;
+
+canvas.addEventListener('mousedown', e => { drag=true; lastX=e.clientX; lastY=e.clientY; velX=0; velY=0; canvas.classList.add('dragging'); });
+window.addEventListener('mouseup', () => { drag=false; canvas.classList.remove('dragging'); });
+window.addEventListener('mousemove', e => {
+  if(!drag) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  velX = dx * 0.005; velY = dy * 0.004;
+  rotY += velX; rotX += velY;
+  rotX = Math.max(-1.4, Math.min(1.4, rotX));
+  lastX = e.clientX; lastY = e.clientY;
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoom = Math.max(0.5, Math.min(2.2, zoom - e.deltaY * 0.001));
+}, {passive:false});
+
+canvas.addEventListener('touchstart', e => { const t=e.touches[0]; drag=true; lastX=t.clientX; lastY=t.clientY; velX=0; velY=0; });
+window.addEventListener('touchend', () => { drag=false; });
+window.addEventListener('touchmove', e => {
+  if(!drag) return;
+  const t=e.touches[0];
+  const dx=t.clientX-lastX, dy=t.clientY-lastY;
+  velX=dx*0.005; velY=dy*0.004;
+  rotY+=velX; rotX+=velY;
+  rotX=Math.max(-1.4,Math.min(1.4,rotX));
+  lastX=t.clientX; lastY=t.clientY;
+});
+
+// --- Noise ---
+function hash(x,y){ let h=(x*374761393+y*668265263)^(x>>13)^(y>>3); h=Math.imul(h^(h>>>16),0x45d9f3b); return (h>>>0)/0xffffffff; }
+function smoothstep(a,b,t){ t=t*t*(3-2*t); return a+(b-a)*t; }
+function noise2(x,y){
+  const ix=Math.floor(x), iy=Math.floor(y);
+  const fx=x-ix, fy=y-iy;
+  const a=hash(ix,iy), b=hash(ix+1,iy), c=hash(ix,iy+1), d=hash(ix+1,iy+1);
+  return smoothstep(smoothstep(a,b,fx), smoothstep(c,d,fx), fy);
+}
+function fbm(x,y,oct){
+  let v=0,amp=0.5,freq=1,max=0;
+  for(let i=0;i<oct;i++){ v+=noise2(x*freq,y*freq)*amp; max+=amp; amp*=0.5; freq*=2.1; }
+  return v/max;
+}
+
+// --- Geography data (lon/lat rectangles) ---
+// Procedural landmass via fbm with seeded offsets
+const LAND_OFFSET_X = 3.7, LAND_OFFSET_Y = 1.2;
+const CLOUD_OFFSET_X = 12.3, CLOUD_OFFSET_Y = 5.6;
+
+function landValue(lon, lat){
+  const nx = (lon/Math.PI)*2 + LAND_OFFSET_X;
+  const ny = (lat/Math.PI)*1.5 + LAND_OFFSET_Y;
+  return fbm(nx, ny, 6);
+}
+function cloudValue(lon, lat, t){
+  const nx = (lon/Math.PI)*2.5 + CLOUD_OFFSET_X + t*0.04;
+  const ny = (lat/Math.PI)*1.8 + CLOUD_OFFSET_Y;
+  return fbm(nx, ny, 5);
+}
+function mountainValue(lon, lat){
+  const nx = (lon/Math.PI)*3.5 + 7.1;
+  const ny = (lat/Math.PI)*2.5 + 2.8;
+  return fbm(nx, ny, 7);
+}
+
+// Pre-mark volcanoes (lon, lat in radians) and their "activity"
+const VOLCANOES = [
+  {lon:0.52, lat:0.35, glow:1.0},
+  {lon:-1.1, lat:-0.5, glow:0.7},
+  {lon:1.8, lat:0.1, glow:0.9},
+  {lon:-0.3, lat:0.62, glow:0.5},
+  {lon:2.4, lat:-0.3, glow:0.8},
+];
+
+// --- Stars ---
+const STARS = Array.from({length:320}, ()=>({
+  x: Math.random()*820-10,
+  y: Math.random()*820-10,
+  r: Math.random()*1.2+0.3,
+  a: Math.random()*0.7+0.3,
+  twinkle: Math.random()*Math.PI*2
+}));
+
+// --- Render a pixel on the sphere ---
+// Returns [r,g,b,a] for a given spherical surface point
+function sphereColor(lon, lat, t){
+  const lv = landValue(lon, lat);
+  const mv = mountainValue(lon, lat);
+  const absLat = Math.abs(lat);
+
+  // Polar ice
+  if(absLat > 1.35){ return [240,248,255,255]; }
+  if(absLat > 1.25){ const f=(absLat-1.25)/0.1; return blend([100,160,200,255],[240,248,255,255],f); }
+
+  const isLand = lv > 0.495;
+  let color;
+
+  if(!isLand){
+    // Ocean depth shading + wave shimmer
+    const depth = Math.max(0,(0.495-lv)/0.495);
+    const wave = fbm((lon/Math.PI)*8+t*0.15, (lat/Math.PI)*6+t*0.1, 3);
+    const shimmer = wave*0.12;
+    const oceanDeep = [10,40,120];
+    const oceanShallow = [30,100,180];
+    const base = lerpRgb(oceanShallow, oceanDeep, depth*0.9);
+    base[0] = clamp(base[0]+shimmer*30, 0, 255);
+    base[1] = clamp(base[1]+shimmer*40, 0, 255);
+    base[2] = clamp(base[2]+shimmer*20, 0, 255);
+    return [...base, 255];
+  }
+
+  // Land coloring
+  const heightNorm = Math.max(0,(lv-0.495)/0.5);
+  const mh = Math.max(0,(mv-0.52)*3.0)*heightNorm;
+
+  if(mh > 0.6){
+    // Snow cap
+    const snowBlend = Math.min(1,(mh-0.6)/0.3);
+    const rocky = [140,120,100];
+    color = lerpRgb(rocky, [245,248,255], snowBlend);
+  } else if(mh > 0.3){
+    // Rocky mountain
+    color = lerpRgb([100,130,70],[150,125,105],(mh-0.3)/0.3);
+  } else {
+    // Biome by latitude
+    if(absLat > 1.0){
+      color = lerpRgb([80,110,60],[200,200,180],(absLat-1.0)/0.3); // tundra
+    } else if(absLat > 0.7){
+      color = [85,115,65]; // boreal
+    } else if(absLat < 0.3){
+      // Tropical — vary by moisture (fbm)
+      const moist = fbm((lon/Math.PI)*2+8,(lat/Math.PI)*3+3,4);
+      if(moist > 0.55) color = [30,100,40]; // rainforest
+      else if(moist > 0.4) color = [160,140,70]; // savanna
+      else color = [195,175,110]; // desert/arid
+    } else {
+      color = lerpRgb([65,130,55],[130,165,80],(absLat-0.3)/0.4); // temperate
+    }
+    // slight elevation darkening
+    color = color.map(c => clamp(c - mh*30, 0, 255));
+  }
+
+  return [...color, 255];
+}
+
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function lerpRgb(a,b,t){ return a.map((v,i)=>v+(b[i]-v)*t); }
+function blend(a,b,t){ return lerpRgb(a,b,t); }
+
+// --- Sphere ray casting ---
+// For each pixel, cast ray, find sphere intersection, get lon/lat
+function pixelToSphere(px, py, cx, cy, rad){
+  const dx=(px-cx)/rad, dy=(py-cy)/rad;
+  const r2=dx*dx+dy*dy;
+  if(r2>1) return null;
+  const dz=Math.sqrt(1-r2);
+  // Local normal
+  return {x:dx,y:dy,z:dz};
+}
+
+// Convert local sphere normal (after rotation) to lon/lat
+function normalToLonLat(nx,ny,nz){
+  const lat=Math.asin(Math.max(-1,Math.min(1,ny)));
+  const lon=Math.atan2(nz,nx);
+  return {lon,lat};
+}
+
+// Rotate normal by rotY (Y axis), rotX (X axis)
+function rotateNormal(nx,ny,nz,ry,rx){
+  // Y rotation
+  let x1 = nx*Math.cos(ry)+nz*Math.sin(ry);
+  let y1 = ny;
+  let z1 = -nx*Math.sin(ry)+nz*Math.cos(ry);
+  // X rotation
+  let x2 = x1;
+  let y2 = y1*Math.cos(rx)-z1*Math.sin(rx);
+  let z2 = y1*Math.sin(rx)+z1*Math.cos(rx);
+  return {x:x2,y:y2,z:z2};
+}
+
+// --- ImageData-based sphere render ---
+let imgData = null;
+let lastRenderKey = '';
+
+function renderSphere(t){
+  const cx=W/2, cy=H/2;
+  const rad=R*zoom;
+  const renderKey = `${W}|${H}|${rad.toFixed(1)}`;
+  if(!imgData || renderKey!==lastRenderKey){
+    imgData = ctx.createImageData(W,H);
+    lastRenderKey = renderKey;
+  }
+  const data = imgData.data;
+
+  // Sun direction (slowly moving)
+  const sunAngle = t * 0.008;
+  const sunX = Math.cos(sunAngle);
+  const sunY = 0.2;
+  const sunZ = Math.sin(sunAngle);
+  const sunLen = Math.sqrt(sunX*sunX+sunY*sunY+sunZ*sunZ);
+  const sdx=sunX/sunLen, sdy=sunY/sunLen, sdz=sunZ/sunLen;
+
+  for(let py=0;py<H;py++){
+    for(let px=0;px<W;px++){
+      const idx=(py*W+px)*4;
+      const sp=pixelToSphere(px,py,cx,cy,rad);
+      if(!sp){ data[idx]=data[idx+1]=data[idx+2]=data[idx+3]=0; continue; }
+
+      // Rotate normal according to user drag + auto-spin
+      const rn=rotateNormal(sp.x,sp.y,sp.z,rotY,rotX);
+      const {lon,lat}=normalToLonLat(rn.x,rn.y,rn.z);
+
+      let [r,g,b,a]=sphereColor(lon,lat,t);
+
+      // Lighting: diffuse
+      const diff=Math.max(0, sp.x*sdx + sp.y*sdy + sp.z*sdz);
+      const ambient=0.10;
+      let light=ambient+diff*(1-ambient);
+
+      // Night side: city lights
+      if(showNight && diff<0.12){
+        const nightT=Math.max(0,(0.12-diff)/0.12);
+        const lv=landValue(lon,lat);
+        if(lv>0.495){
+          const cityNoise=fbm((lon/Math.PI)*5+20,(lat/Math.PI)*4+10,4);
+          if(cityNoise>0.58){
+            const glow=((cityNoise-0.58)/0.15)*nightT*0.9;
+            r=clamp(r*light*0.1+220*glow,0,255);
+            g=clamp(g*light*0.1+190*glow,0,255);
+            b=clamp(b*light*0.1+120*glow,0,255);
+            data[idx]=r; data[idx+1]=g; data[idx+2]=b; data[idx+3]=255;
+            continue;
+          }
+        }
+        light=Math.max(0.02, light-(nightT*0.08));
+      }
+
+      r=clamp(r*light,0,255);
+      g=clamp(g*light,0,255);
+      b=clamp(b*light,0,255);
+
+      // Clouds
+      if(showClouds){
+        const cv=cloudValue(lon,lat,t);
+        if(cv>0.52){
+          const cf=Math.min(1,(cv-0.52)/0.15)*light;
+          r=clamp(r+(255-r)*cf,0,255);
+          g=clamp(g+(255-g)*cf,0,255);
+          b=clamp(b+(255-b)*cf,0,255);
+        }
+      }
+
+      data[idx]=r; data[idx+1]=g; data[idx+2]=b; data[idx+3]=255;
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+}
+
+// --- Atmosphere (canvas overlay) ---
+function drawAtmosphere(){
+  if(!showAtmo) return;
+  const cx=W/2, cy=H/2, rad=R*zoom;
+  const atmoR=rad*1.055;
+  const g=ctx.createRadialGradient(cx,cy,rad*0.95,cx,cy,atmoR);
+  g.addColorStop(0,'rgba(80,140,255,0.18)');
+  g.addColorStop(0.4,'rgba(60,120,255,0.10)');
+  g.addColorStop(0.8,'rgba(40,100,220,0.05)');
+  g.addColorStop(1,'rgba(20,80,200,0)');
+  ctx.beginPath();
+  ctx.arc(cx,cy,atmoR,0,Math.PI*2);
+  ctx.fillStyle=g;
+  ctx.fill();
+  // Specular rim highlight
+  const rimG=ctx.createRadialGradient(cx-rad*0.3,cy-rad*0.3,rad*0.5,cx,cy,rad*1.02);
+  rimG.addColorStop(0,'rgba(255,255,255,0)');
+  rimG.addColorStop(0.85,'rgba(150,200,255,0.04)');
+  rimG.addColorStop(1,'rgba(200,230,255,0.15)');
+  ctx.beginPath();
+  ctx.arc(cx,cy,rad,0,Math.PI*2);
+  ctx.fillStyle=rimG;
+  ctx.fill();
+}
+
+// --- Volcano glow overlays ---
+function drawVolcanoes(t){
+  const cx=W/2, cy=H/2, rad=R*zoom;
+  for(const v of VOLCANOES){
+    // Convert volcano lon/lat → rotated normal → screen pos
+    const blon=v.lon, blat=v.lat;
+    const nx=Math.cos(blat)*Math.cos(blon);
+    const ny=Math.sin(blat);
+    const nz=Math.cos(blat)*Math.sin(blon);
+    // Unrotate: apply inverse rotation to find screen normal
+    // We need forward rotation: rotY then rotX on (nx,ny,nz)
+    // Then project to screen
+    let x1=nx*Math.cos(-rotY)+nz*Math.sin(-rotY);
+    let y1=ny;
+    let z1=-nx*Math.sin(-rotY)+nz*Math.cos(-rotY);
+    let x2=x1;
+    let y2=y1*Math.cos(-rotX)-z1*Math.sin(-rotX);
+    let z2=y1*Math.sin(-rotX)+z1*Math.cos(-rotX);
+    if(z2<0.05) continue; // behind the globe
+    const sx=cx+x2*rad, sy=cy-y2*rad;
+    // Pulsing glow
+    const pulse=0.6+0.4*Math.sin(t*0.05+v.glow*3);
+    const gr=ctx.createRadialGradient(sx,sy,0,sx,sy,rad*0.055*v.glow*pulse);
+    gr.addColorStop(0,`rgba(255,180,50,${0.7*pulse})`);
+    gr.addColorStop(0.3,`rgba(255,80,20,${0.4*pulse})`);
+    gr.addColorStop(0.7,`rgba(200,40,10,${0.15*pulse})`);
+    gr.addColorStop(1,'rgba(180,20,0,0)');
+    ctx.beginPath();
+    ctx.arc(sx,sy,rad*0.055*v.glow*pulse,0,Math.PI*2);
+    ctx.fillStyle=gr;
+    ctx.fill();
+    // Lava ember particles
+    for(let i=0;i<3;i++){
+      const angle=Math.random()*Math.PI*2;
+      const dist=Math.random()*rad*0.025*pulse;
+      const ex=sx+Math.cos(angle)*dist, ey=sy+Math.sin(angle)*dist;
+      ctx.beginPath();
+      ctx.arc(ex,ey,Math.random()*1.5+0.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,${Math.floor(Math.random()*120+100)},0,${Math.random()*0.8+0.2})`;
+      ctx.fill();
+    }
+  }
+}
+
+// --- Stars background ---
+function drawStars(t){
+  if(!showStars) return;
+  for(const s of STARS){
+    const tw=0.5+0.5*Math.sin(t*0.03+s.twinkle);
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${s.a*tw})`;
+    ctx.fill();
+  }
+}
+
+// --- Space background ---
+function drawSpace(){
+  ctx.fillStyle='#000005';
+  ctx.fillRect(0,0,W,H);
+  // Subtle nebula smear
+  const ng=ctx.createRadialGradient(W*0.2,H*0.3,0,W*0.5,H*0.5,W*0.6);
+  ng.addColorStop(0,'rgba(20,10,50,0.18)');
+  ng.addColorStop(0.5,'rgba(10,5,30,0.08)');
+  ng.addColorStop(1,'rgba(0,0,10,0)');
+  ctx.fillStyle=ng;
+  ctx.fillRect(0,0,W,H);
+}
+
+// --- Coords display ---
+function updateCoords(){
+  const lon=(((-rotY%(Math.PI*2))+Math.PI*3)%(Math.PI*2)-Math.PI)*180/Math.PI;
+  const lat=(-rotX)*180/Math.PI;
+  coords.textContent=`${lat>=0?'N':'S'}${Math.abs(lat).toFixed(1)}°  ${lon>=0?'E':'W'}${Math.abs(lon).toFixed(1)}°`;
+}
+
+// --- Main loop ---
+let t=0;
+let lastFrameTime=0;
+const FRAME_BUDGET=50; // ~20fps for heavy pixel work is smooth enough
+
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(ts-lastFrameTime < FRAME_BUDGET){ return; }
+  lastFrameTime=ts;
+
+  if(!drag){
+    velX *= 0.96;
+    velY *= 0.96;
+    rotY += velX + 0.0015;
+    rotX += velY;
+    rotX = Math.max(-1.4, Math.min(1.4, rotX));
+  }
+
+  drawSpace();
+  drawStars(t);
+  renderSphere(t);
+  drawAtmosphere();
+  drawVolcanoes(t);
+  updateCoords();
+  t += 1;
+}
+
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
