@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Work Stream Explorer (v1)</title>
+    <style>
+        :root {
+            --bg: #0b1220;
+            --panel: #0f172a;
+            --card: #111827;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --line: #1f2937;
+            --accent: #22d3ee;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr;
+        }
+
+        header {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--line);
+            background: #020617;
+        }
+
+        header h1 {
+            font-size: 15px;
+            margin: 0;
+            letter-spacing: .2px;
+        }
+
+        .spacer {
+            flex: 1
+        }
+
+        button {
+            background: #020617;
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            border-color: var(--accent)
+        }
+
+        input[type="file"] {
+            display: none
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            height: 100%;
+            min-height: 0;
+        }
+
+        main {
+            padding: 12px;
+            overflow: auto;
+            min-height: 0;
+        }
+
+        .viewer {
+            border-left: 1px solid var(--line);
+            background: #020617;
+            padding: 12px;
+            overflow: auto;
+            min-height: 0;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .column {
+            border: 1px dashed var(--line);
+            border-radius: 12px;
+            padding: 8px;
+            min-height: 120px;
+            background: rgba(15, 23, 42, .35);
+        }
+
+        .column h2 {
+            margin: 4px 6px 10px;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+
+        .column.dragover {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(34, 211, 238, .15) inset;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px;
+            margin: 0 0 8px;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .card:hover {
+            border-color: var(--accent)
+        }
+
+        .title {
+            font-size: 13px;
+            font-weight: 650;
+            margin-bottom: 6px;
+        }
+
+        .meta {
+            font-size: 11px;
+            color: var(--muted);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .pill {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 1px 8px;
+        }
+
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.55;
+            color: var(--text);
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Work Stream Explorer (v1)</h1>
+        <span class="hint">Import Markdown → Drag cards → Click to view raw</span>
+        <span class="spacer"></span>
+        <label for="fileInput"><button type="button">Import .md</button></label>
+        <input id="fileInput" type="file" accept=".md,text/markdown" multiple />
+    </header>
+
+    <div class="layout">
+        <main>
+            <div class="board">
+                <section class="column" data-status="todo">
+                    <h2>Todo</h2>
+                </section>
+                <section class="column" data-status="doing">
+                    <h2>Doing</h2>
+                </section>
+                <section class="column" data-status="done">
+                    <h2>Done</h2>
+                </section>
+            </div>
+        </main>
+
+        <aside class="viewer">
+            <pre id="viewer" class="hint">Select a task to view raw Markdown here.</pre>
+        </aside>
+    </div>
+
+    <script>
+        // In-memory task store (no persistence in v1)
+        /** @type {Array<{id:string,type:string,status:'todo'|'doing'|'done',tags:string[],title:string,md:string}>} */
+        let tasks = [];
+
+        const viewerEl = document.getElementById('viewer');
+        const fileInput = document.getElementById('fileInput');
+        const columns = Array.from(document.querySelectorAll('.column'));
+
+        // ---- Parsing (safe frontmatter + minimal YAML subset) ----
+
+        /**
+         * Safely parse YAML frontmatter at the top of a Markdown file.
+         * - If missing or malformed, returns empty meta and the original body.
+         * - Body content is NOT modified; md remains untouched in task.md.
+         * @param {string} md
+         * @returns {{ meta: any, body: string }}
+         */
+        function parseFrontmatter(md) {
+            try {
+                // Frontmatter must start at file beginning with a line that is exactly '---'
+                if (!md || !md.startsWith('---')) return { meta: {}, body: md };
+
+                // Find the end delimiter on its own line.
+                // Accept both \n and \r\n line endings.
+                const lines = md.split(/\r?\n/);
+                if (lines[0].trim() !== '---') return { meta: {}, body: md };
+
+                let endIndex = -1;
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim() === '---') { endIndex = i; break; }
+                }
+                if (endIndex === -1) return { meta: {}, body: md };
+
+                const yamlLines = lines.slice(1, endIndex);
+                const body = lines.slice(endIndex + 1).join('\n'); // body as-is after delimiter (no trimming)
+
+                const meta = parseMiniYaml(yamlLines);
+                return { meta, body };
+            } catch (e) {
+                // Never crash on malformed input
+                return { meta: {}, body: md };
+            }
+        }
+
+        /**
+         * Minimal YAML parser for a tiny subset:
+         * - key: value (strings)
+         * - tags: [A, B, C]
+         * - tags:
+         *     - A
+         *     - B
+         * Anything else is ignored safely.
+         * @param {string[]} yamlLines
+         */
+        function parseMiniYaml(yamlLines) {
+            const meta = {};
+            try {
+                for (let i = 0; i < yamlLines.length; i++) {
+                    const line = yamlLines[i];
+                    if (!line || /^\s*#/.test(line)) continue;
+
+                    // Multiline tags list
+                    const tagsKeyMatch = line.match(/^\s*tags\s*:\s*$/i);
+                    if (tagsKeyMatch) {
+                        const tags = [];
+                        for (let j = i + 1; j < yamlLines.length; j++) {
+                            const l = yamlLines[j];
+                            const m = l.match(/^\s*-\s*(.+)\s*$/);
+                            if (!m) break;
+                            tags.push(cleanScalar(m[1]));
+                            i = j; // advance outer loop
+                        }
+                        meta.tags = tags.filter(Boolean);
+                        continue;
+                    }
+
+                    // key: value
+                    const kv = line.match(/^\s*([A-Za-z0-9_-]+)\s*:\s*(.*)\s*$/);
+                    if (!kv) continue;
+
+                    const key = kv[1];
+                    const rawValue = kv[2] ?? '';
+
+                    if (key.toLowerCase() === 'tags') {
+                        meta.tags = parseInlineArray(rawValue);
+                    } else {
+                        meta[key] = cleanScalar(rawValue);
+                    }
+                }
+            } catch (e) {
+                return {};
+            }
+            return meta;
+        }
+
+        function cleanScalar(v) {
+            // Remove surrounding quotes if present
+            const s = String(v ?? '').trim();
+            const m = s.match(/^.*['"]$/);
+            return (m ? m[1] : s).trim();
+        }
+
+        function parseInlineArray(raw) {
+            try {
+                const s = String(raw ?? '').trim();
+                // Expect [A, B]
+                const m = s.match(/^\[(.*)\]$/);
+                if (!m) return []; // if not a bracket array, ignore for v1 safety
+                const inner = m[1].trim();
+                if (!inner) return [];
+                return inner.split(',').map(x => cleanScalar(x)).filter(Boolean);
+            } catch (e) {
+                return [];
+            }
+        }
+
+        // ---- Task normalization ----
+
+        /**
+         * Convert parsed file content into a normalized in-memory task.
+         * Defaults:
+         * - id: from frontmatter.id or file name
+         * - type: from frontmatter.type or 'task'
+         * - status: from frontmatter.status if valid else 'todo'
+         * - tags: from frontmatter.tags array else []
+         * - title: first "# Heading" in body else id
+         * @param {{name:string, md:string}} file
+         */
+        function normalizeTask(file) {
+            const parsed = parseFrontmatter(file.md);
+            const meta = parsed.meta || {};
+
+            const id = (meta.id && String(meta.id).trim()) ? String(meta.id).trim() : file.name;
+            const type = (meta.type && String(meta.type).trim()) ? String(meta.type).trim() : 'task';
+
+            const statusRaw = (meta.status ?? '').toString().trim().toLowerCase();
+            const status = (statusRaw === 'todo' || statusRaw === 'doing' || statusRaw === 'done') ? statusRaw : 'todo';
+
+            const tags = Array.isArray(meta.tags) ? meta.tags.map(String).map(t => t.trim()).filter(Boolean) : [];
+
+            // Title from first Markdown H1 heading in BODY (not frontmatter)
+            const title = extractTitleFromBody(parsed.body, id);
+
+            return { id, type, status, tags, title, md: file.md };
+        }
+
+        function extractTitleFromBody(body, fallback) {
+            try {
+                const lines = String(body ?? '').split(/\r?\n/);
+                for (const line of lines) {
+                    const m = line.match(/^#\s+(.+)\s*$/);
+                    if (m) return m[1].trim();
+                }
+            } catch (e) { /* ignore */ }
+            return fallback;
+        }
+
+        // ---- UI Rendering + Interaction ----
+
+        function render() {
+            // clear cards
+            for (const col of columns) {
+                col.querySelectorAll('.card').forEach(n => n.remove());
+            }
+
+            // render cards into their status column
+            for (const t of tasks) {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.draggable = true;
+
+                const title = document.createElement('div');
+                title.className = 'title';
+                title.textContent = t.title;
+
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                meta.innerHTML =
+                    `<span class="pill">${escapeHtml(t.id)}</span>` +
+                    `<span class="pill">${escapeHtml(t.type)}</span>`;
+
+                card.appendChild(title);
+                card.appendChild(meta);
+
+                card.addEventListener('click', () => {
+                    viewerEl.classList.remove('hint');
+                    viewerEl.textContent = t.md; // raw markdown (untouched)
+                });
+
+                card.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', t.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                const targetCol = document.querySelector(`.column[data-status="${t.status}"]`);
+                (targetCol || document.querySelector('.column[data-status="todo"]')).appendChild(card);
+            }
+        }
+
+        columns.forEach(col => {
+            col.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                col.classList.add('dragover');
+            });
+            col.addEventListener('dragleave', () => col.classList.remove('dragover'));
+            col.addEventListener('drop', (e) => {
+                e.preventDefault();
+                col.classList.remove('dragover');
+
+                const id = e.dataTransfer.getData('text/plain');
+                const task = tasks.find(x => x.id === id);
+                if (!task) return;
+
+                const newStatus = col.dataset.status;
+                if (newStatus === 'todo' || newStatus === 'doing' || newStatus === 'done') {
+                    task.status = newStatus; // update in memory only
+                    render();
+                }
+            });
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files || []);
+            for (const f of files) {
+                try {
+                    const text = await f.text();
+                    const task = normalizeTask({ name: f.name, md: text });
+                    tasks.push(task);
+                } catch (err) {
+                    // Ignore unreadable files (never crash)
+                }
+            }
+            // reset input so selecting the same files again triggers change
+            fileInput.value = '';
+            render();
+        });
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+            ));
+        }
+
+        // initial empty render (no seed data in v1)
+        render();
+    </script>
+</body>
+
+</html>

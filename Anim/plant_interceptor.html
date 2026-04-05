@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Plant Interceptor — High-Speed Canvas Simulation</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #05080c;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hud {
+            position: fixed;
+            left: 12px;
+            top: 10px;
+            z-index: 2;
+            font: 12px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            color: rgba(220, 240, 255, .88);
+            user-select: none;
+            pointer-events: none;
+            text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+        }
+
+        .hud b {
+            color: rgba(190, 255, 220, .95);
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+    <div class="hud">
+        <b>Plant Interceptor</b><br />
+        Move mouse = wind • Click = spawn burst • Space = debug<br />
+    </div>
+
+    <script>
+        (() => {
+            // ============================================================
+            // High-speed Canvas Simulation: Plant Creature vs Rushing Orbs
+            // ============================================================
+
+            const canvas = document.getElementById("c");
+            const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+
+            // --- HiDPI handling ---
+            let W = 0, H = 0, DPR = 1;
+            function resize() {
+                DPR = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1)); // cap for performance
+                W = Math.floor(window.innerWidth);
+                H = Math.floor(window.innerHeight);
+                canvas.width = Math.floor(W * DPR);
+                canvas.height = Math.floor(H * DPR);
+                canvas.style.width = W + "px";
+                canvas.style.height = H + "px";
+                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            }
+            window.addEventListener("resize", resize);
+            resize();
+
+            // --- Utility ---
+            const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+            const lerp = (a, b, t) => a + (b - a) * t;
+            const rand = (a, b) => a + Math.random() * (b - a);
+            const randi = (a, b) => (a + Math.floor(Math.random() * (b - a + 1)));
+
+            function smoothstep(edge0, edge1, x) {
+                x = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+                return x * x * (3 - 2 * x);
+            }
+
+            // Distance from point to segment squared + closest point
+            function distToSeg2(px, py, ax, ay, bx, by) {
+                const abx = bx - ax, aby = by - ay;
+                const apx = px - ax, apy = py - ay;
+                const denom = abx * abx + aby * aby || 1e-9;
+                let t = (apx * abx + apy * aby) / denom;
+                t = clamp(t, 0, 1);
+                const cx = ax + abx * t, cy = ay + aby * t;
+                const dx = px - cx, dy = py - cy;
+                return { d2: dx * dx + dy * dy, cx, cy, t };
+            }
+
+            // Simple hashy noise for organic wiggle (fast)
+            function hash1(n) {
+                n = Math.sin(n) * 43758.5453123;
+                return n - Math.floor(n);
+            }
+
+            // --- Interaction: wind field from mouse ---
+            let mouseX = W * 0.6, mouseY = H * 0.5;
+            let mouseDown = false;
+            window.addEventListener("pointermove", e => { mouseX = e.clientX; mouseY = e.clientY; });
+            window.addEventListener("pointerdown", () => mouseDown = true);
+            window.addEventListener("pointerup", () => mouseDown = false);
+
+            // Debug overlay
+            let DEBUG = false;
+            window.addEventListener("keydown", (e) => {
+                if (e.code === "Space") DEBUG = !DEBUG;
+            });
+
+            // --- World settings ---
+            const world = {
+                t: 0,
+                circles: [],
+                foodBits: [],
+                maxCircles: 80,
+                spawnRate: 20, // circles per second baseline
+                leftBoundary: 6, // never allow crossing
+            };
+
+            // --- Circle ("prey") definition ---
+            let circleId = 1;
+            function spawnCircle(burst = false) {
+                const n = burst ? randi(6, 12) : 1;
+                for (let i = 0; i < n; i++) {
+                    const r = rand(8, 20);
+                    const y0 = rand(r, H - r);
+                    const speed = rand(520, 980) * (burst ? rand(0.9, 1.2) : 1);
+
+                    // Two sine components + random-walk drift
+                    const amp1 = rand(18, 120);
+                    const amp2 = rand(10, 70);
+                    const f1 = rand(1.4, 5.5);
+                    const f2 = rand(0.8, 4.2);
+                    const ph1 = rand(0, Math.PI * 2);
+                    const ph2 = rand(0, Math.PI * 2);
+
+                    // erratic drift state
+                    const drift = rand(-40, 40);
+                    const vy0 = rand(-40, 40);
+
+                    const hue = (rand(190, 330) + rand(-25, 25)) % 360;
+
+                    world.circles.push({
+                        id: circleId++,
+                        x: W + rand(20, 160),
+                        y: y0,
+                        y0,
+                        r,
+                        speed,
+                        amp1, amp2, f1, f2, ph1, ph2,
+                        drift,
+                        vy: vy0,
+                        wobbleSeed: rand(0, 9999),
+                        hue,
+                        alive: true,
+                        eaten: false,
+                        eatenT: 0,
+                        // For target prediction smoothing
+                        lastY: y0
+                    });
+
+                    if (world.circles.length > world.maxCircles) break;
+                }
+            }
+
+            // click spawns burst
+            window.addEventListener("click", () => spawnCircle(true));
+
+            // --- Plant creature ---
+            const plant = {
+                baseX: 44,
+                baseY: H * 0.55,
+                mouthX: 52,
+                mouthY: H * 0.55,
+                energy: 0,
+                pulse: 0,
+                tendrils: [],
+                tendrilCount: 6,
+                // how far it can reach; adjusted with screen size
+                reach: () => Math.max(320, Math.min(W * 0.55, 880)),
+            };
+
+            function initPlant() {
+                plant.tendrils.length = 0;
+                for (let i = 0; i < plant.tendrilCount; i++) {
+                    const segCount = randi(16, 22);
+                    const segLen = rand(11, 16);
+                    const thickness = rand(5.5, 8.5);
+                    const lane = (i + 0.5) / plant.tendrilCount;
+                    const rootY = H * (0.22 + lane * 0.60) + rand(-18, 18);
+
+                    const points = [];
+                    for (let s = 0; s < segCount; s++) {
+                        points.push({ x: plant.baseX + s * segLen, y: rootY });
+                    }
+
+                    plant.tendrils.push({
+                        id: i,
+                        rootX: plant.baseX,
+                        rootY,
+                        segLen,
+                        thickness,
+                        points,
+                        tipVX: 0,
+                        tipVY: 0,
+                        targetId: -1,
+                        targetLock: 0,
+                        idlePhase: rand(0, Math.PI * 2),
+                        aggression: rand(0.85, 1.15)
+                    });
+                }
+            }
+            initPlant();
+
+            function updatePlantAnchors() {
+                plant.baseY = lerp(plant.baseY, H * 0.55, 0.08);
+                plant.mouthY = plant.baseY;
+                plant.mouthX = plant.baseX + 8;
+
+                for (let i = 0; i < plant.tendrils.length; i++) {
+                    const t = plant.tendrils[i];
+                    const lane = (i + 0.5) / plant.tendrilCount;
+                    const desired = H * (0.22 + lane * 0.60);
+                    t.rootY = lerp(t.rootY, desired, 0.06);
+                    t.rootX = plant.baseX;
+                }
+            }
+
+            // --- Targeting: choose circles approaching left, prioritize danger ---
+            function chooseTargetForTendril(tendril, dt) {
+                const reach = plant.reach();
+                const tip = tendril.points[tendril.points.length - 1];
+
+                // Maintain lock briefly to prevent jitter
+                tendril.targetLock = Math.max(0, tendril.targetLock - dt);
+
+                // If locked and target exists, keep it unless it died
+                if (tendril.targetId !== -1 && tendril.targetLock > 0) {
+                    const c = world.circles.find(o => o.id === tendril.targetId && o.alive && !o.eaten);
+                    if (c) return c;
+                    tendril.targetId = -1;
+                }
+
+                // Score circles: closer to left boundary => higher priority.
+                // Also prefer ones near tendril lane and within reach range.
+                let best = null;
+                let bestScore = -1e9;
+
+                for (const c of world.circles) {
+                    if (!c.alive || c.eaten) continue;
+
+                    // Must be moving toward left
+                    if (c.x > W + 240) continue;
+
+                    const dx = c.x - tendril.rootX;
+                    if (dx < -50) continue; // already past root (shouldn't happen)
+                    if (dx > reach + 140) continue;
+
+                    const laneDist = Math.abs(c.y - tendril.rootY);
+                    const tipDist = Math.hypot(c.x - tip.x, c.y - tip.y);
+
+                    // Danger weighting: near left boundary is critical
+                    const danger = 1 - clamp((c.x - 80) / (W * 0.8), 0, 1);
+                    const leftUrgency = 1 - clamp((c.x - 120) / 520, 0, 1);
+
+                    // Prefer near the tendril's lane but allow reaching across
+                    const laneScore = 1 - clamp(laneDist / (H * 0.35), 0, 1);
+
+                    // Encourage taking the closest "threat" but avoid micro jitter
+                    const proximity = 1 - clamp(tipDist / (reach + 120), 0, 1);
+
+                    // Score: urgency dominates
+                    const score =
+                        (danger * 2.2) +
+                        (leftUrgency * 3.0) +
+                        (laneScore * 1.2) +
+                        (proximity * 1.0) -
+                        (dx / (reach + 300)) * 0.2;
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = c;
+                    }
+                }
+
+                if (best) {
+                    tendril.targetId = best.id;
+                    tendril.targetLock = 0.18; // short lock
+                    return best;
+                }
+
+                tendril.targetId = -1;
+                return null;
+            }
+
+            // Predict circle position shortly ahead to aid interception
+            function predictCircle(circle, leadTime) {
+                // horizontal: constant speed to left
+                const px = circle.x - circle.speed * leadTime;
+
+                // vertical: approximate with lastY + vy*leadTime (simple, stable)
+                const py = circle.y + circle.vy * leadTime;
+
+                return { x: px, y: py };
+            }
+
+            // Tendril motion: spring tip toward target, then constrain chain
+            function updateTendril(tendril, dt) {
+                const pts = tendril.points;
+                const n = pts.length;
+                const root = pts[0];
+
+                // Root anchored to plant base
+                root.x = tendril.rootX;
+                root.y = tendril.rootY;
+
+                // Choose target circle
+                const target = chooseTargetForTendril(tendril, dt);
+
+                // Desired tip position
+                let tx, ty;
+                const time = world.t;
+
+                if (target) {
+                    // Lead time based on distance and speed; helps with high-speed interception
+                    const tip = pts[n - 1];
+                    const dist = Math.hypot(target.x - tip.x, target.y - tip.y);
+                    const lead = clamp(dist / (target.speed + 1e-6), 0.02, 0.18) * tendril.aggression;
+
+                    const p = predictCircle(target, lead);
+                    tx = p.x;
+                    ty = p.y;
+
+                    // Clamp to reachable zone (prevents whipping off-screen)
+                    const reach = plant.reach();
+                    tx = clamp(tx, tendril.rootX + 20, tendril.rootX + reach);
+                    ty = clamp(ty, 24, H - 24);
+                } else {
+                    // Idle: procedural sway
+                    const reach = plant.reach() * 0.72;
+                    const swayX = reach * (0.35 + 0.1 * Math.sin(time * 0.7 + tendril.idlePhase));
+                    const swayY = 60 * Math.sin(time * (1.0 + 0.07 * tendril.id) + tendril.idlePhase * 1.6)
+                        + 30 * Math.sin(time * 2.1 + tendril.idlePhase * 0.8);
+                    tx = tendril.rootX + swayX;
+                    ty = tendril.rootY + swayY;
+                }
+
+                // Spring dynamics for tip (fluid motion)
+                const tip = pts[n - 1];
+                const k = target ? 90 : 45;            // stiffness
+                const damp = target ? 14 : 18;         // damping
+                const maxSpeed = target ? 1400 : 720;  // clamp for stability
+
+                const ax = (tx - tip.x) * k - tendril.tipVX * damp;
+                const ay = (ty - tip.y) * k - tendril.tipVY * damp;
+
+                tendril.tipVX += ax * dt;
+                tendril.tipVY += ay * dt;
+
+                // speed clamp
+                const sp = Math.hypot(tendril.tipVX, tendril.tipVY);
+                if (sp > maxSpeed) {
+                    const s = maxSpeed / (sp + 1e-9);
+                    tendril.tipVX *= s;
+                    tendril.tipVY *= s;
+                }
+
+                tip.x += tendril.tipVX * dt;
+                tip.y += tendril.tipVY * dt;
+
+                // Mild additional organic noise
+                const jitter = (target ? 0.7 : 1.3);
+                tip.x += (hash1(time * 3.1 + tendril.id * 17.3) - 0.5) * jitter;
+                tip.y += (hash1(time * 3.7 + tendril.id * 29.9) - 0.5) * jitter;
+
+                // Constraint relaxation (two-pass): follow tip, then re-anchor root
+                // Pass A: from tip backward
+                for (let i = n - 2; i >= 0; i--) {
+                    const a = pts[i], b = pts[i + 1];
+                    const dx = a.x - b.x, dy = a.y - b.y;
+                    const d = Math.hypot(dx, dy) || 1e-9;
+                    const diff = (d - tendril.segLen) / d;
+                    a.x -= dx * diff;
+                    a.y -= dy * diff;
+                }
+
+                // Re-anchor root exactly
+                root.x = tendril.rootX;
+                root.y = tendril.rootY;
+
+                // Pass B: from root forward
+                for (let i = 1; i < n; i++) {
+                    const a = pts[i - 1], b = pts[i];
+                    const dx = b.x - a.x, dy = b.y - a.y;
+                    const d = Math.hypot(dx, dy) || 1e-9;
+                    const diff = (d - tendril.segLen) / d;
+                    b.x -= dx * diff;
+                    b.y -= dy * diff;
+                }
+
+                // Soft boundary constraints
+                for (let i = 0; i < n; i++) {
+                    pts[i].x = clamp(pts[i].x, 0, W + 20);
+                    pts[i].y = clamp(pts[i].y, 0, H);
+                }
+            }
+
+            // Collision: circle vs tendril segments (capsule)
+            function checkCircleVsTendril(circle, tendril) {
+                const pts = tendril.points;
+                const thick = tendril.thickness;
+                const rr = (circle.r + thick) * (circle.r + thick);
+
+                // Early-out: if circle is far from tendril bounding range
+                const tip = pts[pts.length - 1];
+                const near = Math.abs(circle.x - tip.x) < (plant.reach() + 180) &&
+                    Math.abs(circle.y - tendril.rootY) < (H * 0.55);
+                if (!near && circle.x > plant.reach() + 260) {
+                    // still allow close ones near left
+                    // but this cheap check saves some work
+                }
+
+                // Check each segment
+                for (let i = 0; i < pts.length - 1; i++) {
+                    const a = pts[i], b = pts[i + 1];
+                    const res = distToSeg2(circle.x, circle.y, a.x, a.y, b.x, b.y);
+                    if (res.d2 <= rr) {
+                        return { hit: true, segIndex: i, hitX: res.cx, hitY: res.cy };
+                    }
+                }
+                return { hit: false };
+            }
+
+            function forceConsume(circle, reason = "intercept") {
+                if (!circle.alive || circle.eaten) return;
+                circle.eaten = true;
+                circle.eatenT = 0;
+                circle.reason = reason;
+
+                // Convert into food bits traveling to the mouth (visual)
+                for (let i = 0; i < randi(6, 12); i++) {
+                    world.foodBits.push({
+                        x: circle.x + rand(-circle.r, circle.r),
+                        y: circle.y + rand(-circle.r, circle.r),
+                        vx: rand(-50, 50),
+                        vy: rand(-70, 70),
+                        life: rand(0.45, 0.9),
+                        t: 0,
+                        hue: circle.hue
+                    });
+                }
+                plant.energy = Math.min(1, plant.energy + 0.08);
+            }
+
+            // --- Update circles ---
+            function updateCircles(dt) {
+                const t = world.t;
+
+                // spawn based on rate, scaled by width for consistent density
+                const densityScale = clamp(W / 1200, 0.7, 1.4);
+                world._spawnAcc = (world._spawnAcc || 0) + dt * world.spawnRate * densityScale;
+                while (world._spawnAcc >= 1) {
+                    world._spawnAcc -= 1;
+                    if (world.circles.length < world.maxCircles) spawnCircle(false);
+                }
+
+                // wind from mouse: a soft vertical push field
+                const windRadius = 240;
+                const windStrength = mouseDown ? 260 : 140;
+
+                for (const c of world.circles) {
+                    if (!c.alive) continue;
+
+                    if (c.eaten) {
+                        // eaten animation: shrink + drift toward mouth
+                        c.eatenT += dt;
+                        const tt = smoothstep(0, 0.22, c.eatenT);
+                        c.x = lerp(c.x, plant.mouthX, tt * 0.16);
+                        c.y = lerp(c.y, plant.mouthY, tt * 0.16);
+                        c.r *= (1 - dt * 6.5);
+                        if (c.r < 0.6 || c.eatenT > 0.55) {
+                            c.alive = false;
+                        }
+                        continue;
+                    }
+
+                    // horizontal motion
+                    c.x -= c.speed * dt;
+
+                    // base oscillation
+                    const osc =
+                        c.amp1 * Math.sin(t * c.f1 + c.ph1) +
+                        c.amp2 * Math.sin(t * (c.f2 * 1.7) + c.ph2);
+
+                    // random walk drift acceleration
+                    c.vy += (rand(-120, 120) * 0.55) * dt;
+                    c.vy = clamp(c.vy, -280, 280);
+                    c.drift += c.vy * dt;
+
+                    // wind influence
+                    const dx = (c.x - mouseX), dy = (c.y - mouseY);
+                    const d2 = dx * dx + dy * dy;
+                    if (d2 < windRadius * windRadius) {
+                        const d = Math.sqrt(d2) + 1e-6;
+                        const fall = 1 - (d / windRadius);
+                        // push perpendicular-ish: mostly vertical flutter
+                        c.vy += (dy / d) * windStrength * fall * dt * 0.55;
+                        c.drift += (hash1(t + c.wobbleSeed) - 0.5) * 24 * fall * dt;
+                    }
+
+                    // compute y with oscillation + drift
+                    const desiredY = c.y0 + osc + c.drift;
+                    // smooth to desired (keeps motion fluid yet erratic)
+                    c.y = lerp(c.y, desiredY, 1 - Math.pow(0.0005, dt));
+
+                    // keep within bounds with soft bounce
+                    if (c.y < c.r) { c.y = c.r; c.vy *= -0.65; c.drift *= 0.88; }
+                    if (c.y > H - c.r) { c.y = H - c.r; c.vy *= -0.65; c.drift *= 0.88; }
+
+                    // Safety: never allow crossing left boundary.
+                    // If it gets too close, it is "caught" (still consumed visually).
+                    if (c.x - c.r <= world.leftBoundary) {
+                        c.x = world.leftBoundary + c.r;
+                        forceConsume(c, "boundary");
+                    }
+                }
+
+                // prune dead circles
+                if (world.circles.length > 0) {
+                    world.circles = world.circles.filter(c => c.alive);
+                }
+            }
+
+            // --- Update food bits (particles) ---
+            function updateFoodBits(dt) {
+                for (const p of world.foodBits) {
+                    p.t += dt;
+                    p.life -= dt;
+                    // drift toward mouth + slight turbulence
+                    const toMx = plant.mouthX - p.x;
+                    const toMy = plant.mouthY - p.y;
+                    p.vx += toMx * 4.2 * dt;
+                    p.vy += toMy * 4.2 * dt;
+                    p.vx *= (1 - dt * 3.2);
+                    p.vy *= (1 - dt * 3.2);
+
+                    p.vx += (hash1(world.t * 9 + p.hue) - 0.5) * 35 * dt;
+                    p.vy += (hash1(world.t * 9.7 + p.hue) - 0.5) * 35 * dt;
+
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                }
+                world.foodBits = world.foodBits.filter(p => p.life > 0);
+            }
+
+            // --- Plant vs circles interactions ---
+            function handlePlantCollisions() {
+                // Collision checks: each circle vs each tendril (fast enough with limits)
+                for (const c of world.circles) {
+                    if (!c.alive || c.eaten) continue;
+
+                    // if close to left zone, prioritize catching
+                    const dangerZone = (c.x < plant.baseX + plant.reach() * 0.8);
+
+                    for (const tendril of plant.tendrils) {
+                        // cheap lane check if not in danger zone
+                        if (!dangerZone && Math.abs(c.y - tendril.rootY) > H * 0.42) continue;
+
+                        const hit = checkCircleVsTendril(c, tendril);
+                        if (hit.hit) {
+                            // consume immediately
+                            forceConsume(c, "tendril");
+                            // A small recoil kick for life
+                            tendril.tipVX -= rand(120, 220);
+                            tendril.tipVY += rand(-140, 140);
+                            break;
+                        }
+                    }
+
+                    // If extremely close to mouth, swallow directly
+                    const mouthDist = Math.hypot(c.x - plant.mouthX, c.y - plant.mouthY);
+                    if (!c.eaten && mouthDist < c.r + 22) {
+                        forceConsume(c, "mouth");
+                    }
+                }
+            }
+
+            // --- Rendering helpers ---
+            function drawBackground() {
+                // subtle gradient + vignette
+                const g = ctx.createLinearGradient(0, 0, 0, H);
+                g.addColorStop(0, "#061018");
+                g.addColorStop(1, "#04060a");
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, W, H);
+
+                // faint moving "mist" lines
+                const t = world.t;
+                ctx.save();
+                ctx.globalAlpha = 0.08;
+                ctx.strokeStyle = "#78a6ff";
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 12; i++) {
+                    const y = (i / 12) * H + Math.sin(t * 0.22 + i) * 18;
+                    ctx.beginPath();
+                    for (let x = 0; x <= W; x += 60) {
+                        const yy = y + Math.sin(t * 0.5 + x * 0.01 + i) * 6;
+                        ctx.lineTo(x, yy);
+                    }
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                // vignette
+                ctx.save();
+                const vg = ctx.createRadialGradient(W * 0.35, H * 0.5, Math.min(W, H) * 0.2, W * 0.35, H * 0.5, Math.max(W, H) * 0.9);
+                vg.addColorStop(0, "rgba(0,0,0,0)");
+                vg.addColorStop(1, "rgba(0,0,0,0.55)");
+                ctx.fillStyle = vg;
+                ctx.fillRect(0, 0, W, H);
+                ctx.restore();
+            }
+
+            function drawCircle(c) {
+                const glow = 0.7 + 0.3 * Math.sin(world.t * 3 + c.id);
+                const a = c.eaten ? (1 - smoothstep(0, 0.55, c.eatenT)) : 1;
+
+                // outer glow
+                ctx.save();
+                ctx.globalAlpha = 0.22 * a;
+                ctx.fillStyle = `hsla(${c.hue}, 92%, 64%, 1)`;
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, c.r * (1.85 + glow * 0.25), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // core
+                ctx.save();
+                ctx.globalAlpha = 0.95 * a;
+                const grad = ctx.createRadialGradient(c.x - c.r * 0.35, c.y - c.r * 0.35, c.r * 0.2, c.x, c.y, c.r * 1.05);
+                grad.addColorStop(0, `hsla(${c.hue}, 100%, 85%, 1)`);
+                grad.addColorStop(0.5, `hsla(${c.hue}, 95%, 62%, 1)`);
+                grad.addColorStop(1, `hsla(${c.hue}, 90%, 45%, 1)`);
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                // highlight
+                ctx.globalAlpha = 0.28 * a;
+                ctx.fillStyle = "rgba(255,255,255,1)";
+                ctx.beginPath();
+                ctx.arc(c.x - c.r * 0.28, c.y - c.r * 0.28, c.r * 0.32, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawFoodBits() {
+                for (const p of world.foodBits) {
+                    const a = clamp(p.life / 0.9, 0, 1);
+                    ctx.save();
+                    ctx.globalAlpha = 0.75 * a;
+                    ctx.fillStyle = `hsla(${p.hue}, 95%, 70%, 1)`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 2.2 + 1.8 * (1 - a), 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            function drawPlant() {
+                const t = world.t;
+
+                // energy/pulse influences plant glow
+                plant.energy = lerp(plant.energy, 0, 0.015);
+                plant.pulse += (0.9 + plant.energy * 2.2) * (1 / 60);
+
+                // stalk
+                ctx.save();
+                const stalkW = 18;
+                const stalkH = H * 0.7;
+                const sx = plant.baseX - 10;
+                const sy = plant.baseY + 36;
+
+                // stalk gradient
+                const sg = ctx.createLinearGradient(0, sy - stalkH, 0, sy);
+                sg.addColorStop(0, "rgba(80,220,140,0.05)");
+                sg.addColorStop(0.35, "rgba(40,170,110,0.55)");
+                sg.addColorStop(1, "rgba(15,90,70,0.95)");
+                ctx.fillStyle = sg;
+
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.quadraticCurveTo(sx + 12, sy - stalkH * 0.45, sx + 16, sy - stalkH);
+                ctx.quadraticCurveTo(sx + 4, sy - stalkH * 0.45, sx + stalkW, sy);
+                ctx.closePath();
+                ctx.fill();
+
+                // subtle bioluminescence
+                ctx.globalAlpha = 0.10 + 0.08 * Math.sin(t * 2.0 + plant.pulse);
+                ctx.fillStyle = "rgba(120,255,220,1)";
+                ctx.beginPath();
+                ctx.ellipse(plant.baseX + 6, plant.baseY, 26, 22, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // mouth
+                const mouthOpen = 0.35 + 0.22 * Math.sin(t * 3.4 + plant.pulse) + plant.energy * 0.35;
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = "rgba(10,25,20,0.9)";
+                ctx.beginPath();
+                ctx.ellipse(plant.mouthX, plant.mouthY, 15, 10 + mouthOpen * 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = "rgba(120,255,220,0.35)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(plant.mouthX, plant.mouthY, 15, 10 + mouthOpen * 6, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.restore();
+
+                // tendrils (draw behind prey for depth; you can swap order if desired)
+                for (const tendril of plant.tendrils) {
+                    drawTendril(tendril);
+                }
+            }
+
+            function drawTendril(tendril) {
+                const pts = tendril.points;
+                const n = pts.length;
+                const t = world.t;
+
+                // thickness variation along length
+                const baseTh = tendril.thickness;
+                const hue = 150 + tendril.id * 6;
+
+                // glowing stroke underlay
+                ctx.save();
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+
+                // Under-glow
+                ctx.globalAlpha = 0.18 + 0.10 * Math.sin(t * 2 + tendril.id);
+                ctx.strokeStyle = `hsla(${hue}, 85%, 70%, 1)`;
+                ctx.lineWidth = baseTh * 2.2;
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                ctx.stroke();
+
+                // Main body with gradient-ish via multiple strokes
+                ctx.globalAlpha = 0.92;
+                ctx.strokeStyle = `hsla(${hue}, 60%, 44%, 1)`;
+                ctx.lineWidth = baseTh * 1.35;
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                ctx.stroke();
+
+                ctx.globalAlpha = 0.55;
+                ctx.strokeStyle = `hsla(${hue + 10}, 70%, 56%, 1)`;
+                ctx.lineWidth = baseTh * 0.75;
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                ctx.stroke();
+
+                // Tip "flower" / claw
+                const tip = pts[n - 1];
+                const bloom = 0.65 + 0.25 * Math.sin(t * 3.2 + tendril.id * 1.2);
+                ctx.globalAlpha = 0.85;
+                const tg = ctx.createRadialGradient(tip.x, tip.y, 2, tip.x, tip.y, 18);
+                tg.addColorStop(0, `hsla(${hue + 20}, 95%, 85%, 1)`);
+                tg.addColorStop(0.5, `hsla(${hue + 10}, 90%, 60%, 0.9)`);
+                tg.addColorStop(1, `hsla(${hue}, 80%, 35%, 0)`);
+                ctx.fillStyle = tg;
+                ctx.beginPath();
+                ctx.arc(tip.x, tip.y, 10 + bloom * 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Debug: show target and segment capsules
+                if (DEBUG) {
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = "rgba(255,255,255,0.8)";
+                    ctx.fillRect(tendril.rootX - 2, tendril.rootY - 2, 4, 4);
+                    ctx.fillRect(tip.x - 2, tip.y - 2, 4, 4);
+
+                    // capsules
+                    ctx.globalAlpha = 0.25;
+                    ctx.strokeStyle = "rgba(255,200,120,0.8)";
+                    for (let i = 0; i < n - 1; i++) {
+                        const a = pts[i], b = pts[i + 1];
+                        ctx.lineWidth = (tendril.thickness * 2);
+                        ctx.beginPath();
+                        ctx.moveTo(a.x, a.y);
+                        ctx.lineTo(b.x, b.y);
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.restore();
+            }
+
+            function drawDebugHUD(dt) {
+                const fps = 1 / (dt || 1 / 60);
+                ctx.save();
+                ctx.globalAlpha = 0.9;
+                ctx.fillStyle = "rgba(0,0,0,0.35)";
+                ctx.fillRect(10, H - 70, 260, 58);
+                ctx.fillStyle = "rgba(220,240,255,0.95)";
+                ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+                ctx.fillText(`FPS: ${fps.toFixed(1)}`, 18, H - 46);
+                ctx.fillText(`Circles: ${world.circles.length} / ${world.maxCircles}`, 18, H - 30);
+                ctx.fillText(`FoodBits: ${world.foodBits.length}`, 18, H - 14);
+                ctx.restore();
+            }
+
+            // --- Main loop ---
+            let last = performance.now();
+            function frame(now) {
+                let dt = (now - last) / 1000;
+                last = now;
+
+                // Clamp dt for stability on tab switch
+                dt = clamp(dt, 1 / 240, 1 / 24);
+
+                world.t += dt;
+
+                // Adapt plant anchors on resize changes
+                updatePlantAnchors();
+
+                // Update
+                updateCircles(dt);
+
+                // Update tendrils (fluid procedural IK-ish chains)
+                for (const tendril of plant.tendrils) updateTendril(tendril, dt);
+
+                // Handle collisions: tendrils intercept and consume
+                handlePlantCollisions();
+
+                // Update particles
+                updateFoodBits(dt);
+
+                // Render
+                drawBackground();
+                drawPlant();
+
+                // Draw circles after plant for nice layering (swap if you want circles behind)
+                for (const c of world.circles) drawCircle(c);
+                drawFoodBits();
+
+                // Soft left boundary indicator (invisible gameplay-wise, just aesthetic)
+                if (DEBUG) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.25;
+                    ctx.strokeStyle = "rgba(255,80,80,0.8)";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(world.leftBoundary, 0);
+                    ctx.lineTo(world.leftBoundary, H);
+                    ctx.stroke();
+                    ctx.restore();
+                    drawDebugHUD(dt);
+                }
+
+                requestAnimationFrame(frame);
+            }
+
+            // Seed initial circles
+            for (let i = 0; i < 16; i++) spawnCircle(false);
+
+            requestAnimationFrame(frame);
+
+            // If canvas size changes significantly, re-init plant
+            let lastW = W, lastH = H;
+            setInterval(() => {
+                if (Math.abs(W - lastW) + Math.abs(H - lastH) > 60) {
+                    lastW = W; lastH = H;
+                    initPlant();
+                }
+            }, 600);
+        })();
+    </script>
+</body>
+
+</html>

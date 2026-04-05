@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Plant Interceptor v2 — High-Speed Canvas</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #05080c;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hud {
+            position: fixed;
+            left: 12px;
+            top: 10px;
+            z-index: 2;
+            font: 12px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            color: rgba(220, 240, 255, .88);
+            user-select: none;
+            pointer-events: none;
+            text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+        }
+
+        .hud b {
+            color: rgba(190, 255, 220, .95);
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+    <div class="hud">
+        <b>Plant Interceptor v2</b><br />
+        Mouse = wind • Click = burst • Space = debug
+    </div>
+
+    <script>
+        (() => {
+            // ============================================================
+            // Plant Interceptor v2
+            // Improvements:
+            //  - Time sub-stepping to avoid tunneling at high speeds
+            //  - Tendril target coordination (less emptiness)
+            //  - Captured prey reels along tendril toward mouth
+            //  - Soft suction corridor near left boundary (no hard "teleport eat")
+            //  - Offscreen trail buffer for circles
+            // ============================================================
+
+            const canvas = document.getElementById("c");
+            const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+
+            // Offscreen trail layer (circles only)
+            const trail = document.createElement("canvas");
+            const tctx = trail.getContext("2d", { alpha: true, desynchronized: true });
+
+            let W = 0, H = 0, DPR = 1;
+            function resize() {
+                DPR = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+                W = Math.floor(window.innerWidth);
+                H = Math.floor(window.innerHeight);
+
+                canvas.width = Math.floor(W * DPR);
+                canvas.height = Math.floor(H * DPR);
+                canvas.style.width = W + "px";
+                canvas.style.height = H + "px";
+                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+                trail.width = Math.floor(W * DPR);
+                trail.height = Math.floor(H * DPR);
+                tctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            }
+            window.addEventListener("resize", resize);
+            resize();
+
+            // Utils
+            const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+            const lerp = (a, b, t) => a + (b - a) * t;
+            const rand = (a, b) => a + Math.random() * (b - a);
+            const randi = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+            const TAU = Math.PI * 2;
+
+            function smoothstep(a, b, x) {
+                x = clamp((x - a) / (b - a), 0, 1);
+                return x * x * (3 - 2 * x);
+            }
+
+            function distToSeg2(px, py, ax, ay, bx, by) {
+                const abx = bx - ax, aby = by - ay;
+                const apx = px - ax, apy = py - ay;
+                const denom = abx * abx + aby * aby || 1e-9;
+                let t = (apx * abx + apy * aby) / denom;
+                t = clamp(t, 0, 1);
+                const cx = ax + abx * t, cy = ay + aby * t;
+                const dx = px - cx, dy = py - cy;
+                return { d2: dx * dx + dy * dy, cx, cy, t };
+            }
+
+            // hash noise
+            function hash1(n) {
+                n = Math.sin(n) * 43758.5453123;
+                return n - Math.floor(n);
+            }
+
+            // Interaction
+            let mouseX = W * 0.6, mouseY = H * 0.5;
+            let mouseDown = false;
+            let DEBUG = false;
+
+            window.addEventListener("pointermove", e => { mouseX = e.clientX; mouseY = e.clientY; });
+            window.addEventListener("pointerdown", () => mouseDown = true);
+            window.addEventListener("pointerup", () => mouseDown = false);
+            window.addEventListener("keydown", e => { if (e.code === "Space") DEBUG = !DEBUG; });
+
+            // World
+            const world = {
+                t: 0,
+                circles: [],
+                foodBits: [],
+                maxCircles: 100,
+                spawnRate: 24, // per sec baseline
+                leftHard: 4,    // hard boundary (last resort)
+                dangerX: () => 110, // suction corridor begins
+            };
+
+            // Plant
+            const plant = {
+                baseX: 44,
+                baseY: H * 0.55,
+                mouthX: 54,
+                mouthY: H * 0.55,
+                energy: 0,
+                pulse: 0,
+                tendrils: [],
+                tendrilCount: 7,
+                reach: () => Math.max(360, Math.min(W * 0.62, 980)),
+            };
+
+            function initPlant() {
+                plant.tendrils.length = 0;
+                for (let i = 0; i < plant.tendrilCount; i++) {
+                    const segCount = randi(18, 24);
+                    const segLen = rand(10.5, 15.5);
+                    const thickness = rand(5.8, 9.2);
+                    const lane = (i + 0.5) / plant.tendrilCount;
+                    const rootY = H * (0.20 + lane * 0.62) + rand(-14, 14);
+
+                    const points = [];
+                    for (let s = 0; s < segCount; s++) {
+                        points.push({
+                            x: plant.baseX + s * segLen,
+                            y: rootY,
+                            // add per-point velocity (Verlet-ish)
+                            vx: 0, vy: 0
+                        });
+                    }
+                    plant.tendrils.push({
+                        id: i,
+                        rootX: plant.baseX,
+                        rootY,
+                        segLen,
+                        thickness,
+                        points,
+                        targetId: -1,
+                        lock: 0,
+                        idlePhase: rand(0, TAU),
+                        aggression: rand(0.9, 1.2),
+                    });
+                }
+            }
+            initPlant();
+
+            function updatePlantAnchors() {
+                plant.baseY = lerp(plant.baseY, H * 0.55, 0.08);
+                plant.mouthY = plant.baseY;
+                plant.mouthX = plant.baseX + 10;
+                for (let i = 0; i < plant.tendrils.length; i++) {
+                    const t = plant.tendrils[i];
+                    const lane = (i + 0.5) / plant.tendrilCount;
+                    const desired = H * (0.20 + lane * 0.62);
+                    t.rootY = lerp(t.rootY, desired, 0.06);
+                    t.rootX = plant.baseX;
+                }
+            }
+
+            // Circles
+            let circleId = 1;
+            function spawnCircle(burst = false) {
+                const n = burst ? randi(8, 14) : 1;
+                for (let i = 0; i < n; i++) {
+                    const r = rand(8, 20);
+                    const y0 = rand(r, H - r);
+                    const speed = rand(620, 1150) * (burst ? rand(0.95, 1.15) : 1);
+
+                    const amp1 = rand(22, 140), amp2 = rand(10, 90), amp3 = rand(6, 60);
+                    const f1 = rand(1.2, 5.2), f2 = rand(0.7, 4.4), f3 = rand(0.8, 7.0);
+                    const p1 = rand(0, TAU), p2 = rand(0, TAU), p3 = rand(0, TAU);
+
+                    const hue = (rand(190, 330) + rand(-35, 35)) % 360;
+
+                    world.circles.push({
+                        id: circleId++,
+                        x: W + rand(30, 180),
+                        y: y0,
+                        y0,
+                        r,
+                        speed,
+
+                        amp1, amp2, amp3, f1, f2, f3, p1, p2, p3,
+                        drift: rand(-45, 45),
+                        vy: rand(-60, 60),
+
+                        hue,
+                        alive: true,
+
+                        // State machine
+                        state: "free", // free | captured | swallowed
+                        captor: -1,    // tendril id
+                        capU: 0,       // position along tendril polyline (float index)
+                        capSpeed: 0,   // reel-in speed
+
+                        // for substep integration
+                        prevX: 0,
+                        prevY: 0,
+                    });
+
+                    if (world.circles.length >= world.maxCircles) break;
+                }
+            }
+
+            window.addEventListener("click", () => spawnCircle(true));
+
+            // Target coordination: assign each tendril a unique best target (greedy)
+            function assignTargets(dt) {
+                // Clear locks gradually
+                for (const t of plant.tendrils) {
+                    t.lock = Math.max(0, t.lock - dt);
+                }
+
+                // Candidate circles
+                const candidates = world.circles.filter(c => c.alive && c.state === "free");
+
+                // Build score list (tendril, circle)
+                const reach = plant.reach();
+                const pairs = [];
+                for (const tendril of plant.tendrils) {
+                    const tip = tendril.points[tendril.points.length - 1];
+                    for (const c of candidates) {
+                        const dx = c.x - tendril.rootX;
+                        if (dx < -40) continue;
+                        if (dx > reach + 170) continue;
+
+                        const laneDist = Math.abs(c.y - tendril.rootY);
+                        const tipDist = Math.hypot(c.x - tip.x, c.y - tip.y);
+
+                        // urgency based on how close to left corridor
+                        const danger = 1 - clamp((c.x - world.dangerX()) / 520, 0, 1);
+                        const leftUrgency = 1 - clamp((c.x - 130) / 740, 0, 1);
+                        const laneScore = 1 - clamp(laneDist / (H * 0.34), 0, 1);
+                        const proximity = 1 - clamp(tipDist / (reach + 160), 0, 1);
+
+                        const score = (danger * 3.0) + (leftUrgency * 2.0) + (laneScore * 1.1) + (proximity * 1.0) - (dx / (reach + 300)) * 0.25;
+                        pairs.push({ tid: tendril.id, cid: c.id, score });
+                    }
+                }
+
+                // Sort best-first
+                pairs.sort((a, b) => b.score - a.score);
+
+                // Greedy unique assignment
+                const usedT = new Set();
+                const usedC = new Set();
+                for (const p of pairs) {
+                    if (usedT.has(p.tid) || usedC.has(p.cid)) continue;
+                    const tendril = plant.tendrils[p.tid];
+                    // If locked to an existing target, don't override unless new is much better
+                    if (tendril.lock > 0 && tendril.targetId !== -1) continue;
+
+                    tendril.targetId = p.cid;
+                    tendril.lock = 0.18; // short lock for stability
+                    usedT.add(p.tid);
+                    usedC.add(p.cid);
+                }
+
+                // Tendrils with no assignment keep their current target briefly, else idle
+                for (const t of plant.tendrils) {
+                    if (t.targetId !== -1) {
+                        const ok = world.circles.some(c => c.id === t.targetId && c.alive && c.state === "free");
+                        if (!ok && t.lock <= 0) t.targetId = -1;
+                    }
+                }
+            }
+
+            // Predict circle position (better Y prediction with derivative of oscillations)
+            function predictCircle(c, lead) {
+                const px = c.x - c.speed * lead;
+
+                // approximate y(t+lead) using sin + drift + vy
+                const tt = world.t + lead;
+                const osc =
+                    c.amp1 * Math.sin(tt * c.f1 + c.p1) +
+                    c.amp2 * Math.sin(tt * (c.f2 * 1.6) + c.p2) +
+                    c.amp3 * Math.sin(tt * (c.f3 * 0.9) + c.p3);
+
+                const py = c.y0 + osc + (c.drift + c.vy * lead * 0.75);
+                return { x: px, y: py };
+            }
+
+            // Tendril update (spring tip + per-point damping + constraint passes)
+            function updateTendril(tendril, dt) {
+                const pts = tendril.points;
+                const n = pts.length;
+
+                // Anchor root
+                pts[0].x = tendril.rootX;
+                pts[0].y = tendril.rootY;
+
+                // Find target circle object
+                let target = null;
+                if (tendril.targetId !== -1) {
+                    target = world.circles.find(c => c.id === tendril.targetId && c.alive && c.state === "free") || null;
+                    if (!target && tendril.lock <= 0) tendril.targetId = -1;
+                }
+
+                // Desired tip target
+                let tx, ty;
+                const time = world.t;
+
+                if (target) {
+                    const tip = pts[n - 1];
+                    const dist = Math.hypot(target.x - tip.x, target.y - tip.y);
+                    const lead = clamp(dist / (target.speed + 1e-6), 0.02, 0.20) * tendril.aggression;
+                    const p = predictCircle(target, lead);
+
+                    const reach = plant.reach();
+                    tx = clamp(p.x, tendril.rootX + 20, tendril.rootX + reach);
+                    ty = clamp(p.y, 18, H - 18);
+
+                    // if target is in danger zone, pull even harder
+                    const dangerBoost = smoothstep(world.dangerX() + 180, world.dangerX(), target.x);
+                    ty = lerp(ty, target.y, 0.25 + dangerBoost * 0.35);
+                    tx = lerp(tx, target.x, 0.25 + dangerBoost * 0.45);
+                } else {
+                    // idle sway
+                    const reach = plant.reach() * 0.70;
+                    tx = tendril.rootX + reach * (0.30 + 0.12 * Math.sin(time * 0.6 + tendril.idlePhase));
+                    ty = tendril.rootY
+                        + 70 * Math.sin(time * (1.0 + 0.05 * tendril.id) + tendril.idlePhase * 1.4)
+                        + 28 * Math.sin(time * 2.2 + tendril.idlePhase * 0.7 + tendril.id);
+                }
+
+                // Tip spring (uses tip point velocity)
+                const tip = pts[n - 1];
+                const stiff = target ? 120 : 58;
+                const damp = target ? 18 : 22;
+                const maxSp = target ? 1700 : 900;
+
+                let ax = (tx - tip.x) * stiff - tip.vx * damp;
+                let ay = (ty - tip.y) * stiff - tip.vy * damp;
+
+                // organic micro wiggle
+                const wig = target ? 0.7 : 1.4;
+                ax += (hash1(time * 3.1 + tendril.id * 17.3) - 0.5) * wig * 55;
+                ay += (hash1(time * 3.7 + tendril.id * 29.9) - 0.5) * wig * 55;
+
+                tip.vx += ax * dt;
+                tip.vy += ay * dt;
+
+                const sp = Math.hypot(tip.vx, tip.vy);
+                if (sp > maxSp) {
+                    const s = maxSp / (sp + 1e-9);
+                    tip.vx *= s; tip.vy *= s;
+                }
+
+                tip.x += tip.vx * dt;
+                tip.y += tip.vy * dt;
+
+                // Light damping for all points to keep fluid
+                for (let i = 1; i < n - 1; i++) {
+                    pts[i].vx *= (1 - dt * 6.0);
+                    pts[i].vy *= (1 - dt * 6.0);
+                }
+
+                // Constraint relaxation: multiple passes for stiffness
+                const passes = target ? 3 : 2;
+
+                for (let pass = 0; pass < passes; pass++) {
+                    // back-to-root
+                    for (let i = n - 2; i >= 0; i--) {
+                        const a = pts[i], b = pts[i + 1];
+                        const dx = a.x - b.x, dy = a.y - b.y;
+                        const d = Math.hypot(dx, dy) || 1e-9;
+                        const diff = (d - tendril.segLen) / d;
+                        a.x -= dx * diff;
+                        a.y -= dy * diff;
+                    }
+                    // re-anchor root
+                    pts[0].x = tendril.rootX;
+                    pts[0].y = tendril.rootY;
+
+                    // root-to-tip
+                    for (let i = 1; i < n; i++) {
+                        const a = pts[i - 1], b = pts[i];
+                        const dx = b.x - a.x, dy = b.y - a.y;
+                        const d = Math.hypot(dx, dy) || 1e-9;
+                        const diff = (d - tendril.segLen) / d;
+                        b.x -= dx * diff;
+                        b.y -= dy * diff;
+                    }
+                }
+
+                // Soft bounds
+                for (let i = 0; i < n; i++) {
+                    pts[i].x = clamp(pts[i].x, 0, W + 40);
+                    pts[i].y = clamp(pts[i].y, 0, H);
+                }
+            }
+
+            // Collision check circle vs tendril segments (capsule)
+            function checkCircleVsTendril(circle, tendril) {
+                const pts = tendril.points;
+                const thick = tendril.thickness;
+                const rr = (circle.r + thick) * (circle.r + thick);
+
+                for (let i = 0; i < pts.length - 1; i++) {
+                    const a = pts[i], b = pts[i + 1];
+                    const res = distToSeg2(circle.x, circle.y, a.x, a.y, b.x, b.y);
+                    if (res.d2 <= rr) {
+                        return { hit: true, segIndex: i, segT: res.t, hitX: res.cx, hitY: res.cy };
+                    }
+                }
+                return { hit: false };
+            }
+
+            // Capture: attach circle to a tendril position and reel to root/mouth
+            function capture(circle, tendrilId, hit) {
+                if (circle.state !== "free") return;
+                circle.state = "captured";
+                circle.captor = tendrilId;
+                // capU is float index along segments: i + t
+                circle.capU = hit.segIndex + hit.segT;
+                circle.capSpeed = rand(3.6, 6.6); // how fast it reels (indices/sec)
+                plant.energy = Math.min(1, plant.energy + 0.07);
+
+                // spawn some bits
+                for (let i = 0; i < randi(6, 12); i++) {
+                    world.foodBits.push({
+                        x: hit.hitX + rand(-circle.r, circle.r),
+                        y: hit.hitY + rand(-circle.r, circle.r),
+                        vx: rand(-80, 80),
+                        vy: rand(-90, 90),
+                        life: rand(0.45, 0.95),
+                        t: 0,
+                        hue: circle.hue
+                    });
+                }
+            }
+
+            // Get position on tendril polyline using float index u (0..n-1)
+            function pointOnTendril(tendril, u) {
+                const pts = tendril.points;
+                const n = pts.length;
+                u = clamp(u, 0, n - 1);
+                const i = Math.floor(u);
+                const t = u - i;
+                const a = pts[i];
+                const b = pts[Math.min(n - 1, i + 1)];
+                return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) };
+            }
+
+            function swallow(circle) {
+                circle.state = "swallowed";
+                circle.alive = false;
+                // digestion bits toward mouth
+                for (let i = 0; i < randi(10, 18); i++) {
+                    world.foodBits.push({
+                        x: plant.mouthX + rand(-10, 10),
+                        y: plant.mouthY + rand(-8, 8),
+                        vx: rand(-40, 40),
+                        vy: rand(-40, 40),
+                        life: rand(0.35, 0.75),
+                        t: 0,
+                        hue: circle.hue
+                    });
+                }
+            }
+
+            // Update circles with substeps for stability
+            function updateCircles(dt) {
+                // spawn accumulation
+                const densityScale = clamp(W / 1200, 0.7, 1.5);
+                world._spawnAcc = (world._spawnAcc || 0) + dt * world.spawnRate * densityScale;
+                while (world._spawnAcc >= 1) {
+                    world._spawnAcc -= 1;
+                    if (world.circles.length < world.maxCircles) spawnCircle(false);
+                    else break;
+                }
+
+                const windRadius = 260;
+                const windStrength = mouseDown ? 320 : 170;
+
+                for (const c of world.circles) {
+                    if (!c.alive) continue;
+
+                    if (c.state === "captured") {
+                        const tendril = plant.tendrils[c.captor];
+                        if (!tendril) {
+                            c.alive = false; continue;
+                        }
+
+                        // Reel toward root (u decreases to 0), then mouth
+                        c.capU -= c.capSpeed * dt;
+
+                        // Position on tendril (as it moves)
+                        if (c.capU > 0.15) {
+                            const p = pointOnTendril(tendril, c.capU);
+                            c.x = p.x; c.y = p.y;
+                            c.r *= (1 - dt * 1.7);
+                        } else {
+                            // finish into mouth suction
+                            c.x = lerp(c.x, plant.mouthX, 1 - Math.pow(0.001, dt));
+                            c.y = lerp(c.y, plant.mouthY, 1 - Math.pow(0.001, dt));
+                            c.r *= (1 - dt * 5.2);
+                            if (c.r < 0.8) swallow(c);
+                        }
+                        continue;
+                    }
+
+                    if (c.state !== "free") continue;
+
+                    // store prev for debug / substep concept
+                    c.prevX = c.x; c.prevY = c.y;
+
+                    // oscillation + drift update
+                    const t = world.t;
+                    const osc =
+                        c.amp1 * Math.sin(t * c.f1 + c.p1) +
+                        c.amp2 * Math.sin(t * (c.f2 * 1.6) + c.p2) +
+                        c.amp3 * Math.sin(t * (c.f3 * 0.9) + c.p3);
+
+                    // erratic drift (random walk)
+                    c.vy += rand(-130, 130) * 0.55 * dt;
+                    c.vy = clamp(c.vy, -320, 320);
+                    c.drift += c.vy * dt;
+
+                    // wind influence
+                    const dx = c.x - mouseX, dy = c.y - mouseY;
+                    const d2 = dx * dx + dy * dy;
+                    if (d2 < windRadius * windRadius) {
+                        const d = Math.sqrt(d2) + 1e-6;
+                        const fall = 1 - (d / windRadius);
+                        c.vy += (dy / d) * windStrength * fall * dt * 0.55;
+                        c.drift += (hash1(t + c.id * 0.17) - 0.5) * 28 * fall * dt;
+                    }
+
+                    // y follows desired smoothly
+                    const desiredY = c.y0 + osc + c.drift;
+                    c.y = lerp(c.y, desiredY, 1 - Math.pow(0.00045, dt));
+
+                    // x moves left
+                    c.x -= c.speed * dt;
+
+                    // soft bounds
+                    if (c.y < c.r) { c.y = c.r; c.vy *= -0.62; c.drift *= 0.9; }
+                    if (c.y > H - c.r) { c.y = H - c.r; c.vy *= -0.62; c.drift *= 0.9; }
+
+                    // Soft suction corridor near left (prevents any reaching boundary)
+                    const dangerX = world.dangerX();
+                    if (c.x < dangerX + 80) {
+                        const s = smoothstep(dangerX + 120, dangerX, c.x);
+                        // Pull into mouth (looks like plant dominance)
+                        const toMx = plant.mouthX - c.x;
+                        const toMy = plant.mouthY - c.y;
+
+                        // accelerate leftward suction
+                        c.x += toMx * (s * 3.5) * dt;
+                        c.y += toMy * (s * 3.0) * dt;
+
+                        // slight shrink & glow effect
+                        c.r *= (1 - dt * (0.9 * s));
+                        if (c.r < 1.2) {
+                            c.alive = false;
+                            plant.energy = Math.min(1, plant.energy + 0.06);
+                        }
+                    }
+
+                    // Absolute last resort hard boundary (should almost never trigger)
+                    if (c.x - c.r <= world.leftHard) {
+                        c.x = world.leftHard + c.r;
+                        c.alive = false;
+                        plant.energy = Math.min(1, plant.energy + 0.05);
+                    }
+                }
+
+                // prune
+                world.circles = world.circles.filter(c => c.alive);
+            }
+
+            // Particles
+            function updateFoodBits(dt) {
+                for (const p of world.foodBits) {
+                    p.t += dt;
+                    p.life -= dt;
+
+                    const toMx = plant.mouthX - p.x;
+                    const toMy = plant.mouthY - p.y;
+                    p.vx += toMx * 4.8 * dt;
+                    p.vy += toMy * 4.8 * dt;
+                    p.vx *= (1 - dt * 3.5);
+                    p.vy *= (1 - dt * 3.5);
+
+                    p.vx += (hash1(world.t * 10 + p.hue) - 0.5) * 30 * dt;
+                    p.vy += (hash1(world.t * 11.7 + p.hue) - 0.5) * 30 * dt;
+
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                }
+                world.foodBits = world.foodBits.filter(p => p.life > 0);
+            }
+
+            // Collisions: circle vs tendrils (capture instead of instant delete)
+            function handleCollisions() {
+                for (const c of world.circles) {
+                    if (!c.alive || c.state !== "free") continue;
+
+                    // In danger zone, check all tendrils more aggressively
+                    const inDanger = c.x < plant.baseX + plant.reach() * 0.85;
+
+                    for (const tendril of plant.tendrils) {
+                        if (!inDanger && Math.abs(c.y - tendril.rootY) > H * 0.45) continue;
+                        const hit = checkCircleVsTendril(c, tendril);
+                        if (hit.hit) {
+                            capture(c, tendril.id, hit);
+
+                            // recoil kick
+                            const tip = tendril.points[tendril.points.length - 1];
+                            tip.vx -= rand(140, 260);
+                            tip.vy += rand(-160, 160);
+                            break;
+                        }
+                    }
+
+                    // mouth direct swallow if close
+                    const md = Math.hypot(c.x - plant.mouthX, c.y - plant.mouthY);
+                    if (c.state === "free" && md < c.r + 22) {
+                        c.alive = false;
+                        plant.energy = Math.min(1, plant.energy + 0.06);
+                    }
+                }
+            }
+
+            // Rendering
+            function drawBackground() {
+                const g = ctx.createLinearGradient(0, 0, 0, H);
+                g.addColorStop(0, "#061018");
+                g.addColorStop(1, "#030509");
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, W, H);
+
+                // subtle mist
+                const t = world.t;
+                ctx.save();
+                ctx.globalAlpha = 0.08;
+                ctx.strokeStyle = "#78a6ff";
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 11; i++) {
+                    const y = (i / 11) * H + Math.sin(t * 0.22 + i) * 16;
+                    ctx.beginPath();
+                    for (let x = 0; x <= W; x += 70) {
+                        const yy = y + Math.sin(t * 0.55 + x * 0.011 + i) * 7;
+                        ctx.lineTo(x, yy);
+                    }
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                // vignette
+                ctx.save();
+                const vg = ctx.createRadialGradient(W * 0.35, H * 0.5, Math.min(W, H) * 0.2, W * 0.35, H * 0.5, Math.max(W, H) * 0.95);
+                vg.addColorStop(0, "rgba(0,0,0,0)");
+                vg.addColorStop(1, "rgba(0,0,0,0.6)");
+                ctx.fillStyle = vg;
+                ctx.fillRect(0, 0, W, H);
+                ctx.restore();
+            }
+
+            function drawCircleToTrail(c) {
+                // Draw circles into trail buffer with additive-ish glow
+                const a = c.state === "captured" ? 0.85 : 1.0;
+
+                // outer glow
+                tctx.save();
+                tctx.globalCompositeOperation = "lighter";
+                tctx.globalAlpha = 0.18 * a;
+                tctx.fillStyle = `hsla(${c.hue}, 95%, 64%, 1)`;
+                tctx.beginPath();
+                tctx.arc(c.x, c.y, c.r * 2.0, 0, TAU);
+                tctx.fill();
+
+                // core
+                tctx.globalAlpha = 0.9 * a;
+                const grad = tctx.createRadialGradient(c.x - c.r * 0.35, c.y - c.r * 0.35, c.r * 0.2, c.x, c.y, c.r * 1.1);
+                grad.addColorStop(0, `hsla(${c.hue}, 100%, 86%, 1)`);
+                grad.addColorStop(0.6, `hsla(${c.hue}, 95%, 62%, 1)`);
+                grad.addColorStop(1, `hsla(${c.hue}, 90%, 44%, 1)`);
+                tctx.fillStyle = grad;
+                tctx.beginPath();
+                tctx.arc(c.x, c.y, c.r, 0, TAU);
+                tctx.fill();
+
+                tctx.restore();
+            }
+
+            function drawTrailLayer() {
+                // Fade trail buffer slightly (motion blur look)
+                tctx.save();
+                tctx.globalCompositeOperation = "source-over";
+                tctx.globalAlpha = 0.14; // higher = shorter trails
+                tctx.fillStyle = "rgba(0,0,0,1)";
+                tctx.fillRect(0, 0, W, H);
+                tctx.restore();
+
+                // Draw current circles into trail
+                for (const c of world.circles) {
+                    if (!c.alive) continue;
+                    if (c.state === "swallowed") continue;
+                    drawCircleToTrail(c);
+                }
+
+                // Composite onto main
+                ctx.save();
+                ctx.globalAlpha = 0.95;
+                ctx.drawImage(trail, 0, 0, W, H);
+                ctx.restore();
+            }
+
+            function drawFoodBits() {
+                for (const p of world.foodBits) {
+                    const a = clamp(p.life / 0.9, 0, 1);
+                    ctx.save();
+                    ctx.globalAlpha = 0.8 * a;
+                    ctx.fillStyle = `hsla(${p.hue}, 95%, 70%, 1)`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 2.0 + 2.0 * (1 - a), 0, TAU);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            function drawPlant() {
+                const t = world.t;
+                plant.energy = lerp(plant.energy, 0, 0.016);
+                plant.pulse += (0.9 + plant.energy * 2.4) * (1 / 60);
+
+                // stalk + mouth
+                ctx.save();
+
+                const stalkW = 18;
+                const stalkH = H * 0.72;
+                const sx = plant.baseX - 10;
+                const sy = plant.baseY + 40;
+
+                const sg = ctx.createLinearGradient(0, sy - stalkH, 0, sy);
+                sg.addColorStop(0, "rgba(80,220,140,0.03)");
+                sg.addColorStop(0.35, "rgba(40,170,110,0.55)");
+                sg.addColorStop(1, "rgba(12,78,62,0.98)");
+                ctx.fillStyle = sg;
+
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.quadraticCurveTo(sx + 14, sy - stalkH * 0.46, sx + 18, sy - stalkH);
+                ctx.quadraticCurveTo(sx + 2, sy - stalkH * 0.46, sx + stalkW, sy);
+                ctx.closePath();
+                ctx.fill();
+
+                // bio glow around mouth
+                ctx.globalAlpha = 0.12 + 0.10 * Math.sin(t * 2.0 + plant.pulse) + plant.energy * 0.10;
+                ctx.fillStyle = "rgba(120,255,220,1)";
+                ctx.beginPath();
+                ctx.ellipse(plant.mouthX, plant.mouthY, 32, 26, 0, 0, TAU);
+                ctx.fill();
+
+                // mouth
+                const mouthOpen = 0.35 + 0.22 * Math.sin(t * 3.4 + plant.pulse) + plant.energy * 0.42;
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = "rgba(9,20,17,0.92)";
+                ctx.beginPath();
+                ctx.ellipse(plant.mouthX, plant.mouthY, 16, 10 + mouthOpen * 7, 0, 0, TAU);
+                ctx.fill();
+
+                // mouth rim
+                ctx.strokeStyle = "rgba(120,255,220,0.4)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(plant.mouthX, plant.mouthY, 16, 10 + mouthOpen * 7, 0, 0, TAU);
+                ctx.stroke();
+
+                // suction "ripples" when energy is up
+                const rip = 0.18 + plant.energy * 0.45;
+                ctx.globalAlpha = 0.18 + plant.energy * 0.25;
+                ctx.strokeStyle = "rgba(140,255,240,0.45)";
+                for (let k = 0; k < 3; k++) {
+                    const rr = 22 + k * 10 + (Math.sin(t * 3.2 + k) * 5);
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.ellipse(plant.mouthX + 4, plant.mouthY, rr * (1 + rip * 0.2), rr * (0.75 + rip * 0.2), 0, 0, TAU);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+
+                // tendrils
+                for (const tendril of plant.tendrils) {
+                    drawTendril(tendril);
+                }
+
+                // danger corridor visualization in debug
+                if (DEBUG) {
+                    ctx.save();
+                    const x = world.dangerX();
+                    ctx.globalAlpha = 0.22;
+                    ctx.fillStyle = "rgba(255,120,80,0.18)";
+                    ctx.fillRect(x, 0, 120, H);
+                    ctx.globalAlpha = 0.55;
+                    ctx.strokeStyle = "rgba(255,120,80,0.6)";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, H);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            function drawTendril(tendril) {
+                const pts = tendril.points;
+                const n = pts.length;
+                const t = world.t;
+                const baseTh = tendril.thickness;
+                const hue = 148 + tendril.id * 6;
+
+                ctx.save();
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+
+                // under glow
+                ctx.globalAlpha = 0.16 + 0.12 * Math.sin(t * 2 + tendril.id) + plant.energy * 0.06;
+                ctx.strokeStyle = `hsla(${hue}, 85%, 70%, 1)`;
+                ctx.lineWidth = baseTh * 2.35;
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                ctx.stroke();
+
+                // body
+                ctx.globalAlpha = 0.92;
+                ctx.strokeStyle = `hsla(${hue}, 60%, 42%, 1)`;
+                ctx.lineWidth = baseTh * 1.35;
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                ctx.stroke();
+
+                // highlight
+                ctx.globalAlpha = 0.55;
+                ctx.strokeStyle = `hsla(${hue + 10}, 70%, 55%, 1)`;
+                ctx.lineWidth = baseTh * 0.72;
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                ctx.stroke();
+
+                // tip bloom
+                const tip = pts[n - 1];
+                const bloom = 0.6 + 0.35 * Math.sin(t * 3.1 + tendril.id * 1.3) + plant.energy * 0.15;
+                ctx.globalAlpha = 0.84;
+                const tg = ctx.createRadialGradient(tip.x, tip.y, 2, tip.x, tip.y, 20);
+                tg.addColorStop(0, `hsla(${hue + 25}, 98%, 86%, 1)`);
+                tg.addColorStop(0.55, `hsla(${hue + 12}, 92%, 58%, 0.9)`);
+                tg.addColorStop(1, `hsla(${hue}, 80%, 35%, 0)`);
+                ctx.fillStyle = tg;
+                ctx.beginPath();
+                ctx.arc(tip.x, tip.y, 10 + bloom * 7, 0, TAU);
+                ctx.fill();
+
+                // debug: segment capsules + target marker
+                if (DEBUG) {
+                    ctx.globalAlpha = 0.28;
+                    ctx.strokeStyle = "rgba(255,210,130,0.85)";
+                    for (let i = 0; i < n - 1; i++) {
+                        const a = pts[i], b = pts[i + 1];
+                        ctx.lineWidth = baseTh * 2;
+                        ctx.beginPath();
+                        ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+                        ctx.stroke();
+                    }
+
+                    if (tendril.targetId !== -1) {
+                        const c = world.circles.find(o => o.id === tendril.targetId);
+                        if (c) {
+                            ctx.globalAlpha = 0.9;
+                            ctx.strokeStyle = "rgba(255,255,255,0.85)";
+                            ctx.lineWidth = 1.5;
+                            ctx.beginPath();
+                            ctx.arc(c.x, c.y, c.r + 10, 0, TAU);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                ctx.restore();
+            }
+
+            function drawDebugHUD(dt) {
+                const fps = 1 / (dt || 1 / 60);
+                ctx.save();
+                ctx.globalAlpha = 0.9;
+                ctx.fillStyle = "rgba(0,0,0,0.35)";
+                ctx.fillRect(10, H - 74, 290, 62);
+                ctx.fillStyle = "rgba(220,240,255,0.95)";
+                ctx.font = "12px system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
+                ctx.fillText(`FPS: ${fps.toFixed(1)}`, 18, H - 52);
+                ctx.fillText(`Circles: ${world.circles.length} / ${world.maxCircles}`, 18, H - 36);
+                ctx.fillText(`Bits: ${world.foodBits.length}`, 18, H - 20);
+                ctx.restore();
+            }
+
+            // Main loop with sub-stepping
+            let last = performance.now();
+
+            function step(dt) {
+                world.t += dt;
+
+                updatePlantAnchors();
+
+                // coordinated targeting
+                assignTargets(dt);
+
+                // update entities
+                updateCircles(dt);
+
+                // tendrils
+                for (const t of plant.tendrils) updateTendril(t, dt);
+
+                // collisions after tendrils move
+                handleCollisions();
+
+                updateFoodBits(dt);
+            }
+
+            function render(dt) {
+                drawBackground();
+                drawTrailLayer(); // circles trail composited
+                drawPlant();
+                drawFoodBits();
+                if (DEBUG) drawDebugHUD(dt);
+            }
+
+            function frame(now) {
+                let dt = (now - last) / 1000;
+                last = now;
+
+                // clamp to avoid huge steps on tab switch
+                dt = clamp(dt, 1 / 240, 1 / 20);
+
+                // Substep to avoid tunneling at high speeds
+                // More substeps when dt is larger
+                const subSteps = clamp(Math.ceil(dt / (1 / 120)), 1, 4);
+                const subDt = dt / subSteps;
+
+                for (let i = 0; i < subSteps; i++) {
+                    step(subDt);
+                }
+
+                render(dt);
+                requestAnimationFrame(frame);
+            }
+
+            // Seed
+            for (let i = 0; i < 18; i++) spawnCircle(false);
+
+            requestAnimationFrame(frame);
+
+            // Re-init plant when size changes significantly
+            let lastW = W, lastH = H;
+            setInterval(() => {
+                if (Math.abs(W - lastW) + Math.abs(H - lastH) > 60) {
+                    lastW = W; lastH = H;
+                    initPlant();
+                }
+            }, 650);
+
+        })();
+    </script>
+</body>
+
+</html>

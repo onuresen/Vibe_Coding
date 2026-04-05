@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Canvas 2D Night Earth (Fake 3D)</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: radial-gradient(ellipse at center, #020612 0%, #00020a 60%, #000006 100%);
+            overflow: hidden;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .wrap {
+            height: 100%;
+            display: grid;
+            place-items: center;
+        }
+
+        canvas {
+            width: 800px;
+            height: 800px;
+            image-rendering: auto;
+            border-radius: 18px;
+            box-shadow:
+                0 20px 80px rgba(0, 0, 0, 0.65),
+                inset 0 0 0 1px rgba(120, 160, 255, 0.08);
+            background: #000;
+        }
+
+        .hint {
+            position: fixed;
+            left: 16px;
+            bottom: 12px;
+            font-size: 12px;
+            line-height: 1.4;
+            opacity: 0.8;
+            user-select: none;
+            pointer-events: none;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+        }
+
+        .hint b {
+            color: rgba(170, 210, 255, 0.95);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <canvas id="c" width="800" height="800"></canvas>
+    </div>
+    <div class="hint">
+        <div><b>Move mouse</b>: subtle shading parallax</div>
+        <div><b>Wheel</b>: zoom Earth (200–320px)</div>
+        <div><b>Click</b>: city lights flare for 1s</div>
+    </div>
+
+    <script>
+        (() => {
+            // ============================================================
+            // Utilities
+            // ============================================================
+            const TAU = Math.PI * 2;
+            const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+            const lerp = (a, b, t) => a + (b - a) * t;
+            const smoothstep = (a, b, x) => {
+                const t = clamp((x - a) / (b - a), 0, 1);
+                return t * t * (3 - 2 * t);
+            };
+            const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+            // Deterministic hash (fast)
+            // (hash3i removed; using ihash below)
+            // We'll implement a reliable integer hash without BigInt to keep things fast:
+            function ihash(x, y, z, seed) {
+                // all 32-bit ints
+                let h = (x * 374761393) ^ (y * 668265263) ^ (z * 2147483647) ^ (seed * 1274126177);
+                h = (h ^ (h >>> 13)) * 1274126177;
+                h = (h ^ (h >>> 16));
+                return h >>> 0;
+            }
+            function rand01FromHash(h) { return (h & 0xFFFFFF) / 0x1000000; }
+
+            function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+
+            // Value noise in 3D (seamless via sampling direction vector on unit sphere)
+            function valueNoise3(x, y, z, seed) {
+                const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+                const xf = x - xi, yf = y - yi, zf = z - zi;
+                const u = fade(xf), v = fade(yf), w = fade(zf);
+
+                function vtx(dx, dy, dz) {
+                    const h = ihash(xi + dx, yi + dy, zi + dz, seed);
+                    return rand01FromHash(h);
+                }
+
+                const c000 = vtx(0, 0, 0), c100 = vtx(1, 0, 0), c010 = vtx(0, 1, 0), c110 = vtx(1, 1, 0);
+                const c001 = vtx(0, 0, 1), c101 = vtx(1, 0, 1), c011 = vtx(0, 1, 1), c111 = vtx(1, 1, 1);
+
+                const x00 = lerp(c000, c100, u);
+                const x10 = lerp(c010, c110, u);
+                const x01 = lerp(c001, c101, u);
+                const x11 = lerp(c011, c111, u);
+
+                const y0 = lerp(x00, x10, v);
+                const y1 = lerp(x01, x11, v);
+
+                return lerp(y0, y1, w);
+            }
+
+            // Fractal Brownian Motion (3D)
+            function fbm3(x, y, z, seed, oct = 5) {
+                let amp = 0.5, f = 1.0, sum = 0.0;
+                for (let i = 0; i < oct; i++) {
+                    sum += amp * valueNoise3(x * f, y * f, z * f, seed + i * 1013);
+                    f *= 2.0;
+                    amp *= 0.5;
+                }
+                return sum;
+            }
+
+            // Great-circle-ish distance approximation (fast enough for texture gen)
+            function sphericalDistance(lat1, lon1, lat2, lon2) {
+                // lat,lon in radians
+                const s1 = Math.sin(lat1), c1 = Math.cos(lat1);
+                const s2 = Math.sin(lat2), c2 = Math.cos(lat2);
+                const dlon = lon2 - lon1;
+                const cd = s1 * s2 + c1 * c2 * Math.cos(dlon);
+                return Math.acos(clamp(cd, -1, 1));
+            }
+
+            // Bilinear sample from Uint32 RGBA texture
+            function sampleRGBA(tex32, w, h, u, v) {
+                // u,v in [0,1)
+                u = u - Math.floor(u);
+                v = clamp(v, 0, 0.999999);
+                const x = u * (w - 1);
+                const y = v * (h - 1);
+                const x0 = x | 0, y0 = y | 0;
+                const x1 = Math.min(x0 + 1, w - 1);
+                const y1 = Math.min(y0 + 1, h - 1);
+                const tx = x - x0;
+                const ty = y - y0;
+
+                const i00 = y0 * w + x0;
+                const i10 = y0 * w + x1;
+                const i01 = y1 * w + x0;
+                const i11 = y1 * w + x1;
+
+                const c00 = tex32[i00], c10 = tex32[i10], c01 = tex32[i01], c11 = tex32[i11];
+
+                // Extract channels
+                const r00 = (c00) & 255, g00 = (c00 >>> 8) & 255, b00 = (c00 >>> 16) & 255, a00 = (c00 >>> 24) & 255;
+                const r10 = (c10) & 255, g10 = (c10 >>> 8) & 255, b10 = (c10 >>> 16) & 255, a10 = (c10 >>> 24) & 255;
+                const r01 = (c01) & 255, g01 = (c01 >>> 8) & 255, b01 = (c01 >>> 16) & 255, a01 = (c01 >>> 24) & 255;
+                const r11 = (c11) & 255, g11 = (c11 >>> 8) & 255, b11 = (c11 >>> 16) & 255, a11 = (c11 >>> 24) & 255;
+
+                const r0 = lerp(r00, r10, tx), r1 = lerp(r01, r11, tx);
+                const g0 = lerp(g00, g10, tx), g1 = lerp(g01, g11, tx);
+                const b0 = lerp(b00, b10, tx), b1 = lerp(b01, b11, tx);
+                const a0 = lerp(a00, a10, tx), a1 = lerp(a01, a11, tx);
+
+                return [
+                    lerp(r0, r1, ty),
+                    lerp(g0, g1, ty),
+                    lerp(b0, b1, ty),
+                    lerp(a0, a1, ty)
+                ];
+            }
+
+            // ============================================================
+            // Canvas setup
+            // ============================================================
+            const canvas = document.getElementById('c');
+            const ctx = canvas.getContext('2d', { alpha: false });
+            const W = canvas.width, H = canvas.height;
+            const CX = W / 2, CY = H / 2;
+
+            // Offscreen for sphere rendering (recreated on radius change)
+            let sphereCanvas = document.createElement('canvas');
+            let sphereCtx = sphereCanvas.getContext('2d', { willReadFrequently: true });
+
+            // ============================================================
+            // Starfield & shooting stars
+            // ============================================================
+            const stars = [];
+            const STAR_COUNT = 900;
+            const seed = 1337;
+
+            function initStars() {
+                stars.length = 0;
+                for (let i = 0; i < STAR_COUNT; i++) {
+                    const rx = rand01FromHash(ihash(i, 1, 2, seed));
+                    const ry = rand01FromHash(ihash(i, 3, 4, seed));
+                    const rz = rand01FromHash(ihash(i, 5, 6, seed));
+
+                    const x = rx * W;
+                    const y = ry * H;
+                    const size = lerp(0.4, 2.2, Math.pow(rz, 2.2));
+                    const twk = lerp(0.4, 1.4, rand01FromHash(ihash(i, 7, 8, seed)));
+                    const phase = TAU * rand01FromHash(ihash(i, 9, 10, seed));
+
+                    // bluish/white distribution
+                    const hue = lerp(195, 220, rand01FromHash(ihash(i, 11, 12, seed)));
+                    const sat = lerp(10, 45, rand01FromHash(ihash(i, 13, 14, seed)));
+                    const base = lerp(0.15, 0.95, Math.pow(rand01FromHash(ihash(i, 15, 16, seed)), 0.6));
+
+                    stars.push({ x, y, size, twk, phase, hue, sat, base });
+                }
+            }
+
+            const shootingStars = [];
+            function spawnShootingStar(t) {
+                // Start near top-left-ish and go diagonally
+                const x = Math.random() * W * 0.6;
+                const y = Math.random() * H * 0.35;
+                const ang = lerp(Math.PI * 0.18, Math.PI * 0.35, Math.random());
+                const speed = lerp(1100, 1900, Math.random());
+                const len = lerp(120, 260, Math.random());
+                const life = lerp(0.35, 0.6, Math.random());
+                shootingStars.push({
+                    x, y,
+                    vx: Math.cos(ang) * speed,
+                    vy: Math.sin(ang) * speed,
+                    len,
+                    t0: t,
+                    life
+                });
+            }
+
+            function drawBackground(timeSec) {
+                // space gradient
+                const g = ctx.createRadialGradient(CX, CY * 0.85, 40, CX, CY, 700);
+                g.addColorStop(0, '#050a1d');
+                g.addColorStop(0.35, '#020615');
+                g.addColorStop(1, '#000105');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, W, H);
+
+                // stars
+                for (const s of stars) {
+                    const tw = (Math.sin(timeSec * 1.8 * s.twk + s.phase) * 0.5 + 0.5);
+                    const a = clamp(s.base * (0.55 + 0.65 * tw), 0, 1);
+                    const r = s.size * (0.85 + 0.35 * tw);
+
+                    ctx.fillStyle = `hsla(${s.hue}, ${s.sat}%, 85%, ${a})`;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, r, 0, TAU);
+                    ctx.fill();
+                }
+
+                // occasionally spawn shooting star
+                // ~ one every 6-12 seconds
+                if (Math.random() < 1 / 700) spawnShootingStar(timeSec);
+
+                // update & draw shooting stars
+                for (let i = shootingStars.length - 1; i >= 0; i--) {
+                    const st = shootingStars[i];
+                    const age = timeSec - st.t0;
+                    if (age > st.life) { shootingStars.splice(i, 1); continue; }
+
+                    const t = age / st.life;
+                    const fade = (1 - t) * (1 - t);
+
+                    const x2 = st.x + st.vx * age;
+                    const y2 = st.y + st.vy * age;
+                    const dx = st.vx, dy = st.vy;
+                    const mag = Math.hypot(dx, dy) || 1;
+                    const nx = dx / mag, ny = dy / mag;
+
+                    const x1 = x2 - nx * st.len;
+                    const y1 = y2 - ny * st.len;
+
+                    const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+                    grad.addColorStop(0, `rgba(120,170,255,0)`);
+                    grad.addColorStop(0.35, `rgba(180,220,255,${0.25 * fade})`);
+                    grad.addColorStop(1, `rgba(255,255,255,${0.75 * fade})`);
+
+                    ctx.strokeStyle = grad;
+                    ctx.lineWidth = 2.0;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                }
+            }
+
+            // ============================================================
+            // Procedural textures (equirectangular maps)
+            // landMask, lightsSharp, lightsBloom, clouds, aurora
+            // ============================================================
+            const TEX_W = 1024, TEX_H = 512;
+
+            const tex = {
+                land: null, // Uint32
+                lights: null, // Uint32
+                lightsBloomSmall: null, // Uint32 (blurred)
+                lightsBloomLarge: null, // Uint32 (blurred)
+                clouds: null,      // Uint32
+                aurora: null       // Uint32
+            };
+
+            function makeTexCanvas() {
+                const c = document.createElement('canvas');
+                c.width = TEX_W; c.height = TEX_H;
+                const x = c.getContext('2d', { willReadFrequently: true });
+                return [c, x];
+            }
+
+            function blurTextureRGBA(src32, w, h, radius) {
+                // separable box blur for speed
+                const tmp = new Uint32Array(w * h);
+                const out = new Uint32Array(w * h);
+                const r = Math.max(1, radius | 0);
+
+                // horizontal
+                for (let y = 0; y < h; y++) {
+                    let rs = 0, gs = 0, bs = 0, as = 0;
+                    const row = y * w;
+
+                    // init window
+                    for (let ix = -r; ix <= r; ix++) {
+                        const x = clamp(ix, 0, w - 1);
+                        const c = src32[row + x];
+                        rs += c & 255; gs += (c >>> 8) & 255; bs += (c >>> 16) & 255; as += (c >>> 24) & 255;
+                    }
+                    const inv = 1 / (2 * r + 1);
+
+                    for (let x = 0; x < w; x++) {
+                        const i = row + x;
+                        tmp[i] =
+                            ((as * inv) << 24) |
+                            ((bs * inv) << 16) |
+                            ((gs * inv) << 8) |
+                            ((rs * inv) | 0);
+
+                        // slide window
+                        const xOut = clamp(x - r, 0, w - 1);
+                        const xIn = clamp(x + r + 1, 0, w - 1);
+
+                        const cOut = src32[row + xOut];
+                        const cIn = src32[row + xIn];
+
+                        rs += (cIn & 255) - (cOut & 255);
+                        gs += ((cIn >>> 8) & 255) - ((cOut >>> 8) & 255);
+                        bs += ((cIn >>> 16) & 255) - ((cOut >>> 16) & 255);
+                        as += ((cIn >>> 24) & 255) - ((cOut >>> 24) & 255);
+                    }
+                }
+
+                // vertical
+                for (let x = 0; x < w; x++) {
+                    let rs = 0, gs = 0, bs = 0, as = 0;
+
+                    for (let iy = -r; iy <= r; iy++) {
+                        const y = clamp(iy, 0, h - 1);
+                        const c = tmp[y * w + x];
+                        rs += c & 255; gs += (c >>> 8) & 255; bs += (c >>> 16) & 255; as += (c >>> 24) & 255;
+                    }
+                    const inv = 1 / (2 * r + 1);
+
+                    for (let y = 0; y < h; y++) {
+                        const i = y * w + x;
+                        out[i] =
+                            ((as * inv) << 24) |
+                            ((bs * inv) << 16) |
+                            ((gs * inv) << 8) |
+                            ((rs * inv) | 0);
+
+                        const yOut = clamp(y - r, 0, h - 1);
+                        const yIn = clamp(y + r + 1, 0, h - 1);
+
+                        const cOut = tmp[yOut * w + x];
+                        const cIn = tmp[yIn * w + x];
+
+                        rs += (cIn & 255) - (cOut & 255);
+                        gs += ((cIn >>> 8) & 255) - ((cOut >>> 8) & 255);
+                        bs += ((cIn >>> 16) & 255) - ((cOut >>> 16) & 255);
+                        as += ((cIn >>> 24) & 255) - ((cOut >>> 24) & 255);
+                    }
+                }
+                return out;
+            }
+
+            function generateTextures() {
+                // We'll write directly into Uint8Clamped -> Uint32 for speed
+                const land = new Uint32Array(TEX_W * TEX_H);
+                const lights = new Uint32Array(TEX_W * TEX_H);
+                const clouds = new Uint32Array(TEX_W * TEX_H);
+                const aurora = new Uint32Array(TEX_W * TEX_H);
+
+                // City cluster centers (lat, lon in degrees)
+                const cityCenters = [
+                    // Europe core
+                    { lat: 50, lon: 10, amp: 1.00, spread: 0.18 },
+                    { lat: 52, lon: 5, amp: 0.75, spread: 0.16 },
+                    { lat: 45, lon: 20, amp: 0.55, spread: 0.20 },
+                    // East Asia
+                    { lat: 35, lon: 135, amp: 1.10, spread: 0.18 }, // Japan
+                    { lat: 31, lon: 121, amp: 0.90, spread: 0.20 }, // Shanghai
+                    { lat: 37, lon: 127, amp: 0.75, spread: 0.18 }, // Korea
+                    // US East Coast
+                    { lat: 40, lon: -75, amp: 1.05, spread: 0.20 },
+                    { lat: 34, lon: -84, amp: 0.55, spread: 0.22 },
+                    { lat: 42, lon: -71, amp: 0.60, spread: 0.20 },
+                    // extras (subtle)
+                    { lat: 28, lon: 77, amp: 0.45, spread: 0.24 }, // N. India
+                    { lat: -23, lon: -46, amp: 0.35, spread: 0.26 }, // Sao Paulo
+                    { lat: 30, lon: 31, amp: 0.35, spread: 0.25 }, // Cairo
+                ].map(c => ({
+                    lat: c.lat * Math.PI / 180,
+                    lon: c.lon * Math.PI / 180,
+                    amp: c.amp,
+                    spread: c.spread
+                }));
+
+                // For seam-free continents: sample fbm on unit sphere direction (x,y,z)
+                // We'll also do a little domain warp by using additional fbm.
+                const seedLand = 1001, seedLights = 2027, seedCloud = 3007, seedAurora = 4444;
+
+                for (let y = 0; y < TEX_H; y++) {
+                    const v = y / (TEX_H - 1);         // 0..1
+                    const lat = (0.5 - v) * Math.PI;   // +pi/2..-pi/2
+                    const sl = Math.sin(lat), cl = Math.cos(lat);
+
+                    for (let x = 0; x < TEX_W; x++) {
+                        const u = x / (TEX_W - 1);       // 0..1
+                        const lon = (u - 0.5) * TAU;     // -pi..pi
+
+                        const so = Math.sin(lon), co = Math.cos(lon);
+                        const dx = cl * so;
+                        const dy = sl;
+                        const dz = cl * co;
+
+                        // domain warp
+                        const warp = fbm3(dx * 1.4 + 10, dy * 1.4 + 10, dz * 1.4 + 10, seedLand + 77, 4);
+                        const wx = dx + (warp - 0.5) * 0.18;
+                        const wy = dy + (warp - 0.5) * 0.12;
+                        const wz = dz + (warp - 0.5) * 0.18;
+
+                        // continents
+                        let n = fbm3(wx * 1.8, wy * 1.8, wz * 1.8, seedLand, 6);
+                        // emphasize large blobs
+                        n = Math.pow(n, 1.35);
+                        // add ridges-ish
+                        const n2 = fbm3(wx * 3.2 + 4, wy * 3.2 - 2, wz * 3.2 + 7, seedLand + 19, 5);
+                        const elev = 0.72 * n + 0.28 * n2;
+
+                        // latitude bias to reduce land at poles a bit
+                        const latMask = 1 - Math.pow(Math.abs(sl), 1.5) * 0.35;
+                        let landVal = elev * latMask;
+
+                        // threshold into land/sea with soft coast
+                        const coast = smoothstep(0.46, 0.54, landVal);
+                        const isLand = coast; // 0..1
+
+                        // LAND texture (dim bluish-gray at night)
+                        // We'll store land mask in alpha channel, and some subtle land tint in rgb
+                        const landTint = lerp(10, 28, coast); // subtle
+                        const rL = 6 + landTint * 0.25;
+                        const gL = 10 + landTint * 0.30;
+                        const bL = 18 + landTint * 0.40;
+                        const aL = (isLand * 255) | 0;
+                        land[y * TEX_W + x] = (aL << 24) | ((bL | 0) << 16) | ((gL | 0) << 8) | (rL | 0);
+
+                        // CITY LIGHTS: only on land
+                let light = 0.0;
+                if (isLand > 0.02) {
+                    // Settlement noise: small-scale fbm + threshold to create clusters
+                    const s = fbm3(dx * 10.0, dy * 10.0, dz * 10.0, seedLights, 4);
+                    const s2 = fbm3(dx * 22.0 + 3, dy * 22.0 - 1, dz * 22.0 + 5, seedLights + 91, 3);
+                    let settle = 0.65 * s + 0.35 * s2;
+                    settle = Math.pow(settle, 2.2);
+
+                    // Latitude weighting (very rough population bias)
+                    const popLat = 0.75 + 0.25 * Math.cos(lat * 1.1);
+
+                    // Cluster hotspots (Europe/East Asia/US East)
+                    let hot = 0.0;
+                    for (const c of cityCenters) {
+                        const d = sphericalDistance(lat, lon, c.lat, c.lon);
+                        hot += c.amp * Math.exp(-(d * d) / (2 * c.spread * c.spread));
+                    }
+                    hot = clamp(hot, 0, 1.8);
+
+                    // Combine: a faint global base + strong hotspots
+                    light = isLand * popLat * (0.14 * settle + 1.05 * hot);
+
+                    // Make lights patchy (urban clusters)
+                    const patch = fbm3(dx * 16 + 8, dy * 16 - 3, dz * 16 + 6, seedLights + 333, 4);
+                    light *= smoothstep(0.34, 0.78, patch);
+
+                    // Add crisp city "pixels" (sparkle points) biased by hotspots
+                    const r0 = rand01FromHash(ihash(x, y, 777, seedLights));
+                    const r1 = rand01FromHash(ihash(x, y, 778, seedLights));
+                    const p = clamp(0.00025 + 0.012 * hot + 0.0020 * settle, 0, 0.020);
+                    if (r0 < p) {
+                        const spark = 0.55 + 0.65 * r1;
+                        light = clamp(light + spark, 0, 1);
+                    }
+
+                    // Slight curve to bring out mid-tones (prevents everything becoming 0/1)
+                    light = clamp(Math.pow(light, 0.85), 0, 1);
+                }
+
+                // Warm light color: yellow-white with slight variation
+                        const tintVar = rand01FromHash(ihash(x, y, 99, seedLights));
+                        const warm = lerp(0.65, 0.95, tintVar); // warmth shift
+                        const rC = (220 + 35 * warm) * light;
+                        const gC = (200 + 30 * warm) * light;
+                        const bC = (140 + 25 * (1 - warm)) * light;
+                        const aC = (255 * light) | 0;
+                        lights[y * TEX_W + x] = (aC << 24) | (((bC | 0) & 255) << 16) | (((gC | 0) & 255) << 8) | ((rC | 0) & 255);
+
+                        // CLOUDS: fbm threshold + soft alpha; independent of land
+                        let cN = fbm3(dx * 5.2 + 20, dy * 5.2 - 10, dz * 5.2 + 3, seedCloud, 6);
+                        cN = Math.pow(cN, 1.15);
+                        // shape into bands/eddies
+                        const band = 0.55 + 0.45 * Math.sin(lon * 2.1 + fbm3(dx * 2, dy * 2, dz * 2, seedCloud + 19, 4) * 3.2);
+                        cN *= lerp(0.8, 1.25, band);
+                        let cA = smoothstep(0.56, 0.73, cN) * 0.85; // alpha
+                        // soften near poles
+                        cA *= (1 - Math.pow(Math.abs(sl), 2.0) * 0.45);
+                        const cCol = 210 + 35 * cA;
+                        clouds[y * TEX_W + x] = ((cA * 255) | 0 << 24) | ((cCol | 0) << 16) | ((cCol | 0) << 8) | (cCol | 0);
+
+                        // AURORA: near poles, sinuous arcs along longitude with noise
+                        const pole = smoothstep(0.65, 0.92, Math.abs(sl)); // 0 mid-lat, 1 near poles
+                        let a = 0.0;
+                        if (pole > 0.001) {
+                            const wob = fbm3(dx * 7 + 1, dy * 7 + 2, dz * 7 + 3, seedAurora, 4);
+                            const arc = Math.sin(lon * 5.0 + wob * 6.0 + (sl > 0 ? 1.2 : -0.8));
+                            const arc2 = Math.sin(lon * 2.2 - wob * 4.2 + 0.7);
+                            a = smoothstep(0.72, 0.98, (arc * 0.55 + arc2 * 0.45) * 0.5 + 0.5);
+                            a *= pole * 0.55;
+                            // breakup
+                            const grit = fbm3(dx * 18, dy * 18, dz * 18, seedAurora + 77, 3);
+                            a *= smoothstep(0.35, 0.85, grit);
+                        }
+
+                        // Aurora color: mix green/purple
+                        const mix = rand01FromHash(ihash(x, y, 123, seedAurora));
+                        const gA = (110 + 145 * (1 - mix)) * a;
+                        const pR = (90 + 160 * mix) * a;
+                        const pB = (140 + 115 * mix) * a;
+                        const aA = (a * 255) | 0;
+                        aurora[y * TEX_W + x] = (aA << 24) | ((pB | 0) << 16) | ((gA | 0) << 8) | (pR | 0);
+                    }
+                }
+
+                // Bloom for lights: blur and keep only strong alpha
+                const bloom = blurTextureRGBA(lights, TEX_W, TEX_H, 5);
+
+                tex.land = land;
+                tex.lights = lights;
+                tex.lightsBloom = bloom;
+                tex.clouds = clouds;
+                tex.aurora = aurora;
+            }
+
+            // ============================================================
+            // Sphere rendering (orthographic)
+            // ============================================================
+            let radius = 260;
+            let targetRadius = 260;
+            let sphereImg = null;
+            let sphereData32 = null;
+            let sphereW = 0, sphereH = 0;
+
+            function rebuildSphereBuffer(r) {
+                const d = Math.ceil(r * 2);
+                sphereCanvas.width = d;
+                sphereCanvas.height = d;
+                sphereW = d; sphereH = d;
+                sphereImg = sphereCtx.createImageData(d, d);
+                sphereData32 = new Uint32Array(sphereImg.data.buffer);
+            }
+
+            // Lighting setup
+            // "Sun" direction (unit). We'll shift it slightly with mouse X.
+            let mouseNX = 0; // -1..1
+            function getLightDir(timeSec) {
+                // Place the terminator so that we see night side with some rim
+                // Base direction: coming from right-front
+                // Sun direction: slightly to the right, mostly behind the globe (so we see the night side)
+                const base = { x: 0.70, y: 0.08, z: -0.71 };
+                // parallax shift
+                const px = mouseNX * 0.22;
+                // normalize
+                let x = base.x + px;
+                let y = base.y;
+                let z = base.z - px * 0.10;
+                const m = Math.hypot(x, y, z) || 1;
+                return { x: x / m, y: y / m, z: z / m };
+            }
+
+            // Rotation: west -> east (increase lon)
+            const ROT_PERIOD = 25.0; // seconds per full rotation
+            function rotationAt(t) {
+                return (t / ROT_PERIOD) * TAU;
+            }
+
+            // Click highlight
+            let flareT0 = -999;
+            function flareStrength(t) {
+                const dt = t - flareT0;
+                if (dt < 0 || dt > 1.0) return 0;
+                return easeOutCubic(1 - dt) * 1.0; // 1..0
+            }
+
+            function renderEarth(timeSec) {
+                const r = radius;
+                const d = sphereW;
+                const cx = d / 2, cy = d / 2;
+                const invR = 1 / r;
+
+                const rot = rotationAt(timeSec);               // base rotation
+                const rotCloud = rot * 1.065;                  // slightly different speed
+                const L = getLightDir(timeSec);
+                const flare = flareStrength(timeSec);
+
+                // Base colors
+                const oceanR = 4, oceanG = 9, oceanB = 22;
+                const nightTintR = 8, nightTintG = 14, nightTintB = 30;
+
+                // Render disc
+                for (let y = 0; y < d; y++) {
+                    const ny = (y - cy + 0.5) * invR; // -1..1
+                    const ny2 = ny * ny;
+                    if (ny2 > 1) {
+                        // outside: transparent in buffer (we'll draw halo separately)
+                        for (let x = 0; x < d; x++) sphereData32[y * d + x] = 0;
+                        continue;
+                    }
+
+                    // x range within circle (scanline fill)
+                    const xSpan = Math.sqrt(1 - ny2);
+                    const x0 = Math.floor(cx - xSpan * r);
+                    const x1 = Math.ceil(cx + xSpan * r);
+
+                    // clear outside range
+                    for (let x = 0; x < x0; x++) sphereData32[y * d + x] = 0;
+                    for (let x = x1; x < d; x++) sphereData32[y * d + x] = 0;
+
+                    for (let x = x0; x < x1; x++) {
+                        const nx = (x - cx + 0.5) * invR;
+                        const rr = nx * nx + ny2;
+                        if (rr > 1) { sphereData32[y * d + x] = 0; continue; }
+
+                        const nz = Math.sqrt(1 - rr); // view-facing hemisphere
+
+                        // Normal vector (nx,ny,nz) already unit
+                        // Map to lon/lat with rotation: lon = atan2(nx, nz) + rot
+                        // lat = asin(ny)
+                        const lat = Math.asin(clamp(ny, -1, 1));
+                        let lon = Math.atan2(nx, nz) + rot;
+
+                        // Texture coordinates
+                        let u = (lon / TAU) + 0.5;
+                        const v = 0.5 - (lat / Math.PI);
+
+                        // Sample textures
+                        const landS = sampleRGBA(tex.land, TEX_W, TEX_H, u, v); // includes land alpha in A
+                        const lightsS = sampleRGBA(tex.lights, TEX_W, TEX_H, u, v);
+                        const bloomS = sampleRGBA(tex.lightsBloomSmall, TEX_W, TEX_H, u, v);
+                    const bloomL = sampleRGBA(tex.lightsBloomLarge, TEX_W, TEX_H, u, v);
+                        const aurS = sampleRGBA(tex.aurora, TEX_W, TEX_H, u, v);
+
+                        // Cloud sample (different rotation)
+                        let uC = ((Math.atan2(nx, nz) + rotCloud) / TAU) + 0.5;
+                        const cloudS = sampleRGBA(tex.clouds, TEX_W, TEX_H, uC, v);
+
+                        // Lighting terms
+                        const ndl = nx * L.x + ny * L.y + nz * L.z; // dot(normal, lightDir)
+                        const day = clamp(ndl, 0, 1);
+                        const night = clamp(-ndl, 0, 1);
+
+                        // Spherical depth: darker edges
+                        const edge = Math.pow(clamp(nz, 0, 1), 0.62);
+
+                        // Base surface: ocean + subtle land tint
+                        const landA = landS[3] / 255; // land mask
+                        let br = lerp(oceanR, landS[0], landA);
+                        let bg = lerp(oceanG, landS[1], landA);
+                        let bb = lerp(oceanB, landS[2], landA);
+
+                        // Night base shading (keep dark)
+                        const ambient = 0.06;
+                        const lambert = ambient + 0.18 * day;
+                        // Add slight "night bluish" tint
+                        br = br * lambert + nightTintR * 0.02;
+                        bg = bg * lambert + nightTintG * 0.02;
+                        bb = bb * lambert + nightTintB * 0.03;
+
+                        // City lights visible on night side; bloom + flare on click
+                        const nightVis = smoothstep(0.00, 0.48, night);
+                        const lightBoost = 1 + 3.0 * flare;
+
+                        const lr = (lightsS[0] / 255) * nightVis * edge * 2.05 * lightBoost;
+                    const lg = (lightsS[1] / 255) * nightVis * edge * 1.90 * lightBoost;
+                    const lb = (lightsS[2] / 255) * nightVis * edge * 1.55 * lightBoost;
+
+                    // Two-scale bloom (small = tighter, large = broad glow)
+                    const brm = (bloomS[0] / 255) * nightVis * edge * 0.95 * lightBoost;
+                    const bgm = (bloomS[1] / 255) * nightVis * edge * 0.90 * lightBoost;
+                    const bbm = (bloomS[2] / 255) * nightVis * edge * 0.82 * lightBoost;
+
+                    const brl = (bloomL[0] / 255) * nightVis * edge * 0.55 * lightBoost;
+                    const bgl = (bloomL[1] / 255) * nightVis * edge * 0.52 * lightBoost;
+                    const bbl = (bloomL[2] / 255) * nightVis * edge * 0.45 * lightBoost;
+
+                        // Aurora (night + poles)
+                        const aurA = (aurS[3] / 255) * nightVis * edge * 0.9;
+                        const ar = (aurS[0] / 255) * aurA * 1.2;
+                        const ag = (aurS[1] / 255) * aurA * 1.2;
+                        const ab = (aurS[2] / 255) * aurA * 1.2;
+
+                        // Clouds: semi-transparent, slightly lit on day side but visible faintly at night
+                        const cA = (cloudS[3] / 255);
+                        const cVis = cA * (0.14 + 0.22 * day + 0.10 * nightVis) * edge;
+                        const cr = (cloudS[0] / 255) * cVis;
+                        const cg = (cloudS[1] / 255) * cVis;
+                        const cb = (cloudS[2] / 255) * cVis;
+
+                        // Combine (additive lights + aurora, then clouds)
+                        let R = br / 255, G = bg / 255, B = bb / 255;
+                        R += lr + brm + ar;
+                        G += lg + bgm + ag;
+                        B += lb + bbm + ab;
+
+                        // Add cloud layer (alpha blend)
+                        R = R * (1 - cVis) + cr;
+                        G = G * (1 - cVis) + cg;
+                        B = B * (1 - cVis) + cb;
+
+                        // Final edge darkening + subtle contrast
+                        const contrast = 1.08;
+                        R = Math.pow(clamp(R * edge * contrast, 0, 1), 1 / 1.05);
+                        G = Math.pow(clamp(G * edge * contrast, 0, 1), 1 / 1.05);
+                        B = Math.pow(clamp(B * edge * contrast, 0, 1), 1 / 1.05);
+
+                        const r8 = (R * 255) | 0;
+                        const g8 = (G * 255) | 0;
+                        const b8 = (B * 255) | 0;
+
+                        // fully opaque inside disc
+                        sphereData32[y * d + x] = (255 << 24) | (b8 << 16) | (g8 << 8) | r8;
+                    }
+                }
+
+                sphereCtx.putImageData(sphereImg, 0, 0);
+            }
+
+            function drawAtmosphere() {
+                const r = radius;
+                const haloOuter = r * 1.14;
+                const haloInner = r * 0.94;
+
+                // Outer soft halo
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                const g = ctx.createRadialGradient(CX, CY, haloInner, CX, CY, haloOuter);
+                g.addColorStop(0.00, 'rgba(90,150,255,0.00)');
+                g.addColorStop(0.35, 'rgba(90,160,255,0.10)');
+                g.addColorStop(0.65, 'rgba(70,130,255,0.12)');
+                g.addColorStop(1.00, 'rgba(50,110,255,0.00)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(CX, CY, haloOuter, 0, TAU);
+                ctx.fill();
+
+                // Limb glow (tighter)
+                const g2 = ctx.createRadialGradient(CX, CY, r * 0.98, CX, CY, r * 1.06);
+                g2.addColorStop(0.0, 'rgba(120,180,255,0.00)');
+                g2.addColorStop(0.35, 'rgba(120,190,255,0.12)');
+                g2.addColorStop(0.75, 'rgba(90,150,255,0.09)');
+                g2.addColorStop(1.0, 'rgba(70,130,255,0.00)');
+                ctx.fillStyle = g2;
+                ctx.beginPath();
+                ctx.arc(CX, CY, r * 1.06, 0, TAU);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Slight vignette / film look
+            function drawVignette() {
+                const g = ctx.createRadialGradient(CX, CY, 120, CX, CY, 560);
+                g.addColorStop(0.0, 'rgba(0,0,0,0)');
+                g.addColorStop(0.62, 'rgba(0,0,0,0.08)');
+                g.addColorStop(1.0, 'rgba(0,0,0,0.35)');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, W, H);
+            }
+
+            // ============================================================
+            // Interaction
+            // ============================================================
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                mouseNX = clamp(x * 2 - 1, -1, 1);
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                mouseNX = 0;
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = Math.sign(e.deltaY);
+                targetRadius = clamp(targetRadius + delta * -12, 200, 320);
+            }, { passive: false });
+
+            canvas.addEventListener('click', () => {
+                flareT0 = performance.now() / 1000;
+            });
+
+            // ============================================================
+            // Main loop
+            // ============================================================
+            let lastT = performance.now() / 1000;
+            function frame() {
+                const t = performance.now() / 1000;
+                const dt = clamp(t - lastT, 0, 0.05);
+                lastT = t;
+
+                // smooth zoom
+                radius = lerp(radius, targetRadius, 1 - Math.pow(0.001, dt));
+                const needed = Math.ceil(radius * 2);
+                if (needed !== sphereW) rebuildSphereBuffer(radius);
+
+                drawBackground(t);
+
+                // Atmosphere first (behind + around earth)
+                drawAtmosphere();
+
+                // Render earth to offscreen
+                renderEarth(t);
+
+                // Draw earth
+                ctx.save();
+                ctx.imageSmoothingEnabled = true;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(sphereCanvas, CX - sphereW / 2, CY - sphereH / 2);
+
+                // Subtle extra glow from city lights (post glow)
+                // This gives a cinematic bloom without heavy blur each frame
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.globalAlpha = 0.22 + 0.20 * flareStrength(t);
+                ctx.filter = 'blur(7px)';
+                ctx.drawImage(sphereCanvas, CX - sphereW / 2, CY - sphereH / 2);
+                ctx.filter = 'none';
+                ctx.globalAlpha = 1;
+                ctx.restore();
+
+                drawVignette();
+
+                requestAnimationFrame(frame);
+            }
+
+            // ============================================================
+            // Boot
+            // ============================================================
+            initStars();
+            generateTextures();
+            rebuildSphereBuffer(radius);
+            requestAnimationFrame(frame);
+
+        })();
+    </script>
+</body>
+
+</html>

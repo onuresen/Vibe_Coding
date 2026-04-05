@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydraulic Erosion & Watershed Sim</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0a0a0c;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    canvas {
+      image-rendering: pixelated;
+      cursor: crosshair;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+      border: 1px solid #333;
+      max-width: 95vw;
+      max-height: 80vh;
+    }
+
+    .controls {
+      padding: 15px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      background: #16161a;
+      width: 100%;
+      justify-content: center;
+      border-bottom: 1px solid #333;
+    }
+
+    .stats {
+      font-family: monospace;
+      font-size: 12px;
+      color: #00ffcc;
+    }
+
+    button {
+      background: #2a2a35;
+      border: 1px solid #444;
+      color: white;
+      padding: 8px 15px;
+      cursor: pointer;
+      transition: 0.2s;
+      border-radius: 4px;
+    }
+
+    button:hover {
+      background: #3d3d4d;
+      border-color: #00ffcc;
+    }
+
+    .active {
+      background: #005544;
+      border-color: #00ffcc;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="controls">
+    <div class="stats" id="fps">FPS: 60</div>
+    <button id="resetBtn">Regenerate Terrain</button>
+    <button id="rainBtn">Toggle Rain: OFF</button>
+    <div>
+      <label>Erosion Power</label>
+      <input type="range" id="erosionStr" min="0" max="100" value="30">
+    </div>
+    <div class="stats">Click/Drag to pour water</div>
+  </div>
+
+  <canvas id="simCanvas"></canvas>
+
+  <script>
+    /**
+     * HYDRAULIC EROSION SIMULATOR
+     * A high-performance 2D grid-based simulation.
+     */
+
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const width = 512;
+    const height = 512;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Simulation Buffers
+    let terrain = new Float32Array(width * height);
+    let water = new Float32Array(width * height);
+    let sediment = new Float32Array(width * height);
+    let velocityX = new Float32Array(width * height);
+    let velocityY = new Float32Array(width * height);
+
+    const imgData = ctx.createImageData(width, height);
+    const data = imgData.data;
+
+    // State
+    let isRaining = false;
+    let isMouseDown = false;
+    let mouseX = 0;
+    let mouseY = 0;
+    let erosionRate = 0.01;
+
+    // --- NOISE GENERATION ---
+    function generateTerrain() {
+      const freq = 0.005;
+      const octaves = 6;
+
+      // Simple Diamond-Square or Perlin-like noise approximation
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          let h = 0;
+          let amp = 1;
+          let f = freq;
+          for (let i = 0; i < octaves; i++) {
+            h += Math.sin(x * f * 10) * Math.cos(y * f * 10) * amp;
+            f *= 2.1;
+            amp *= 0.5;
+          }
+          terrain[y * width + x] = (h + 1) * 0.5; // Normalized 0-1
+          water[y * width + x] = 0;
+          velocityX[y * width + x] = 0;
+          velocityY[y * width + x] = 0;
+        }
+      }
+    }
+
+    // --- SIMULATION STEP ---
+    function update() {
+      const drag = 0.95;
+      const gravity = 0.15;
+      const erode = parseFloat(document.getElementById('erosionStr').value) / 5000;
+
+      if (isRaining) {
+        for (let i = 0; i < 200; i++) {
+          water[Math.floor(Math.random() * width * height)] += 0.2;
+        }
+      }
+
+      if (isMouseDown) {
+        for (let dy = -5; dy <= 5; dy++) {
+          for (let dx = -5; dx <= 5; dx++) {
+            let px = Math.floor(mouseX + dx);
+            let py = Math.floor(mouseY + dy);
+            if (px >= 0 && px < width && py >= 0 && py < height) {
+              water[py * width + px] += 0.5;
+            }
+          }
+        }
+      }
+
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const idx = y * width + x;
+
+          // Calculate gradient (slope)
+          const dx = (terrain[idx + 1] + water[idx + 1]) - (terrain[idx - 1] + water[idx - 1]);
+          const dy = (terrain[idx + width] + water[idx + width]) - (terrain[idx - width] + water[idx - width]);
+
+          // Update water velocity based on slope
+          velocityX[idx] = (velocityX[idx] - dx * gravity) * drag;
+          velocityY[idx] = (velocityY[idx] - dy * gravity) * drag;
+        }
+      }
+
+      // Advect water and erode terrain
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const idx = y * width + x;
+          const w = water[idx];
+          if (w < 0.01) continue;
+
+          const vx = velocityX[idx];
+          const vy = velocityY[idx];
+          const speed = Math.sqrt(vx * vx + vy * vy);
+
+          // Move water
+          const tx = Math.min(width - 2, Math.max(1, Math.floor(x + vx)));
+          const ty = Math.min(height - 2, Math.max(1, Math.floor(y + vy)));
+          const targetIdx = ty * width + tx;
+
+          if (idx !== targetIdx) {
+            const moveAmount = w * 0.5;
+            water[idx] -= moveAmount;
+            water[targetIdx] += moveAmount;
+
+            // Erosion and Deposition
+            const capacity = speed * 0.1;
+            if (speed > 0.1) {
+              const erosion = (speed - 0.1) * erode;
+              terrain[idx] -= erosion;
+              water[targetIdx] += erosion * 0.1; // Silt in water
+            } else {
+              // Silt deposition
+              const deposit = 0.001;
+              terrain[idx] += deposit;
+            }
+          }
+        }
+      }
+    }
+
+    // --- RENDERING ---
+    function render() {
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x;
+          const h = terrain[idx];
+          const w = water[idx];
+
+          // Simple Hillshading
+          const hLeft = x > 0 ? terrain[idx - 1] : h;
+          const hUp = y > 0 ? terrain[idx - width] : h;
+          const slope = (h - hLeft) + (h - hUp);
+          const shadow = 1 + slope * 2;
+
+          let r, g, b;
+
+          // Hypsometric Tinting (Terrain Color)
+          if (h < 0.4) { // Deep Valleys
+            r = 30 * h * shadow; g = 60 * h * shadow; b = 40 * h * shadow;
+          } else if (h < 0.7) { // Plains/Forest
+            r = 60 * shadow; g = 120 * h * shadow; b = 50 * shadow;
+          } else { // Peaks
+            r = 200 * h * shadow; g = 200 * h * shadow; b = 220 * h * shadow;
+          }
+
+          // Water rendering with Velocity Glow
+          if (w > 0.05) {
+            const speed = Math.sqrt(velocityX[idx] ** 2 + velocityY[idx] ** 2);
+            const waterAlpha = Math.min(0.8, w * 2);
+            const glow = speed * 100;
+
+            r = r * (1 - waterAlpha) + (20 + glow) * waterAlpha;
+            g = g * (1 - waterAlpha) + (100 + glow) * waterAlpha;
+            b = b * (1 - waterAlpha) + (255) * waterAlpha;
+          }
+
+          const pIdx = idx * 4;
+          data[pIdx] = r;
+          data[pIdx + 1] = g;
+          data[pIdx + 2] = b;
+          data[pIdx + 3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    // --- INTERACTION & LOOP ---
+    let lastTime = 0;
+    function loop(timestamp) {
+      const dt = timestamp - lastTime;
+      lastTime = timestamp;
+      document.getElementById('fps').innerText = `FPS: ${Math.round(1000 / dt)}`;
+
+      update();
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    // Controls
+    canvas.onmousedown = () => isMouseDown = true;
+    window.onmouseup = () => isMouseDown = false;
+    canvas.onmousemove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      mouseX = (e.clientX - rect.left) * scaleX;
+      mouseY = (e.clientY - rect.top) * scaleY;
+    };
+
+    document.getElementById('rainBtn').onclick = (e) => {
+      isRaining = !isRaining;
+      e.target.innerText = `Toggle Rain: ${isRaining ? 'ON' : 'OFF'}`;
+      e.target.classList.toggle('active');
+    };
+
+    document.getElementById('resetBtn').onclick = () => generateTerrain();
+
+    // Start
+    generateTerrain();
+    requestAnimationFrame(loop);
+
+  </script>
+</body>
+
+</html>

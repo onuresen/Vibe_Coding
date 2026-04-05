@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Work Stream Explorer – v1</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #111827;
+            --card: #1f2933;
+            --accent: #38bdf8;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+        }
+
+        aside {
+            width: 280px;
+            background: var(--panel);
+            border-right: 1px solid #1f2937;
+            padding: 16px;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 16px;
+            border-bottom: 1px solid #1f2937;
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            background: #1f2937;
+            color: var(--text);
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+        }
+
+        button.active {
+            background: var(--accent);
+            color: #020617;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 12px;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            border: 1px solid #374151;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+        }
+
+        .title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .meta {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .viewer {
+            padding: 16px;
+            border-top: 1px solid #1f2937;
+            background: #020617;
+            height: 40%;
+            overflow-y: auto;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+
+    <aside>
+        <h3>Work Stream</h3>
+        <p class="meta">Markdown‑first task sketch</p>
+    </aside>
+
+    <main>
+        <header id="filters"></header>
+        <section class="board" id="board"></section>
+        <section class="viewer">
+            <pre id="viewer">← Select a task</pre>
+        </section>
+    </main>
+
+    <script>
+        const tasks = [
+            {
+                id: "DX-014",
+                title: "Evaluate Room → Markdown Export",
+                status: "doing",
+                owner: "Onur",
+                markdown: `
+# DX-014 Evaluate Room → Markdown Export
+
+## Intent
+Test if Revit room data exported as Markdown can be reviewed meaningfully in Obsidian.
+
+## Notes
+- Room as node
+- Adjacency as links
+- Params as frontmatter
+
+## Next
+- Define minimal schema
+`
+            },
+            {
+                id: "DX-015",
+                title: "HTML Task Viewer v1",
+                status: "todo",
+                owner: "Onur",
+                markdown: `
+# DX-015 HTML Task Viewer v1
+
+## Goal
+Create a no-build, fun UI to browse Markdown tasks.
+
+## Constraints
+- Single HTML
+- No backend
+`
+            },
+            {
+                id: "DX-013",
+                title: "Obsidian Vault Direction",
+                status: "done",
+                owner: "Onur",
+                markdown: `
+# DX-013 Obsidian Vault Direction
+
+## Outcome
+Vault reframed as:
+- Operational memory
+- Work evolution graph
+`
+            }
+        ];
+
+        const board = document.getElementById("board");
+        const viewer = document.getElementById("viewer");
+        const filters = document.getElementById("filters");
+
+        let activeStatus = "all";
+
+        function renderFilters() {
+            const statuses = ["all", ...new Set(tasks.map(t => t.status))];
+            filters.innerHTML = "";
+            statuses.forEach(s => {
+                const btn = document.createElement("button");
+                btn.textContent = s;
+                btn.className = s === activeStatus ? "active" : "";
+                btn.onclick = () => {
+                    activeStatus = s;
+                    render();
+                };
+                filters.appendChild(btn);
+            });
+        }
+
+        function render() {
+            renderFilters();
+            board.innerHTML = "";
+            tasks
+                .filter(t => activeStatus === "all" || t.status === activeStatus)
+                .forEach(task => {
+                    const div = document.createElement("div");
+                    div.className = "card";
+                    div.innerHTML = `
+        <div class="title">${task.title}</div>
+        <div class="meta">${task.id} · ${task.status}</div>
+      `;
+                    div.onclick = () => viewer.textContent = task.markdown.trim();
+                    board.appendChild(div);
+                });
+        }
+
+        render();
+    </script>
+
+</body>
+
+</html>

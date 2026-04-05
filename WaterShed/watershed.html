@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Terrain Watershed + Flow Accumulation + Interactive Rain (Canvas2D)</title>
+  <style>
+    html, body { height: 100%; margin: 0; background:#0b0f14; color:#e6edf3; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .wrap { display:flex; align-items:center; justify-content:center; height:100%; }
+    canvas { width: 800px; height: 800px; image-rendering: pixelated; border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.55); background:#000; }
+    #ui {
+      position: fixed; left: 14px; top: 14px;
+      width: 320px; padding: 12px 12px 10px;
+      background: rgba(10,14,20,.72);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(8px);
+      user-select: none;
+    }
+    #ui h1 { font-size: 14px; margin: 0 0 8px; font-weight: 650; letter-spacing: .2px; }
+    #ui .row { display:grid; grid-template-columns: 110px 1fr 52px; gap: 8px; align-items:center; margin: 6px 0; }
+    #ui label { font-size: 12px; opacity:.95; }
+    #ui input[type="range"] { width: 100%; }
+    #ui .val { font-variant-numeric: tabular-nums; font-size: 12px; text-align:right; opacity:.95; }
+    #ui .tog { display:flex; gap:10px; align-items:center; margin-top: 8px; }
+    #ui .tog label { font-size: 12px; opacity: .95; display:flex; align-items:center; gap: 8px; }
+    #ui .hint { margin-top: 10px; font-size: 11px; line-height: 1.35; opacity:.85; }
+    #ui .legend { margin-top: 10px; display:grid; grid-template-columns: 12px 1fr; gap: 8px 10px; font-size: 11px; opacity:.9; }
+    .swatch { width: 12px; height: 12px; border-radius: 3px; border:1px solid rgba(255,255,255,.14); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .kbd { padding: 0 6px; border:1px solid rgba(255,255,255,.16); border-bottom-color: rgba(255,255,255,.08);
+           border-radius: 7px; background: rgba(255,255,255,.06); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1>Terrain Watershed / Runoff (Canvas2D)</h1>
+
+    <div class="row">
+      <label>Rain rate</label>
+      <input id="rain" type="range" min="0" max="2" step="0.001" value="0.35" />
+      <div class="val" id="rainV"></div>
+    </div>
+
+    <div class="row">
+      <label>Infiltration</label>
+      <input id="infil" type="range" min="0" max="2" step="0.001" value="0.28" />
+      <div class="val" id="infilV"></div>
+    </div>
+
+    <div class="row">
+      <label>Evaporation</label>
+      <input id="evap" type="range" min="0" max="2" step="0.001" value="0.06" />
+      <div class="val" id="evapV"></div>
+    </div>
+
+    <div class="row">
+      <label>Timestep (s)</label>
+      <input id="dt" type="range" min="0.004" max="0.033" step="0.001" value="0.016" />
+      <div class="val" id="dtV"></div>
+    </div>
+
+    <div class="tog">
+      <label><input id="contours" type="checkbox" checked /> Contours</label>
+      <label><input id="rivers" type="checkbox" checked /> Rivers</label>
+      <label><input id="waterTint" type="checkbox" checked /> Water tint</label>
+    </div>
+
+    <div class="legend">
+      <div class="swatch" style="background:linear-gradient(135deg,#07213a,#0c6b43)"></div><div>Low elevation (sea/valleys)</div>
+      <div class="swatch" style="background:linear-gradient(135deg,#0c6b43,#b08a5b)"></div><div>Mid elevation (hills)</div>
+      <div class="swatch" style="background:linear-gradient(135deg,#b08a5b,#f5f7ff)"></div><div>High elevation (peaks)</div>
+      <div class="swatch" style="background:linear-gradient(135deg,#1ed6ff,#ffffff)"></div><div>Flow accumulation (rivers)</div>
+    </div>
+
+    <div class="hint">
+      <div><span class="kbd">Left-drag</span> raise terrain &nbsp;•&nbsp; <span class="kbd">Right-drag</span> lower</div>
+      <div><span class="kbd">R</span> toggle rain &nbsp;•&nbsp; <span class="kbd">C</span> regenerate terrain &nbsp;•&nbsp; <span class="kbd">Wheel</span> zoom</div>
+      <div class="mono" id="status" style="margin-top:6px; opacity:.9;"></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <canvas id="cv" width="800" height="800"></canvas>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ----------------------------
+  // Setup
+  // ----------------------------
+  const canvas = document.getElementById("cv");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  ctx.imageSmoothingEnabled = false;
+
+  // Grid resolution
+  const N = 180;
+  const SIZE = N * N;
+
+  // Offscreen render buffer
+  const off = document.createElement("canvas");
+  off.width = N;
+  off.height = N;
+  const octx = off.getContext("2d", { alpha: false });
+  octx.imageSmoothingEnabled = false;
+  const img = octx.createImageData(N, N);
+  const pix = img.data;
+
+  // Fields
+  let height = new Float32Array(SIZE);
+  let water  = new Float32Array(SIZE);
+  let acc    = new Float32Array(SIZE);
+  let dW     = new Float32Array(SIZE);
+  let dirX   = new Float32Array(SIZE);
+  let dirY   = new Float32Array(SIZE);
+
+  // Stability / routing tuning
+  const WATER_SURFACE_FACTOR = 0.55;
+  const FLOW_COEFF = 2.2;
+  const MAX_OUT_FRACTION = 0.55;
+
+  // Rain / seed
+  let rainEnabled = true;
+  let seed = (Math.random() * 1e9) | 0;
+
+  // UI
+  const ui = {
+    rain: document.getElementById("rain"),
+    infil: document.getElementById("infil"),
+    evap: document.getElementById("evap"),
+    dt: document.getElementById("dt"),
+    contours: document.getElementById("contours"),
+    rivers: document.getElementById("rivers"),
+    waterTint: document.getElementById("waterTint"),
+    rainV: document.getElementById("rainV"),
+    infilV: document.getElementById("infilV"),
+    evapV: document.getElementById("evapV"),
+    dtV: document.getElementById("dtV"),
+    status: document.getElementById("status"),
+  };
+
+  // Zoom
+  let zoom = 1.0;
+  const ZOOM_MIN = 0.72, ZOOM_MAX = 1.65;
+
+  // Terrain painting
+  let painting = false;
+  let paintSign = +1;
+  let brushRadius = 7.5;
+  let brushStrength = 0.020;
+
+  // Splash particles (rain impact ripples)
+  const splashes = [];
+  const MAX_SPLASHES = 450;
+
+  // ----------------------------
+  // Helpers
+  // ----------------------------
+  const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smoothstep = (t) => t * t * (3 - 2 * t);
+
+  function idx(x, y) { return x + y * N; }
+
+  function hash2i(x, y, s) {
+    let n = x * 374761393 + y * 668265263 + s * 700001;
+    n = (n ^ (n >> 13)) * 1274126177;
+    n = n ^ (n >> 16);
+    return (n >>> 0) / 4294967296;
+  }
+
+  function valueNoise2D(x, y, s) {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const tx = x - xi, ty = y - yi;
+    const u = smoothstep(tx), v = smoothstep(ty);
+    const a = hash2i(xi,     yi,     s);
+    const b = hash2i(xi + 1, yi,     s);
+    const c = hash2i(xi,     yi + 1, s);
+    const d = hash2i(xi + 1, yi + 1, s);
+    const ab = lerp(a, b, u);
+    const cd = lerp(c, d, u);
+    return lerp(ab, cd, v);
+  }
+
+  function fbm(x, y, s) {
+    let f = 0, amp = 0.55, freq = 1.0;
+    let sum = 0;
+    for (let o = 0; o < 6; o++) {
+      f += amp * valueNoise2D(x * freq, y * freq, s + o * 1013);
+      sum += amp;
+      amp *= 0.5;
+      freq *= 2.0;
+    }
+    return f / sum;
+  }
+
+  function ridge(x) {
+    x = 1.0 - Math.abs(2.0 * x - 1.0);
+    return x * x;
+  }
+
+  function colormap(h) {
+    const c0 = [  7,  33,  58];
+    const c1 = [ 12, 107,  67];
+    const c2 = [176, 138,  91];
+    const c3 = [245, 247, 255];
+    let r,g,b;
+    if (h < 0.33) {
+      const t = h / 0.33;
+      r = lerp(c0[0], c1[0], t); g = lerp(c0[1], c1[1], t); b = lerp(c0[2], c1[2], t);
+    } else if (h < 0.68) {
+      const t = (h - 0.33) / (0.68 - 0.33);
+      r = lerp(c1[0], c2[0], t); g = lerp(c1[1], c2[1], t); b = lerp(c1[2], c2[2], t);
+    } else {
+      const t = (h - 0.68) / (1.0 - 0.68);
+      r = lerp(c2[0], c3[0], t); g = lerp(c2[1], c3[1], t); b = lerp(c2[2], c3[2], t);
+    }
+    return [r, g, b];
+  }
+
+  // ----------------------------
+  // Terrain generation
+  // ----------------------------
+  function regenTerrain(newSeed = ((Math.random() * 1e9) | 0)) {
+    seed = newSeed;
+    const scale = 2.25;
+    const warpScale = 0.75;
+
+    let minH = 1e9, maxH = -1e9;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const nx = (x / N - 0.5) * scale;
+        const ny = (y / N - 0.5) * scale;
+
+        const wx = fbm(nx * 1.3 + 10.0, ny * 1.3 - 2.0, seed + 77) - 0.5;
+        const wy = fbm(nx * 1.3 - 4.0, ny * 1.3 + 12.0, seed + 99) - 0.5;
+
+        const xw = nx + wx * warpScale;
+        const yw = ny + wy * warpScale;
+
+        let h = fbm(xw * 1.1, yw * 1.1, seed);
+        const r = ridge(fbm(xw * 1.8 + 3.1, yw * 1.8 - 1.7, seed + 1337));
+        h = 0.68 * h + 0.32 * r;
+
+        const rr = Math.sqrt(nx * nx + ny * ny);
+        h = h - 0.10 * rr;
+
+        const i = idx(x,y);
+        height[i] = h;
+        if (h < minH) minH = h;
+        if (h > maxH) maxH = h;
+      }
+    }
+
+    const inv = 1.0 / (maxH - minH + 1e-9);
+    for (let i = 0; i < SIZE; i++) {
+      let h = (height[i] - minH) * inv;
+      h = Math.pow(clamp(h, 0, 1), 1.10);
+      height[i] = h;
+      water[i] = 0;
+      acc[i] = 0;
+      dirX[i] = 0;
+      dirY[i] = 0;
+    }
+    splashes.length = 0;
+  }
+
+  // ----------------------------
+  // Water simulation
+  // ----------------------------
+  const nbh = [
+    [-1,  0, 1.0], [ 1,  0, 1.0], [ 0, -1, 1.0], [ 0,  1, 1.0],
+    [-1, -1, Math.SQRT2], [ 1, -1, Math.SQRT2], [-1,  1, Math.SQRT2], [ 1,  1, Math.SQRT2]
+  ];
+
+  const slopes = new Float32Array(8);
+
+  function stepWater(dt, tNow) {
+    const rainRate = parseFloat(ui.rain.value);
+    const infil = parseFloat(ui.infil.value);
+    const evap = parseFloat(ui.evap.value);
+
+    // 1) Rain: drizzle + burst cells
+    if (rainEnabled && rainRate > 0) {
+      const add = rainRate * dt * 0.020;
+      for (let i = 0; i < SIZE; i++) water[i] += add;
+
+      const bursts = 2 + ((tNow * 0.5) | 0) % 2;
+      for (let b = 0; b < bursts; b++) {
+        if (Math.random() < 0.55) {
+          const cx = (Math.random() * N) | 0;
+          const cy = (Math.random() * N) | 0;
+          const rad = 3 + (Math.random() * 7);
+          const mag = rainRate * dt * (0.10 + 0.25 * Math.random());
+          for (let y = Math.max(0, (cy - rad) | 0); y <= Math.min(N - 1, (cy + rad) | 0); y++) {
+            for (let x = Math.max(0, (cx - rad) | 0); x <= Math.min(N - 1, (cx + rad) | 0); x++) {
+              const dx = x - cx, dy = y - cy;
+              const d2 = dx * dx + dy * dy;
+              const wgt = Math.exp(-d2 / (rad * rad + 1e-6));
+              const i = idx(x,y);
+              water[i] += mag * wgt;
+              if (splashes.length < MAX_SPLASHES && Math.random() < 0.14) {
+                splashes.push({ x: x + 0.5, y: y + 0.5, r: 0.3 + Math.random() * 0.9, life: 0.35 + Math.random() * 0.35, t: 0 });
+              }
+            }
+          }
+        }
+      }
+
+      const sprinkle = Math.max(10, (rainRate * 20) | 0);
+      for (let k = 0; k < sprinkle; k++) {
+        if (splashes.length >= MAX_SPLASHES) break;
+        if (Math.random() < 0.05) {
+          const x = Math.random() * N, y = Math.random() * N;
+          splashes.push({ x, y, r: 0.2 + Math.random()*0.6, life: 0.22 + Math.random()*0.28, t: 0 });
+        }
+      }
+    }
+
+    // 2) Infiltration + evaporation (stable decay)
+    if (infil > 0 || evap > 0) {
+      const k = (infil * 0.55 + evap * 0.25) * dt;
+      const decay = 1 / (1 + k);
+      for (let i = 0; i < SIZE; i++) water[i] *= decay;
+    }
+
+    // 3) Routing: distribute to lower neighbors
+    dW.fill(0);
+
+    const accKeep = 0.985;
+    const accGain = 0.90;
+
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const i = idx(x,y);
+        const w0 = water[i];
+        if (w0 <= 1e-6) {
+          dirX[i] *= 0.9; dirY[i] *= 0.9;
+          acc[i] *= accKeep;
+          continue;
+        }
+
+        const s0 = height[i] + w0 * WATER_SURFACE_FACTOR;
+
+        let sumSlope = 0;
+        let bestDx = 0, bestDy = 0, bestSlope = 0;
+        let nCount = 0;
+
+        for (let n = 0; n < 8; n++) {
+          const nx = x + nbh[n][0];
+          const ny = y + nbh[n][1];
+          if (nx < 0 || nx >= N || ny < 0 || ny >= N) { slopes[n] = 0; continue; }
+
+          const j = idx(nx, ny);
+          const sj = height[j] + water[j] * WATER_SURFACE_FACTOR;
+          const dh = s0 - sj;
+
+          if (dh > 0) {
+            const dist = nbh[n][2];
+            const slope = dh / dist;
+            const wSlope = Math.pow(slope, 1.15);
+            slopes[n] = wSlope;
+            sumSlope += wSlope;
+            nCount++;
+            if (slope > bestSlope) { bestSlope = slope; bestDx = nbh[n][0]; bestDy = nbh[n][1]; }
+          } else {
+            slopes[n] = 0;
+          }
+        }
+
+        if (sumSlope <= 1e-10 || nCount === 0) {
+          acc[i] *= accKeep;
+          dirX[i] *= 0.92;
+          dirY[i] *= 0.92;
+          continue;
+        }
+
+        const desired = dt * FLOW_COEFF * sumSlope;
+        const out = Math.min(w0 * MAX_OUT_FRACTION, desired);
+
+        let vx = 0, vy = 0;
+        for (let n = 0; n < 8; n++) {
+          const wSlope = slopes[n];
+          if (wSlope <= 0) continue;
+          const nx = x + nbh[n][0];
+          const ny = y + nbh[n][1];
+          const j = idx(nx, ny);
+          const portion = (wSlope / sumSlope) * out;
+          dW[j] += portion;
+          vx += nbh[n][0] * portion;
+          vy += nbh[n][1] * portion;
+        }
+        dW[i] -= out;
+
+        const vm = Math.hypot(vx, vy) + 1e-9;
+        const dxn = vx / vm;
+        const dyn = vy / vm;
+
+        const bestm = Math.hypot(bestDx, bestDy) + 1e-9;
+        const bdx = bestDx / bestm;
+        const bdy = bestDy / bestm;
+
+        dirX[i] = 0.75 * dirX[i] + 0.25 * (0.65 * dxn + 0.35 * bdx);
+        dirY[i] = 0.75 * dirY[i] + 0.25 * (0.65 * dyn + 0.35 * bdy);
+
+        acc[i] = acc[i] * accKeep + out * accGain;
+      }
+    }
+
+    for (let i = 0; i < SIZE; i++) {
+      const v = water[i] + dW[i];
+      water[i] = v > 0 ? v : 0;
+    }
+
+    for (let i = splashes.length - 1; i >= 0; i--) {
+      const p = splashes[i];
+      p.t += dt;
+      if (p.t >= p.life) splashes.splice(i, 1);
+    }
+  }
+
+  // ----------------------------
+  // Rendering
+  // ----------------------------
+  function render(timeSec) {
+    const showContours = ui.contours.checked;
+    const showRivers = ui.rivers.checked;
+    const showWaterTint = ui.waterTint.checked;
+
+    const contourStep = 0.065;
+    const contourDark = 0.60;
+
+    const accScale = 85.0;
+    const riverPower = 0.52;
+    const riverAlphaMax = 0.95;
+
+    const depthScale = 18.0;
+    const rippleFreq = 5.5;
+    const rippleAmp = 0.07;
+
+    const shimmerFreq = 8.0;
+    const shimmerSpeed = 0.85;
+    const sh = timeSec * shimmerSpeed;
+
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const i = idx(x,y);
+        const h = height[i];
+        const w = water[i];
+
+        let [r,g,b] = colormap(h);
+
+        if (showContours) {
+          const band = Math.floor(h / contourStep);
+          const right = (x + 1 < N) ? Math.floor(height[i + 1] / contourStep) : band;
+          const down  = (y + 1 < N) ? Math.floor(height[i + N] / contourStep) : band;
+          if (right !== band || down !== band) {
+            r *= contourDark; g *= contourDark; b *= contourDark;
+          }
+        }
+
+        if (showWaterTint && w > 1e-5) {
+          const t = 1 - Math.exp(-w * depthScale);
+          const rip = Math.sin((x * 0.33 + y * 0.27) + timeSec * rippleFreq) * rippleAmp * t;
+          const wr = 18, wg = 120, wb = 150;
+          r = lerp(r, wr, 0.22 * t) * (1 + rip);
+          g = lerp(g, wg, 0.30 * t) * (1 + rip);
+          b = lerp(b, wb, 0.36 * t) * (1 + rip);
+        }
+
+        if (showRivers) {
+          const a = acc[i];
+          if (a > 1e-6) {
+            const q = Math.log1p(a * accScale);
+            let inten = Math.pow(clamp(q / 6.5, 0, 1), riverPower);
+            const wet = 1 - Math.exp(-w * 10.0);
+            inten *= (0.25 + 0.75 * wet);
+
+            if (inten > 0.002) {
+              const dx = dirX[i], dy = dirY[i];
+              const along = (x * dx + y * dy);
+              const stripe = 0.55 + 0.45 * Math.sin(along * 1.9 + sh * shimmerFreq);
+              const shimmer = 0.82 + 0.18 * stripe;
+
+              const riverA = clamp(inten * shimmer, 0, 1) * riverAlphaMax;
+              const rr = lerp(30, 255, riverA);
+              const gg = lerp(200, 255, riverA);
+              const bb = lerp(255, 255, riverA);
+
+              r = clamp(r + rr * riverA * 0.40, 0, 255);
+              g = clamp(g + gg * riverA * 0.45, 0, 255);
+              b = clamp(b + bb * riverA * 0.50, 0, 255);
+            }
+          }
+        }
+
+        const p = (i << 2);
+        pix[p + 0] = r | 0;
+        pix[p + 1] = g | 0;
+        pix[p + 2] = b | 0;
+        pix[p + 3] = 255;
+      }
+    }
+
+    // splash rings (additive)
+    if (splashes.length) {
+      for (let k = 0; k < splashes.length; k++) {
+        const s = splashes[k];
+        const tt = s.t / s.life;
+        const fade = (1 - tt);
+        const rad = s.r + tt * 2.4;
+        const cx = s.x, cy = s.y;
+
+        const xmin = clamp((cx - rad - 1) | 0, 0, N - 1);
+        const xmax = clamp((cx + rad + 1) | 0, 0, N - 1);
+        const ymin = clamp((cy - rad - 1) | 0, 0, N - 1);
+        const ymax = clamp((cy + rad + 1) | 0, 0, N - 1);
+
+        for (let y = ymin; y <= ymax; y++) {
+          for (let x = xmin; x <= xmax; x++) {
+            const dx = (x + 0.5) - cx;
+            const dy = (y + 0.5) - cy;
+            const d = Math.hypot(dx, dy);
+            if (d > rad + 0.6) continue;
+            const ring = Math.exp(-Math.pow((d - rad) * 2.0, 2));
+            const amp = ring * fade * 0.85;
+            const i = idx(x,y);
+            const p = (i << 2);
+            pix[p+0] = clamp(pix[p+0] + 180 * amp, 0, 255);
+            pix[p+1] = clamp(pix[p+1] + 230 * amp, 0, 255);
+            pix[p+2] = clamp(pix[p+2] + 255 * amp, 0, 255);
+          }
+        }
+      }
+    }
+
+    octx.putImageData(img, 0, 0);
+
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,800,800);
+
+    const drawSize = 800 * zoom;
+    const ox = (800 - drawSize) * 0.5;
+    const oy = (800 - drawSize) * 0.5;
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, N, N, ox, oy, drawSize, drawSize);
+  }
+
+  // ----------------------------
+  // Interaction
+  // ----------------------------
+  function canvasToGrid(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+    const drawSize = 800 * zoom;
+    const ox = (800 - drawSize) * 0.5;
+    const oy = (800 - drawSize) * 0.5;
+
+    const u = (mx - ox) / drawSize;
+    const v = (my - oy) / drawSize;
+
+    const gx = u * N;
+    const gy = v * N;
+    return { gx, gy, inside: (u >= 0 && u <= 1 && v >= 0 && v <= 1) };
+  }
+
+  function paintAt(gx, gy, sign) {
+    const r = brushRadius;
+    const s = brushStrength * sign;
+
+    const cx = gx | 0;
+    const cy = gy | 0;
+    const r2 = r * r;
+
+    const xmin = clamp((cx - r - 1) | 0, 0, N - 1);
+    const xmax = clamp((cx + r + 1) | 0, 0, N - 1);
+    const ymin = clamp((cy - r - 1) | 0, 0, N - 1);
+    const ymax = clamp((cy + r + 1) | 0, 0, N - 1);
+
+    for (let y = ymin; y <= ymax; y++) {
+      for (let x = xmin; x <= xmax; x++) {
+        const dx = (x + 0.5) - gx;
+        const dy = (y + 0.5) - gy;
+        const d2 = dx*dx + dy*dy;
+        if (d2 > r2) continue;
+
+        const t = 1 - Math.sqrt(d2 / r2);
+        const wgt = t * t * (3 - 2*t);
+
+        const i = idx(x,y);
+        height[i] = clamp(height[i] + s * wgt, 0, 1);
+        water[i] *= 0.98;
+      }
+    }
+  }
+
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  canvas.addEventListener("mousedown", (e) => {
+    painting = true;
+    paintSign = (e.button === 2 || e.ctrlKey || e.metaKey) ? -1 : +1;
+    const { gx, gy, inside } = canvasToGrid(e);
+    if (inside) paintAt(gx, gy, paintSign);
+  });
+
+  window.addEventListener("mouseup", () => { painting = false; });
+
+  canvas.addEventListener("mousemove", (e) => {
+    if (!painting) return;
+    const sign = (e.buttons & 2) ? -1 : +1;
+    const { gx, gy, inside } = canvasToGrid(e);
+    if (inside) paintAt(gx, gy, sign);
+  });
+
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const delta = Math.sign(e.deltaY);
+    const factor = (delta > 0) ? 0.93 : 1.07;
+    zoom = clamp(zoom * factor, ZOOM_MIN, ZOOM_MAX);
+  }, { passive: false });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "r" || e.key === "R") rainEnabled = !rainEnabled;
+    if (e.key === "c" || e.key === "C") regenTerrain();
+  });
+
+  // ----------------------------
+  // Main loop (fixed timestep)
+  // ----------------------------
+  let last = performance.now();
+  let accTime = 0;
+
+  function updateUI(steps) {
+    const rainRate = parseFloat(ui.rain.value);
+    const infil = parseFloat(ui.infil.value);
+    const evap = parseFloat(ui.evap.value);
+    const dtUI = parseFloat(ui.dt.value);
+
+    ui.rainV.textContent = rainRate.toFixed(3);
+    ui.infilV.textContent = infil.toFixed(3);
+    ui.evapV.textContent = evap.toFixed(3);
+    ui.dtV.textContent = dtUI.toFixed(3);
+
+    let wSum = 0, wMax = 0, aMax = 0;
+    for (let i = 0; i < SIZE; i++) {
+      const w = water[i];
+      wSum += w;
+      if (w > wMax) wMax = w;
+      const a = acc[i];
+      if (a > aMax) aMax = a;
+    }
+    const wMean = wSum / SIZE;
+
+    ui.status.innerHTML =
+      `rain: <b>${rainEnabled ? "ON" : "OFF"}</b> &nbsp;|&nbsp; zoom: <b>${zoom.toFixed(2)}×</b><br>` +
+      `water mean: <span class="mono">${wMean.toFixed(4)}</span> &nbsp;max: <span class="mono">${wMax.toFixed(4)}</span> &nbsp;acc max: <span class="mono">${aMax.toFixed(4)}</span><br>` +
+      `substeps/frame: <span class="mono">${steps}</span> &nbsp;seed: <span class="mono">${seed}</span>`;
+  }
+
+  function animate(now) {
+    const dtUI = parseFloat(ui.dt.value);
+    const frame = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    accTime += frame;
+
+    const maxSteps = 6;
+    let steps = 0;
+    while (accTime >= dtUI && steps < maxSteps) {
+      stepWater(dtUI, now / 1000);
+      accTime -= dtUI;
+      steps++;
+    }
+
+    render(now / 1000);
+    updateUI(steps);
+
+    requestAnimationFrame(animate);
+  }
+
+  // Start
+  regenTerrain(seed);
+  requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>

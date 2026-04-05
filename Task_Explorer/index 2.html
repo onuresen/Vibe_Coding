@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Work Stream Explorer v2</title>
+    <style>
+        :root {
+            --bg: #0b1220;
+            --panel: #0f172a;
+            --card: #111827;
+            --accent: #22d3ee;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr
+        }
+
+        header {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #1f2937;
+            background: linear-gradient(180deg, #020617, #020617 60%, #02061700)
+        }
+
+        header h1 {
+            font-size: 16px;
+            margin: 0 8px 0 0
+        }
+
+        button {
+            background: #020617;
+            border: 1px solid #1f2937;
+            color: var(--text);
+            border-radius: 8px;
+            padding: 6px 10px;
+            cursor: pointer
+        }
+
+        button.active {
+            background: var(--accent);
+            color: #020617;
+            border-color: transparent
+        }
+
+        input[type=file] {
+            display: none
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 260px 1fr 360px;
+            height: 100%
+        }
+
+        aside {
+            padding: 12px;
+            border-right: 1px solid #1f2937;
+            background: var(--panel)
+        }
+
+        main {
+            padding: 12px;
+            overflow: auto
+        }
+
+        .viewer {
+            padding: 12px;
+            border-left: 1px solid #1f2937;
+            background: #020617;
+            overflow: auto
+        }
+
+        .section-title {
+            font-size: 12px;
+            color: var(--muted);
+            margin: 12px 0 6px
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid #1f2937;
+            color: var(--muted);
+            font-size: 11px;
+            margin: 2px;
+            cursor: pointer
+        }
+
+        .tag.active {
+            background: #0ea5e9;
+            color: #020617;
+            border-color: transparent
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px
+        }
+
+        .column {
+            border: 1px dashed #1f2937;
+            border-radius: 12px;
+            padding: 8px
+        }
+
+        .column h3 {
+            margin: 4px 6px 8px;
+            font-size: 13px;
+            color: var(--muted)
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid #1f2937;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: grab
+        }
+
+        .card:hover {
+            border-color: var(--accent)
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 13px
+        }
+
+        .meta {
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        pre {
+            white-space: pre-wrap;
+            font-family: ui-monospace, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.5
+        }
+
+        .footer {
+            font-size: 11px;
+            color: var(--muted);
+            padding: 6px 12px;
+            border-top: 1px solid #1f2937
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Work Stream Explorer</h1>
+        <button id="allBtn" class="active">All</button>
+        <button data-status="todo">Todo</button>
+        <button data-status="doing">Doing</button>
+        <button data-status="done">Done</button>
+        <label for="fileInput"><button>Import .md</button></label>
+        <button id="reset">Reset</button>
+        <input id="fileInput" type="file" accept=".md" multiple />
+    </header>
+    <div class="layout">
+        <aside>
+            <div class="section-title">Tags</div>
+            <div id="tags"></div>
+            <div class="section-title">About</div>
+            <div class="meta">Markdown-first • Drag cards • Local only</div>
+        </aside>
+        <main>
+            <div class="board">
+                <div class="column" data-col="todo">
+                    <h3>Todo</h3>
+                </div>
+                <div class="column" data-col="doing">
+                    <h3>Doing</h3>
+                </div>
+                <div class="column" data-col="done">
+                    <h3>Done</h3>
+                </div>
+            </div>
+        </main>
+        <section class="viewer">
+            <pre id="viewer">Select a task</pre>
+        </section>
+    </div>
+    <div class="footer">v2 – playful sketch (no backend)</div>
+    <script>
+        const seed = [
+            { id: 'DX-014', title: 'Room → Markdown Export', status: 'doing', tags: ['BIM', 'Revit', 'Obsidian'], md: `# DX-014\n\nIntent: Export rooms as MD nodes.\n\nNext:\n- Schema\n- Links` },
+            { id: 'DX-015', title: 'HTML Viewer v2', status: 'todo', tags: ['UI', 'Hobby'], md: `# DX-015\n\nUpgrade UI with drag & tags.` },
+            { id: 'DX-013', title: 'Vault Direction', status: 'done', tags: ['KM', 'Strategy'], md: `# DX-013\n\nVault = operational memory.` }
+        ];
+        let tasks = JSON.parse(localStorage.getItem('wse_tasks') || 'null') || seed;
+        let filterStatus = 'all'; let filterTag = null;
+        const cols = document.querySelectorAll('.column');
+        const viewer = document.getElementById('viewer');
+        const tagsEl = document.getElementById('tags');
+        function persist() { localStorage.setItem('wse_tasks', JSON.stringify(tasks)); }
+        function renderTags() {
+            const set = new Set(tasks.flatMap(t => t.tags || []));
+            tagsEl.innerHTML = '';
+            [...set].forEach(tag => { const s = document.createElement('span'); s.className = 'tag' + (filterTag === tag ? ' active' : ''); s.textContent = tag; s.onclick = () => { filterTag = filterTag === tag ? null : tag; render(); }; tagsEl.appendChild(s); });
+        }
+        function render() {
+            cols.forEach(c => c.querySelectorAll('.card').forEach(x => x.remove()));
+            renderTags();
+            tasks.filter(t => (filterStatus === 'all' || t.status === filterStatus) && (!filterTag || t.tags?.includes(filterTag)))
+                .forEach(t => {
+                    const card = document.createElement('div'); card.className = 'card'; card.draggable = true;
+                    card.innerHTML = `<div class='title'>${t.title}</div><div class='meta'>${t.id}</div>`;
+                    card.onclick = () => viewer.textContent = t.md;
+                    card.ondragstart = e => e.dataTransfer.setData('id', t.id);
+                    document.querySelector(`[data-col="${t.status}"]`).appendChild(card);
+                });
+        }
+        cols.forEach(col => {
+            col.ondragover = e => e.preventDefault();
+            col.ondrop = e => { const id = e.dataTransfer.getData('id'); const t = tasks.find(x => x.id === id); t.status = col.dataset.col; persist(); render(); };
+        });
+        document.querySelectorAll('header button[data-status]').forEach(b => b.onclick = () => { filterStatus = b.dataset.status; document.querySelectorAll('header button').forEach(x => x.classList.remove('active')); b.classList.add('active'); render(); });
+        document.getElementById('allBtn').onclick = () => { filterStatus = 'all'; document.querySelectorAll('header button').forEach(x => x.classList.remove('active')); document.getElementById('allBtn').classList.add('active'); render(); };
+        document.getElementById('reset').onclick = () => { localStorage.removeItem('wse_tasks'); tasks = seed; render(); };
+        document.getElementById('fileInput').onchange = async (e) => {
+            for (const f of e.target.files) { const text = await f.text(); const title = text.split('\n')[0].replace(/^#\s*/, '') || f.name; tasks.push({ id: f.name, title, status: 'todo', tags: [], md: text }); }
+            persist(); render();
+        };
+        render();
+    </script>
+</body>
+
+</html>

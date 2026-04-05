@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Roof/Building Surface Watershed — Where Does Rain Go?</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#0f1730cc; --text:#e8eefc; --muted:#9fb0d4; --accent:#6ee7ff;
+  }
+  html,body{height:100%;margin:0;background:radial-gradient(1200px 700px at 60% 30%, #121b3b 0%, #070a14 60%, #04050c 100%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;overflow:hidden;}
+  .wrap{position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;}
+  canvas{width:1000px;height:700px; image-rendering:auto; border-radius:18px; box-shadow: 0 20px 60px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06); background:linear-gradient(180deg,#061028,#030611);}
+  #hud{
+    position:absolute; left:calc(50% - 500px + 14px); top:calc(50% - 350px + 14px);
+    width:320px; padding:12px 12px 10px; border-radius:16px;
+    background:var(--panel); backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
+    user-select:none;
+  }
+  #hud h1{margin:0 0 6px;font-size:14px;letter-spacing:.2px; font-weight:700;}
+  #hud .sub{font-size:12px;color:var(--muted);margin-bottom:10px; line-height:1.25;}
+  #stats{font-size:12px;line-height:1.35;}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.06);}
+  .row:last-child{border-bottom:0; padding-bottom:0;}
+  .pill{display:inline-flex; align-items:center; gap:8px;}
+  .dot{width:10px;height:10px;border-radius:999px; box-shadow:0 0 0 2px rgba(0,0,0,.35), 0 0 14px rgba(255,255,255,.12);}
+  .small{font-size:11px;color:var(--muted);}
+  #keys{margin-top:10px; font-size:11px; color:var(--muted); line-height:1.25;}
+  #keys b{color:var(--text); font-weight:700;}
+  #sliders{margin-top:8px; display:grid; grid-template-columns: 1fr; gap:6px;}
+  .ctl{display:flex; align-items:center; gap:10px;}
+  .ctl label{flex:1; font-size:11px; color:var(--muted)}
+  .ctl input{flex:1.2}
+  input[type=range]{width:100%}
+  #toast{position:absolute; right:calc(50% - 500px + 14px); top:calc(50% - 350px + 14px);
+    padding:10px 12px; border-radius:14px; background:rgba(10,16,34,.65);
+    backdrop-filter: blur(10px); font-size:12px; color:var(--text); box-shadow:0 10px 30px rgba(0,0,0,.35);
+    opacity:0; transform:translateY(-6px); transition:.25s ease;
+  }
+  #toast.show{opacity:1; transform:translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <canvas id="c" width="1000" height="700"></canvas>
+  <div id="hud">
+    <h1>Roof/Building Surface Watershed — “Where Does Rain Go?”</h1>
+    <div class="sub">Drag drains (colored dots) along edges. Drag on the roof to sculpt ridges. <span class="small">(Shift = carve / lower)</span></div>
+    <div id="stats"></div>
+    <div id="sliders">
+      <div class="ctl"><label>Rainfall (mm/h)</label><input id="rain" type="range" min="5" max="200" value="40" step="1" /></div>
+      <div class="ctl"><label>Brush radius</label><input id="brush" type="range" min="4" max="30" value="14" step="1" /></div>
+      <div class="ctl"><label>Roof tilt</label><input id="tilt" type="range" min="-30" max="30" value="12" step="1" /></div>
+    </div>
+    <div id="keys">
+      <b>W</b> watershed &nbsp; <b>F</b> flowlines &nbsp; <b>H</b> heatmap &nbsp; <b>Space</b> storm burst<br/>
+      <b>Mouse</b> drag = sculpt &nbsp; <b>Shift</b> + drag = carve &nbsp; <b>R</b> reset roof
+    </div>
+  </div>
+  <div id="toast">Storm burst!</div>
+</div>
+<script>
+(() => {
+  "use strict";
+
+  // ===== Canvas / Context =====
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', { alpha: false });
+  const W = canvas.width, H = canvas.height;
+
+  // ===== Offscreen texture in roof (top-down) space =====
+  const NX = 190;       // grid resolution (balanced for 60fps)
+  const NY = 130;
+  const roofTex = document.createElement('canvas');
+  roofTex.width = NX;
+  roofTex.height = NY;
+  const rctx = roofTex.getContext('2d', { willReadFrequently: true });
+
+  const trailTex = document.createElement('canvas');
+  trailTex.width = NX;
+  trailTex.height = NY;
+  const tctx = trailTex.getContext('2d');
+  tctx.globalCompositeOperation = 'source-over';
+
+  const img = rctx.createImageData(NX, NY);
+
+  // ===== UI =====
+  const statsEl = document.getElementById('stats');
+  const rainEl = document.getElementById('rain');
+  const brushEl = document.getElementById('brush');
+  const tiltEl = document.getElementById('tilt');
+  const toast = document.getElementById('toast');
+
+  // ===== Roof physical size (for flow rate estimate) =====
+  const roofSizeM = { w: 30, h: 20 }; // meters
+  const totalArea = roofSizeM.w * roofSizeM.h;
+  const cellArea = totalArea / (NX * NY);
+  const runoffCoeff = 0.95;
+
+  // ===== Height field =====
+  const hBase = new Float32Array(NX * NY);
+  const hEdit = new Float32Array(NX * NY);
+  const h = new Float32Array(NX * NY);
+
+  // Flow graph / assignments
+  const nextIdx = new Int32Array(NX * NY);
+  const basin = new Int16Array(NX * NY);
+  const accum = new Float32Array(NX * NY); // contributing area count (cells)
+
+  // Dynamic heatmap from particles
+  const heatDyn = new Float32Array(NX * NY);
+
+  // ===== Drains =====
+  const palette = [
+    [ 66, 211, 255],
+    [255, 124, 168],
+    [154, 255, 126],
+    [255, 215,  92],
+    [186, 132, 255],
+    [255, 170,  72],
+  ];
+
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function idx(x,y){ return x + y*NX; }
+
+  // Initial drains along edges
+  const drains = [];
+  function addDrain(u,v){
+    const id = drains.length;
+    const c = palette[id % palette.length];
+    drains.push({ id, u, v, color: c, flow: 0, area: 0 });
+  }
+  addDrain( 12, 0);
+  addDrain( NX-20, 0);
+  addDrain( NX-1, Math.floor(NY*0.55));
+  addDrain( Math.floor(NX*0.45), NY-1);
+  addDrain( 0, Math.floor(NY*0.35));
+
+  // ===== Pseudo-3D transform (roof top-down -> screen) =====
+  // We draw the roof texture into a tilted parallelogram using an affine transform.
+  // Store matrix and its inverse for hit-testing.
+  const M = { a:1,b:0,c:0,d:1,e:0,f:0, inv:null };
+
+  function updateTransform(){
+    // Choose an isometric-ish mapping. We'll map roofTex (0..NX,0..NY) into screen.
+    const tiltDeg = +tiltEl.value;
+    const t = tiltDeg * Math.PI/180;
+
+    // Base scale for fitting nicely inside 1000x700
+    const scale = 4.15; // overall scale
+
+    // A skewed + rotated affine matrix
+    // Start with scaling, then shear to mimic perspective tilt.
+    const sx = scale;
+    const sy = scale * 0.72;
+
+    // Rotation around Z
+    const rot = -22 * Math.PI/180;
+    const cos = Math.cos(rot), sin = Math.sin(rot);
+
+    // Shear to create "tilt" (more vertical compression)
+    const shear = Math.tan(t * 0.35);
+
+    // Compose: [R]*[S]*[ShearY]
+    // ShearY: x' = x, y' = y + shear*x
+    let a = cos * sx;
+    let b = sin * sx;
+    let c = (-sin) * sy;
+    let d = cos * sy;
+    // apply shear in source X: y += shear*x => affects (c,d) terms
+    c += a * shear;
+    d += b * shear;
+
+    // Center on canvas
+    const roofW = NX;
+    const roofH = NY;
+
+    // Compute bounding box of transformed corners to center it.
+    const corners = [
+      [0,0],[roofW,0],[roofW,roofH],[0,roofH]
+    ].map(([x,y]) => [a*x + c*y, b*x + d*y]);
+    let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
+    for(const p of corners){
+      minx = Math.min(minx,p[0]); maxx=Math.max(maxx,p[0]);
+      miny = Math.min(miny,p[1]); maxy=Math.max(maxy,p[1]);
+    }
+    const bw = maxx-minx, bh = maxy-miny;
+    const e = (W - bw)/2 - minx + 30;
+    const f = (H - bh)/2 - miny + 10;
+
+    M.a=a; M.b=b; M.c=c; M.d=d; M.e=e; M.f=f;
+
+    // Invert 2x2 + translation
+    const det = a*d - b*c;
+    const ia =  d/det;
+    const ib = -b/det;
+    const ic = -c/det;
+    const id =  a/det;
+    const ie = -(ia*e + ic*f);
+    const iff = -(ib*e + id*f);
+    M.inv = { a:ia,b:ib,c:ic,d:id,e:ie,f:iff };
+  }
+  updateTransform();
+
+  function screenToRoof(px,py){
+    const I = M.inv;
+    const x = I.a*px + I.c*py + I.e;
+    const y = I.b*px + I.d*py + I.f;
+    return { u:x, v:y };
+  }
+  function roofToScreen(u,v){
+    return { x: M.a*u + M.c*v + M.e, y: M.b*u + M.d*v + M.f };
+  }
+
+  // ===== Procedural base roof =====
+  function fbm(x,y){
+    // lightweight fractal noise (sin/cos based) for ridges/bumps
+    let v=0, a=0.6, f=0.08;
+    for(let i=0;i<4;i++){
+      v += a * (Math.sin((x+17.3)*f) * Math.cos((y-9.1)*f));
+      a *= 0.55;
+      f *= 2.1;
+      x = x*1.07 + 11.2;
+      y = y*0.93 - 7.4;
+    }
+    return v;
+  }
+
+  function resetRoof(){
+    hEdit.fill(0);
+    const slopeX = 0.020;
+    const slopeY = 0.012;
+
+    for(let y=0;y<NY;y++){
+      for(let x=0;x<NX;x++){
+        const u = x/(NX-1), v = y/(NY-1);
+        const base = (u-0.1)*slopeX + (v-0.2)*slopeY;
+        const ridge = 0.055 * fbm(x,y);
+        // a subtle center ridge
+        const cx = (x - NX*0.52);
+        const ridge2 = 0.045 * Math.exp(-(cx*cx)/(2*(NX*0.18)**2)) * (0.6 - Math.abs(v-0.55));
+        // edge gutters slightly lower
+        const edge = 0.09 * (Math.exp(-(x*x)/(2*18*18)) + Math.exp(-((x-(NX-1))**2)/(2*18*18))
+                         + Math.exp(-(y*y)/(2*14*14)) + Math.exp(-((y-(NY-1))**2)/(2*14*14)));
+        hBase[idx(x,y)] = base + ridge + ridge2 - edge;
+      }
+    }
+  }
+  resetRoof();
+
+  // ===== Simulation state =====
+  let showWatershed = true;
+  let showFlowlines = true;
+  let showHeat = true;
+  let stormT = 0;
+
+  // Particles
+  const drops = [];
+  const maxDrops = 4200;
+
+  // Flowline streamlines
+  const lines = [];
+  const maxLines = 220;
+
+  // Dirty flags
+  let needRecompute = true;
+  let recomputeAt = 0;
+
+  // ===== Drain cells and helpers =====
+  function nearestDrainId(u,v){
+    let best=-1, bd=1e9;
+    for(const d of drains){
+      const dx=d.u-u, dy=d.v-v;
+      const dd=dx*dx+dy*dy;
+      if(dd<bd){bd=dd; best=d.id;}
+    }
+    return best;
+  }
+
+  function drainCellIndex(d){
+    const x = clamp(Math.round(d.u), 0, NX-1);
+    const y = clamp(Math.round(d.v), 0, NY-1);
+    return idx(x,y);
+  }
+
+  function isEdgeCell(x,y){
+    return x===0 || y===0 || x===NX-1 || y===NY-1;
+  }
+
+  // Constrain drains along edges (snap to nearest edge)
+  function snapToEdge(u,v){
+    u = clamp(u,0,NX-1);
+    v = clamp(v,0,NY-1);
+    const du = Math.min(u, NX-1-u);
+    const dv = Math.min(v, NY-1-v);
+    if(du < dv){
+      u = (u < NX/2) ? 0 : (NX-1);
+    } else {
+      v = (v < NY/2) ? 0 : (NY-1);
+    }
+    return {u,v};
+  }
+
+  // ===== Height sampling / gradient =====
+  function heightAt(u,v){
+    const x0 = Math.floor(u), y0 = Math.floor(v);
+    const x1 = clamp(x0+1,0,NX-1), y1 = clamp(y0+1,0,NY-1);
+    const tx = u - x0, ty = v - y0;
+    const i00 = idx(clamp(x0,0,NX-1), clamp(y0,0,NY-1));
+    const i10 = idx(x1, clamp(y0,0,NY-1));
+    const i01 = idx(clamp(x0,0,NX-1), y1);
+    const i11 = idx(x1, y1);
+    const a = h[i00]*(1-tx) + h[i10]*tx;
+    const b = h[i01]*(1-tx) + h[i11]*tx;
+    return a*(1-ty) + b*ty;
+  }
+
+  function gradAt(u,v){
+    const eps = 1.0;
+    const hx1 = heightAt(u+eps, v);
+    const hx0 = heightAt(u-eps, v);
+    const hy1 = heightAt(u, v+eps);
+    const hy0 = heightAt(u, v-eps);
+    return { gx:(hx1-hx0)/(2*eps), gy:(hy1-hy0)/(2*eps) };
+  }
+
+  // ===== Recompute: heights -> flow directions -> basins -> accumulation =====
+  function rebuildHeight(){
+    // Combine base + edits; add tiny dither to avoid perfectly flat plateaus.
+    for(let i=0;i<h.length;i++){
+      h[i] = hBase[i] + hEdit[i] + ((i*2654435761 >>> 0) % 997) * 1e-7;
+    }
+    // Make drain cells very low so they act as absorbing sinks
+    for(const d of drains){
+      const di = drainCellIndex(d);
+      h[di] -= 0.35; // deepen sink
+    }
+  }
+
+  function rebuildFlowDirections(){
+    // D8 steepest descent (allow gentle uphill if local min to avoid ponds)
+    const neighbors = [
+      [-1,-1],[0,-1],[1,-1],
+      [-1, 0],       [1, 0],
+      [-1, 1],[0, 1],[1, 1]
+    ];
+
+    for(let y=0;y<NY;y++){
+      for(let x=0;x<NX;x++){
+        const i = idx(x,y);
+        // drain cells have no next
+        let isDrain = false;
+        for(const d of drains){
+          if(drainCellIndex(d) === i){ isDrain=true; break; }
+        }
+        if(isDrain){ nextIdx[i] = -1; continue; }
+
+        const h0 = h[i];
+        let best = -1;
+        let bestDrop = 0;
+        let bestH = 1e9;
+
+        for(const [dx,dy] of neighbors){
+          const xx = x+dx, yy=y+dy;
+          if(xx<0||yy<0||xx>=NX||yy>=NY) continue;
+          const j = idx(xx,yy);
+          const hj = h[j];
+          const drop = h0 - hj;
+          if(drop > bestDrop + 1e-12){
+            bestDrop = drop;
+            best = j;
+            bestH = hj;
+          } else if(Math.abs(drop - bestDrop) < 1e-12){
+            // tie-break: choose lower height
+            if(hj < bestH){ best = j; bestH = hj; }
+          }
+        }
+
+        if(best !== -1 && bestDrop > 1e-8){
+          nextIdx[i] = best;
+        } else {
+          // local minimum or flat: pick the lowest neighbor even if not lower,
+          // so water can "spill" and avoids unstable ponds.
+          let jBest=-1, hjBest=1e9;
+          for(const [dx,dy] of neighbors){
+            const xx=x+dx, yy=y+dy;
+            if(xx<0||yy<0||xx>=NX||yy>=NY) continue;
+            const j = idx(xx,yy);
+            const hj=h[j];
+            if(hj < hjBest){ hjBest = hj; jBest=j; }
+          }
+          // If completely isolated (shouldn't happen), mark boundary exit
+          nextIdx[i] = (jBest!==-1) ? jBest : -2;
+        }
+      }
+    }
+  }
+
+  function rebuildBasins(){
+    basin.fill(-1);
+    // Map drain cell idx -> drain id
+    const drainMap = new Int16Array(NX*NY);
+    drainMap.fill(-1);
+    for(const d of drains){
+      drainMap[drainCellIndex(d)] = d.id;
+    }
+
+    // Path compression with explicit stack
+    const stack = new Int32Array(NX*NY);
+
+    for(let i=0;i<NX*NY;i++){
+      if(basin[i] !== -1) continue;
+
+      let top = 0;
+      let cur = i;
+      while(true){
+        if(cur < 0){
+          // boundary exit or invalid
+          break;
+        }
+        if(basin[cur] !== -1){
+          break;
+        }
+        stack[top++] = cur;
+
+        const did = drainMap[cur];
+        if(did !== -1){
+          basin[cur] = did;
+          break;
+        }
+
+        const n = nextIdx[cur];
+        if(n === -1){
+          // should only happen for drains
+          basin[cur] = drainMap[cur] !== -1 ? drainMap[cur] : nearestDrainId(cur % NX, (cur/NX)|0);
+          break;
+        }
+        if(n === -2){
+          basin[cur] = nearestDrainId(cur % NX, (cur/NX)|0);
+          break;
+        }
+
+        // If on boundary and not a drain, consider it a gutter exit to nearest drain
+        const x = cur % NX, y = (cur / NX) | 0;
+        if(isEdgeCell(x,y)){
+          basin[cur] = nearestDrainId(x,y);
+          break;
+        }
+        cur = n;
+      }
+
+      // Propagate assignment back
+      const b = basin[cur] !== -1 ? basin[cur] : nearestDrainId(cur % NX, (cur/NX)|0);
+      for(let k=0;k<top;k++) basin[stack[k]] = b;
+    }
+  }
+
+  function rebuildAccumulation(){
+    // contributing area (upslope cell count). We sort by height descending and push to next.
+    for(let i=0;i<accum.length;i++) accum[i] = 1; // each cell contributes itself
+
+    const order = new Int32Array(NX*NY);
+    for(let i=0;i<order.length;i++) order[i] = i;
+
+    // JS sort on typed arrays is not available; convert to normal array indices for sorting.
+    // For 25k elements, this is acceptable and only done when dirty.
+    const arr = Array.from(order);
+    arr.sort((a,b) => h[b]-h[a]);
+
+    for(const i of arr){
+      const n = nextIdx[i];
+      if(n >= 0) accum[n] += accum[i];
+    }
+
+    // Normalize for rendering convenience later
+    let maxA = 1;
+    for(let i=0;i<accum.length;i++) if(accum[i] > maxA) maxA = accum[i];
+    for(let i=0;i<accum.length;i++) accum[i] /= maxA;
+  }
+
+  function rebuildAll(){
+    rebuildHeight();
+    rebuildFlowDirections();
+    rebuildBasins();
+    rebuildAccumulation();
+
+    // Stats
+    for(const d of drains){ d.area = 0; d.flow = 0; }
+    for(let i=0;i<basin.length;i++){
+      const b = basin[i];
+      if(b>=0) drains[b].area += cellArea;
+    }
+
+    // Flow rates: rainfall mm/h -> m/s
+    const rain_mps = (+rainEl.value / 1000) / 3600;
+    for(const d of drains){
+      d.flow = rain_mps * d.area * runoffCoeff; // m^3/s
+    }
+
+    needRecompute = false;
+  }
+
+  function requestRecompute(){
+    needRecompute = true;
+    recomputeAt = performance.now() + 55; // debounce edits
+  }
+
+  // ===== Rendering helpers =====
+  function shadeRoof(x,y){
+    // faux lighting based on height gradient and a global light direction
+    const i = idx(x,y);
+    const h0 = h[i];
+    const hx = h[idx(clamp(x+1,0,NX-1), y)] - h[idx(clamp(x-1,0,NX-1), y)];
+    const hy = h[idx(x, clamp(y+1,0,NY-1))] - h[idx(x, clamp(y-1,0,NY-1))];
+    // normal approx
+    let nx = -hx*18, ny = -hy*18, nz = 1.0;
+    const nl = Math.hypot(nx,ny,nz) || 1;
+    nx/=nl; ny/=nl; nz/=nl;
+    // light dir
+    const lx = -0.4, ly = -0.65, lz = 0.65;
+    const diff = clamp(nx*lx + ny*ly + nz*lz, 0, 1);
+    const amb = 0.35;
+
+    // specular: view dir roughly toward camera
+    const vx = 0.1, vy = -0.2, vz = 0.97;
+    // half vector
+    const hxv = lx+vx, hyv=ly+vy, hzv=lz+vz;
+    const hl = Math.hypot(hxv,hyv,hzv) || 1;
+    const hxN=hxv/hl, hyN=hyv/hl, hzN=hzv/hl;
+    const spec = Math.pow(clamp(nx*hxN + ny*hyN + nz*hzN, 0, 1), 36);
+
+    // subtle height tint
+    const ht = clamp((h0 + 0.22) * 2.2, 0, 1);
+
+    return { diff, amb, spec, ht };
+  }
+
+  function renderRoofTexture(t){
+    // Fade trails
+    tctx.globalCompositeOperation = 'source-over';
+    tctx.fillStyle = 'rgba(0,0,0,0.12)';
+    tctx.fillRect(0,0,NX,NY);
+
+    const data = img.data;
+
+    // dynamic specular sweep
+    const sweep = 0.5 + 0.5*Math.sin(t*0.0008);
+
+    for(let y=0;y<NY;y++){
+      for(let x=0;x<NX;x++){
+        const i = idx(x,y);
+        const off = i*4;
+
+        const s = shadeRoof(x,y);
+
+        // base wet metal/roof tone
+        let r = 16 + 34*s.diff + 12*s.ht;
+        let g = 26 + 46*s.diff + 15*s.ht;
+        let b = 52 + 68*s.diff + 18*s.ht;
+
+        // apply watershed segmentation colors
+        if(showWatershed){
+          const bid = basin[i];
+          const c = drains[bid]?.color || [90,120,255];
+          const mix = 0.52;
+          r = r*(1-mix) + c[0]*mix;
+          g = g*(1-mix) + c[1]*mix;
+          b = b*(1-mix) + c[2]*mix;
+
+          // Boundary enhancement (stable): compare neighbor basin ids
+          const left = basin[idx(clamp(x-1,0,NX-1),y)];
+          const up   = basin[idx(x,clamp(y-1,0,NY-1))];
+          const edge = (left!==bid || up!==bid) ? 1 : 0;
+          if(edge){
+            r*=0.72; g*=0.72; b*=0.72;
+          }
+        }
+
+        // heat overlay (accumulation + dynamic)
+        if(showHeat){
+          const a = accum[i];
+          const hd = clamp(heatDyn[i]*0.06, 0, 1);
+          const heat = clamp(0.75*a + 0.65*hd, 0, 1);
+          // turquoise -> cyan -> white
+          r += 30*heat;
+          g += 120*heat;
+          b += 165*heat;
+        }
+
+        // specular highlight (wet look)
+        const v = (x/NX)*0.7 + (y/NY)*0.3;
+        const spec = (s.spec*0.9 + 0.25*Math.exp(-((v-sweep)**2)/(2*0.008)));
+        r += 120*spec;
+        g += 140*spec;
+        b += 160*spec;
+
+        // trails add
+        // We'll sample trail texture later when drawing; keep roof texture clean.
+
+        data[off+0] = clamp(r,0,255);
+        data[off+1] = clamp(g,0,255);
+        data[off+2] = clamp(b,0,255);
+        data[off+3] = 255;
+      }
+    }
+
+    rctx.putImageData(img,0,0);
+  }
+
+  function drawScene(t){
+    // background
+    ctx.fillStyle = '#050815';
+    ctx.fillRect(0,0,W,H);
+
+    // soft vignette
+    const grad = ctx.createRadialGradient(W*0.55,H*0.40, 60, W*0.55,H*0.40, 760);
+    grad.addColorStop(0,'rgba(40,80,140,0.25)');
+    grad.addColorStop(1,'rgba(0,0,0,0.0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,W,H);
+
+    // Render roof texture with transform
+    ctx.save();
+    ctx.setTransform(M.a, M.b, M.c, M.d, M.e, M.f);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(roofTex, 0,0);
+
+    // Overlay trails
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.75;
+    ctx.drawImage(trailTex, 0,0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+
+    // draw subtle roof grid lines
+    ctx.globalAlpha = 0.09;
+    ctx.strokeStyle = '#b9c8ff';
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for(let x=0;x<=NX;x+=10){
+      ctx.moveTo(x,0); ctx.lineTo(x,NY);
+    }
+    for(let y=0;y<=NY;y+=10){
+      ctx.moveTo(0,y); ctx.lineTo(NX,y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Draw drains as circles in roof space (still under transform)
+    for(const d of drains){
+      ctx.fillStyle = `rgb(${d.color[0]},${d.color[1]},${d.color[2]})`;
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(d.u, d.v, 3.6, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+
+      // small intake ring
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(d.u, d.v, 6.5, 0, Math.PI*2);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // Roof outline + gutters in screen space
+    drawGutters(t);
+
+    // Flowlines (screen space but generated in roof space)
+    if(showFlowlines){
+      drawFlowlines(t);
+    }
+
+    // Title shadow strip for cinematic polish
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    const bar = ctx.createLinearGradient(0,0,0,H);
+    bar.addColorStop(0,'rgba(0,0,0,0.55)');
+    bar.addColorStop(0.22,'rgba(0,0,0,0)');
+    ctx.fillStyle = bar;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  function roofCornersScreen(){
+    const A = roofToScreen(0,0);
+    const B = roofToScreen(NX,0);
+    const C = roofToScreen(NX,NY);
+    const D = roofToScreen(0,NY);
+    return {A,B,C,D};
+  }
+
+  function drawGutters(t){
+    const {A,B,C,D} = roofCornersScreen();
+
+    // Draw roof outline
+    ctx.save();
+    ctx.strokeStyle = 'rgba(180,210,255,0.22)';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.lineTo(C.x,C.y); ctx.lineTo(D.x,D.y); ctx.closePath();
+    ctx.stroke();
+
+    // Gutters: thicker edges with streaks
+    const edges = [
+      [A,B],
+      [B,C],
+      [C,D],
+      [D,A],
+    ];
+
+    for(const [P,Q] of edges){
+      // gutter body
+      ctx.strokeStyle = 'rgba(40,60,95,0.85)';
+      ctx.lineWidth = 7.5;
+      ctx.beginPath(); ctx.moveTo(P.x,P.y); ctx.lineTo(Q.x,Q.y); ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(160,200,255,0.22)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.moveTo(P.x,P.y); ctx.lineTo(Q.x,Q.y); ctx.stroke();
+
+      // animated streaks
+      const len = Math.hypot(Q.x-P.x, Q.y-P.y);
+      const ux = (Q.x-P.x)/len, uy=(Q.y-P.y)/len;
+      const streakCount = Math.max(6, Math.floor(len/80));
+      for(let s=0;s<streakCount;s++){
+        const phase = (t*0.0012 + s*0.37) % 1;
+        const pos = phase*len;
+        const L = 14 + 18*Math.sin((phase+s)*2.3);
+        const x0 = P.x + ux*(pos);
+        const y0 = P.y + uy*(pos);
+        const x1 = x0 + ux*L;
+        const y1 = y0 + uy*L;
+        ctx.strokeStyle = 'rgba(120,210,255,0.18)';
+        ctx.lineWidth = 2.0;
+        ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+      }
+    }
+
+    // Drain splash in gutters
+    for(const d of drains){
+      const p = roofToScreen(d.u, d.v);
+      ctx.fillStyle = `rgba(${d.color[0]},${d.color[1]},${d.color[2]},0.18)`;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y+8, 16, 7, 0, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(180,240,255,0.22)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y+8, 18, 9, 0, 0, Math.PI*2);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  function drawFlowlines(t){
+    ctx.save();
+    ctx.lineCap = 'round';
+
+    // draw existing lines
+    for(let i=lines.length-1;i>=0;i--){
+      const L = lines[i];
+      L.life -= 0.011;
+      if(L.life <= 0){ lines.splice(i,1); continue; }
+
+      const a = clamp(L.life,0,1);
+      ctx.globalAlpha = 0.55*a;
+      ctx.strokeStyle = `rgba(${L.color[0]},${L.color[1]},${L.color[2]},1)`;
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      for(let k=0;k<L.pts.length;k++){
+        const p = roofToScreen(L.pts[k].u, L.pts[k].v);
+        if(k===0) ctx.moveTo(p.x,p.y);
+        else ctx.lineTo(p.x,p.y);
+      }
+      ctx.stroke();
+
+      // moving head sparkle
+      const head = L.pts[Math.min(L.pts.length-1, (Math.floor((1-L.life)*L.pts.length)) )];
+      const ph = roofToScreen(head.u, head.v);
+      ctx.globalAlpha = 0.7*a;
+      ctx.fillStyle = 'rgba(220,250,255,0.7)';
+      ctx.beginPath();
+      ctx.arc(ph.x, ph.y, 2.1, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // occasionally spawn new streamlines
+    if(lines.length < maxLines){
+      for(let s=0;s<3;s++) spawnStreamline();
+    }
+  }
+
+  function spawnStreamline(){
+    // seed weighted by accumulation (prefer ridges/streams)
+    let u= Math.random()*NX, v=Math.random()*NY;
+    for(let tries=0;tries<10;tries++){
+      const uu=Math.random()*NX, vv=Math.random()*NY;
+      const a = accum[idx(uu|0,vv|0)];
+      if(Math.random() < a*1.15 + 0.05){ u=uu; v=vv; break; }
+    }
+    const b = basin[idx(u|0,v|0)];
+    const col = drains[b]?.color || [180,210,255];
+
+    const pts = [];
+    let cu=u, cv=v;
+    for(let i=0;i<80;i++){
+      pts.push({u:cu, v:cv});
+      const g = gradAt(cu,cv);
+      let vx = -g.gx, vy = -g.gy;
+      const l = Math.hypot(vx,vy) + 1e-6;
+      vx/=l; vy/=l;
+      const speed = 0.85 + 1.15*accum[idx(cu|0,cv|0)];
+      cu += vx*speed;
+      cv += vy*speed;
+      if(cu<0||cv<0||cu>=NX||cv>=NY) break;
+      // stop near a drain
+      const bid = basin[idx(cu|0,cv|0)];
+      const d = drains[bid];
+      if(d && ( (d.u-cu)**2 + (d.v-cv)**2 < 36 )) break;
+    }
+
+    if(pts.length >= 10) lines.push({ pts, life: 1.0, color: col });
+  }
+
+  // ===== Particle system =====
+  function spawnDrops(dt){
+    const rain = +rainEl.value;
+    const base = 140; // baseline emission
+    const burst = stormT > 0 ? 900 : 0;
+    const rate = (base + burst) * (rain/40);
+    const count = Math.min(220, (rate * dt) | 0);
+
+    for(let i=0;i<count && drops.length<maxDrops;i++){
+      // spawn across roof
+      const u = Math.random()*NX;
+      const v = Math.random()*NY;
+      drops.push({ u, v, pu:u, pv:v, life: 1.0 });
+    }
+  }
+
+  function stepDrops(dt){
+    // paint trails in roof space
+    tctx.strokeStyle = 'rgba(170,230,255,0.20)';
+    tctx.lineWidth = 1;
+    tctx.lineCap = 'round';
+
+    for(let i=drops.length-1;i>=0;i--){
+      const d = drops[i];
+      d.life -= 0.0025*dt;
+      if(d.life <= 0){ drops.splice(i,1); continue; }
+
+      d.pu = d.u; d.pv = d.v;
+
+      const g = gradAt(d.u,d.v);
+      let vx = -g.gx, vy = -g.gy;
+      // jitter for cinematic swirls
+      vx += (Math.random()-0.5)*0.03;
+      vy += (Math.random()-0.5)*0.03;
+      const l = Math.hypot(vx,vy) + 1e-6;
+      vx/=l; vy/=l;
+
+      const a = accum[idx(d.u|0,d.v|0)];
+      const speed = (0.35 + 1.5*a) * (stormT>0 ? 1.4 : 1.0);
+
+      d.u += vx * speed * dt*0.06;
+      d.v += vy * speed * dt*0.06;
+
+      if(d.u<0||d.v<0||d.u>=NX||d.v>=NY){ drops.splice(i,1); continue; }
+
+      // remove near drain
+      const bid = basin[idx(d.u|0,d.v|0)];
+      const dr = drains[bid];
+      if(dr && ((dr.u-d.u)**2 + (dr.v-d.v)**2 < 9)){
+        drops.splice(i,1);
+        continue;
+      }
+
+      // trail
+      tctx.globalAlpha = 0.45;
+      tctx.beginPath();
+      tctx.moveTo(d.pu, d.pv);
+      tctx.lineTo(d.u, d.v);
+      tctx.stroke();
+      tctx.globalAlpha = 1;
+
+      // dynamic heat accumulation
+      const ii = idx(d.u|0, d.v|0);
+      heatDyn[ii] += 1.0;
+    }
+
+    // decay dynamic heat
+    for(let i=0;i<heatDyn.length;i++) heatDyn[i] *= 0.985;
+  }
+
+  // ===== Interaction =====
+  const mouse = { x:0,y:0, down:false, mode:'none', drainId:-1, lastU:0,lastV:0 };
+
+  function pickDrain(px,py){
+    // pick in roof space for stable hit test
+    const r = screenToRoof(px,py);
+    for(const d of drains){
+      const dx = d.u - r.u, dy = d.v - r.v;
+      if(dx*dx + dy*dy < 55) return d.id;
+    }
+    return -1;
+  }
+
+  function insideRoof(u,v){
+    return u>=0 && v>=0 && u<=NX && v<=NY;
+  }
+
+  function sculpt(u,v, amount){
+    const rad = +brushEl.value;
+    const x0 = clamp(Math.floor(u-rad-1),0,NX-1);
+    const x1 = clamp(Math.ceil(u+rad+1),0,NX-1);
+    const y0 = clamp(Math.floor(v-rad-1),0,NY-1);
+    const y1 = clamp(Math.ceil(v+rad+1),0,NY-1);
+
+    const sigma = rad*0.55;
+    const inv2s2 = 1/(2*sigma*sigma + 1e-6);
+
+    for(let y=y0;y<=y1;y++){
+      for(let x=x0;x<=x1;x++){
+        const dx = x-u, dy=y-v;
+        const d2 = dx*dx + dy*dy;
+        if(d2 > rad*rad) continue;
+        const w = Math.exp(-d2*inv2s2);
+        hEdit[idx(x,y)] += amount * w;
+      }
+    }
+    requestRecompute();
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    mouse.down = true;
+    mouse.x = e.offsetX; mouse.y=e.offsetY;
+
+    const did = pickDrain(mouse.x, mouse.y);
+    const r = screenToRoof(mouse.x, mouse.y);
+
+    if(did !== -1){
+      mouse.mode = 'drain';
+      mouse.drainId = did;
+    } else if(insideRoof(r.u,r.v)){
+      mouse.mode = 'sculpt';
+      mouse.drainId = -1;
+      mouse.lastU = r.u; mouse.lastV=r.v;
+      const amt = e.shiftKey ? -0.045 : +0.045;
+      sculpt(r.u,r.v, amt);
+    } else {
+      mouse.mode = 'none';
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    mouse.x = e.offsetX; mouse.y=e.offsetY;
+    if(!mouse.down) return;
+
+    const r = screenToRoof(mouse.x, mouse.y);
+    if(mouse.mode === 'drain'){
+      const d = drains[mouse.drainId];
+      if(d){
+        const p = snapToEdge(r.u, r.v);
+        d.u = p.u; d.v = p.v;
+        requestRecompute();
+      }
+    } else if(mouse.mode === 'sculpt'){
+      if(!insideRoof(r.u,r.v)) return;
+      // apply sculpt along stroke
+      const du = r.u - mouse.lastU;
+      const dv = r.v - mouse.lastV;
+      const dist = Math.hypot(du,dv);
+      const steps = Math.max(1, Math.floor(dist/3));
+      for(let s=1;s<=steps;s++){
+        const uu = mouse.lastU + du*(s/steps);
+        const vv = mouse.lastV + dv*(s/steps);
+        const amt = e.shiftKey ? -0.038 : +0.038;
+        sculpt(uu,vv, amt);
+      }
+      mouse.lastU = r.u; mouse.lastV=r.v;
+    }
+  });
+
+  canvas.addEventListener('pointerup', (e) => {
+    mouse.down=false;
+    mouse.mode='none';
+    mouse.drainId=-1;
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if(e.code === 'KeyW') { showWatershed = !showWatershed; }
+    if(e.code === 'KeyF') { showFlowlines = !showFlowlines; }
+    if(e.code === 'KeyH') { showHeat = !showHeat; }
+    if(e.code === 'KeyR') { resetRoof(); requestRecompute(); }
+    if(e.code === 'Space'){
+      stormT = 3.0;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 550);
+      e.preventDefault();
+    }
+  }, { passive:false });
+
+  tiltEl.addEventListener('input', () => { updateTransform(); });
+  rainEl.addEventListener('input', () => { requestRecompute(); });
+
+  // ===== HUD Stats =====
+  function fmtPct(x){ return (x*100).toFixed(1) + '%'; }
+  function fmtFlow(q){
+    // q m^3/s -> nice units
+    if(q < 0.001) return (q*1e6).toFixed(0) + ' mL/s';
+    if(q < 0.1) return (q*1000).toFixed(2) + ' L/s';
+    return q.toFixed(3) + ' m³/s';
+  }
+
+  function updateStats(){
+    const tot = drains.reduce((s,d)=>s+d.area, 0) || 1;
+    let html = '';
+    drains.forEach((d,i) => {
+      const pct = d.area / tot;
+      html += `
+        <div class="row">
+          <div class="pill"><span class="dot" style="background:rgb(${d.color[0]},${d.color[1]},${d.color[2]})"></span>
+            <div>Outlet ${i+1}<div class="small">(${fmtPct(pct)} area)</div></div>
+          </div>
+          <div style="text-align:right">
+            <div>${fmtFlow(d.flow)}</div>
+            <div class="small">${d.area.toFixed(1)} m²</div>
+          </div>
+        </div>`;
+    });
+
+    const rain = +rainEl.value;
+    const totalFlow = drains.reduce((s,d)=>s+d.flow, 0);
+    html = `
+      <div class="row"><div>Rainfall</div><div><b>${rain} mm/h</b></div></div>
+      <div class="row"><div>Total roof area</div><div>${totalArea.toFixed(0)} m²</div></div>
+      <div class="row"><div>Estimated runoff</div><div><b>${fmtFlow(totalFlow)}</b></div></div>
+    ` + html;
+
+    statsEl.innerHTML = html;
+  }
+
+  // ===== Main loop =====
+  let last = performance.now();
+  function tick(now){
+    const dtMs = now - last;
+    last = now;
+    const dt = clamp(dtMs, 8, 33); // keep stable
+
+    // recompute if needed (debounced)
+    if(needRecompute && now >= recomputeAt) rebuildAll();
+
+    // storm timer
+    if(stormT > 0) stormT -= dt/1000;
+
+    // particles
+    spawnDrops(dt/1000);
+    stepDrops(dt);
+
+    // render
+    renderRoofTexture(now);
+    drawScene(now);
+
+    // stats (throttle a bit)
+    if((now|0) % 200 < 16) updateStats();
+
+    requestAnimationFrame(tick);
+  }
+
+  // Initial build
+  rebuildAll();
+  updateStats();
+  requestAnimationFrame(tick);
+
+})();
+</script>
+</body>
+</html>

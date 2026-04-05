@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Procedural Solar System Sandbox</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #0a0e1a;
+            overflow: hidden;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #e0e6f0;
+        }
+
+        #solar-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            background: #0a0e1a;
+            z-index: 1;
+        }
+
+        #ui-panel {
+            position: absolute;
+            top: 24px;
+            right: 32px;
+            min-width: 260px;
+            background: rgba(18, 22, 36, 0.92);
+            border-radius: 12px;
+            box-shadow: 0 4px 32px #000a;
+            padding: 20px 28px 18px 28px;
+            z-index: 10;
+            pointer-events: auto;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #ui-panel.visible {
+            opacity: 1;
+        }
+
+        #ui-panel h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.3em;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: #ffe9a8;
+        }
+
+        #ui-panel table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1em;
+        }
+
+        #ui-panel td {
+            padding: 2px 0;
+            color: #e0e6f0;
+        }
+
+        #ui-panel td.label {
+            color: #a0a8c0;
+            text-align: right;
+            padding-right: 10px;
+            font-size: 0.98em;
+        }
+
+        #dashboard {
+            position: absolute;
+            left: 32px;
+            top: 24px;
+            background: rgba(18, 22, 36, 0.85);
+            border-radius: 10px;
+            padding: 12px 22px 10px 22px;
+            font-size: 1.08em;
+            z-index: 10;
+            pointer-events: none;
+            color: #b0c6ff;
+            letter-spacing: 0.01em;
+            box-shadow: 0 2px 16px #0006;
+        }
+
+        #dashboard strong {
+            color: #ffe9a8;
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+
+            #ui-panel,
+            #dashboard {
+                left: 0 !important;
+                right: 0 !important;
+                top: 0 !important;
+                border-radius: 0;
+                min-width: 0;
+                width: 100vw;
+                padding: 10px 8vw 10px 8vw;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="solar-canvas"></canvas>
+    <div id="dashboard">
+        <span><strong>R</strong>: Regenerate &nbsp; <strong>T</strong>: Time × &nbsp; <strong>Drag</strong>: Rotate
+            &nbsp; <strong>Wheel</strong>: Zoom &nbsp; <strong>Click</strong>: Focus</span>
+    </div>
+    <div id="ui-panel"></div>
+    <script>
+        // --- Seeded PRNG ---
+        function mulberry32(seed) {
+            let t = seed >>> 0;
+            return function () {
+                t += 0x6D2B79F5;
+                let r = Math.imul(t ^ t >>> 15, 1 | t);
+                r ^= r + Math.imul(r ^ r >>> 7, 61 | r);
+                return ((r ^ r >>> 14) >>> 0) / 4294967296;
+            };
+        }
+
+        // --- Utility Functions ---
+        function lerp(a, b, t) { return a + (b - a) * t; }
+        function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+        function map(x, a, b, c, d) { return c + (d - c) * ((x - a) / (b - a)); }
+        function randRange(rng, a, b) { return lerp(a, b, rng()); }
+        function randInt(rng, a, b) { return Math.floor(randRange(rng, a, b + 1)); }
+        function randPick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
+        function hashString(str) {
+            let h = 2166136261;
+            for (let i = 0; i < str.length; i++) {
+                h ^= str.charCodeAt(i);
+                h = Math.imul(h, 16777619);
+            }
+            return h >>> 0;
+        }
+
+        // --- Simple 2D Value Noise ---
+        function valueNoise2D(x, y, seed) {
+            let n = Math.sin(x * 127.1 + y * 311.7 + seed * 0.1) * 43758.5453;
+            return n - Math.floor(n);
+        }
+        function smoothNoise2D(x, y, seed) {
+            let ix = Math.floor(x), iy = Math.floor(y);
+            let fx = x - ix, fy = y - iy;
+            let v00 = valueNoise2D(ix, iy, seed);
+            let v10 = valueNoise2D(ix + 1, iy, seed);
+            let v01 = valueNoise2D(ix, iy + 1, seed);
+            let v11 = valueNoise2D(ix + 1, iy + 1, seed);
+            let i1 = lerp(v00, v10, fx);
+            let i2 = lerp(v01, v11, fx);
+            return lerp(i1, i2, fy);
+        }
+        function fbm(x, y, seed, octaves = 4, falloff = 0.5) {
+            let v = 0, amp = 1, freq = 1, sum = 0;
+            for (let i = 0; i < octaves; i++) {
+                v += smoothNoise2D(x * freq, y * freq, seed + i * 100) * amp;
+                sum += amp;
+                amp *= falloff;
+                freq *= 2;
+            }
+            return v / sum;
+        }
+
+        // --- Camera ---
+        class Camera {
+            constructor() {
+                this.cx = 0; this.cy = 0; // Center in world
+                this.zoom = 1.0;
+                this.tilt = 0; // radians, 0 = flat
+                this.target = { cx: 0, cy: 0, zoom: 1.0, tilt: 0 };
+                this.anim = 0;
+            }
+            setTarget(cx, cy, zoom, tilt) {
+                this.target = { cx, cy, zoom, tilt };
+                this.anim = 1.0;
+            }
+            update(dt) {
+                // Smoothly interpolate to target
+                let s = 1 - Math.pow(0.001, dt);
+                this.cx = lerp(this.cx, this.target.cx, s);
+                this.cy = lerp(this.cy, this.target.cy, s);
+                this.zoom = lerp(this.zoom, this.target.zoom, s);
+                this.tilt = lerp(this.tilt, this.target.tilt, s);
+            }
+        }
+
+        // --- Orbital Mechanics ---
+        function keplerEllipse(a, e, theta) {
+            // a: semi-major axis, e: eccentricity, theta: angle (radians)
+            let r = a * (1 - e * e) / (1 + e * Math.cos(theta));
+            return r;
+        }
+
+        // --- Body Classes ---
+        class Star {
+            constructor(rng) {
+                this.radius = randRange(rng, 60, 110);
+                this.color = `hsl(${randRange(rng, 35, 60)}, 100%, 60%)`;
+                this.lum = randRange(rng, 1.0, 2.2);
+                this.temp = randRange(rng, 4800, 6500);
+                this.mass = randRange(rng, 0.8, 2.0);
+            }
+        }
+        class Planet {
+            constructor(rng, index, star) {
+                this.index = index;
+                this.type = randPick(rng, ['rocky', 'oceanic', 'gas']);
+                this.radius = this.type === 'gas' ? randRange(rng, 18, 38) : randRange(rng, 7, 22);
+                this.mass = this.radius * randRange(rng, 0.7, 1.5) * (this.type === 'gas' ? 2.5 : 1.0);
+                this.orbitA = randRange(rng, 180 + index * 80, 220 + index * 110);
+                this.orbitE = randRange(rng, 0.01, 0.18);
+                this.orbitTilt = randRange(rng, -0.25, 0.25);
+                this.orbitSpeed = randRange(rng, 0.18, 0.38) / Math.sqrt(this.orbitA);
+                this.orbitPhase = randRange(rng, 0, Math.PI * 2);
+                this.axialTilt = randRange(rng, -0.5, 0.5);
+                this.rotationSpeed = randRange(rng, 0.2, 1.2) * (rng() > 0.8 ? -1 : 1);
+                this.tidallyLocked = rng() > 0.85 && this.type !== 'gas';
+                this.hasAtmosphere = this.type !== 'rocky' && rng() > 0.3;
+                this.surfaceSeed = randInt(rng, 0, 99999);
+                this.bandSeed = randInt(rng, 0, 99999);
+                this.colorBase = this.type === 'rocky' ? `hsl(${randRange(rng, 20, 45)}, 40%, 55%)`
+                    : this.type === 'oceanic' ? `hsl(${randRange(rng, 180, 220)}, 60%, 45%)`
+                        : `hsl(${randRange(rng, 30, 60)}, 80%, 60%)`;
+                this.hasMoons = this.type !== 'oceanic' && rng() > 0.5;
+                this.moons = [];
+                this.temp = map(this.orbitA, 180, 1200, star.temp * 1.2, 80);
+                this.habitability = clamp(
+                    1.0 - Math.abs(this.temp - 288) / 180 - (this.type === 'gas' ? 0.7 : 0),
+                    0, 1
+                );
+                this.name = `Planet ${String.fromCharCode(65 + index)}`;
+                // Orbital period (fake Kepler's 3rd law)
+                this.orbitalPeriod = 2 * Math.PI * Math.sqrt(Math.pow(this.orbitA, 3) / (star.mass * 1000));
+            }
+        }
+        class Moon {
+            constructor(rng, planet, index) {
+                this.radius = randRange(rng, 2.5, 7.5);
+                this.orbitA = randRange(rng, planet.radius * 2.5, planet.radius * 6.5);
+                this.orbitE = randRange(rng, 0.01, 0.12);
+                this.orbitSpeed = randRange(rng, 0.7, 1.5) / Math.sqrt(this.orbitA);
+                this.orbitPhase = randRange(rng, 0, Math.PI * 2);
+                this.surfaceSeed = randInt(rng, 0, 99999);
+                this.colorBase = `hsl(${randRange(rng, 20, 60)}, 30%, 70%)`;
+                this.name = `Moon ${planet.index + 1}.${index + 1}`;
+            }
+        }
+
+        // --- Solar System Generation ---
+        function generateSystem(seed) {
+            let rng = mulberry32(seed);
+            let star = new Star(rng);
+            let planetCount = randInt(rng, 3, 9);
+            let planets = [];
+            for (let i = 0; i < planetCount; i++) {
+                let p = new Planet(rng, i, star);
+                if (p.hasMoons) {
+                    let moonCount = randInt(rng, 1, 3);
+                    for (let m = 0; m < moonCount; m++) {
+                        p.moons.push(new Moon(rng, p, m));
+                    }
+                }
+                planets.push(p);
+            }
+            return { star, planets, seed };
+        }
+
+        // --- Rendering ---
+        const canvas = document.getElementById('solar-canvas');
+        const ctx = canvas.getContext('2d');
+        let W = window.innerWidth, H = window.innerHeight;
+        function resize() {
+            W = window.innerWidth; H = window.innerHeight;
+            canvas.width = W; canvas.height = H;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- Parallax Stars & Dust ---
+        function drawBackground(rng, cam, time) {
+            ctx.save();
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = '#0a0e1a';
+            ctx.fillRect(0, 0, W, H);
+            // Parallax stars
+            for (let layer = 0; layer < 3; layer++) {
+                let starCount = [60, 40, 20][layer];
+                let depth = [0.2, 0.5, 0.8][layer];
+                ctx.save();
+                ctx.globalAlpha = 0.18 + 0.08 * layer;
+                for (let i = 0; i < starCount; i++) {
+                    let sx = rng() * 2 - 1, sy = rng() * 2 - 1;
+                    let px = W / 2 + (sx * W * 0.7 - cam.cx * depth * cam.zoom * 0.7);
+                    let py = H / 2 + (sy * H * 0.7 - cam.cy * depth * cam.zoom * 0.7);
+                    let r = 0.7 + rng() * 1.7 * (1.2 - depth);
+                    ctx.beginPath();
+                    ctx.arc(px, py, r, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsl(${220 + rng() * 80}, 60%, ${80 - layer * 18}%)`;
+                    ctx.shadowColor = '#fff';
+                    ctx.shadowBlur = 6 + 8 * (1 - depth);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+            // Dust clouds
+            ctx.save();
+            ctx.globalAlpha = 0.13;
+            for (let i = 0; i < 7; i++) {
+                let dx = Math.sin(time * 0.0002 + i) * 0.3 + rng() * 1.2 - 0.6;
+                let dy = Math.cos(time * 0.00018 + i * 1.3) * 0.3 + rng() * 1.2 - 0.6;
+                let px = W / 2 + dx * W * 0.7 - cam.cx * 0.3 * cam.zoom;
+                let py = H / 2 + dy * H * 0.7 - cam.cy * 0.3 * cam.zoom;
+                let r = W * 0.22 + rng() * W * 0.13;
+                let grad = ctx.createRadialGradient(px, py, r * 0.2, px, py, r);
+                grad.addColorStop(0, `hsla(${220 + rng() * 60}, 80%, 60%, 0.18)`);
+                grad.addColorStop(1, 'rgba(10,14,26,0)');
+                ctx.beginPath();
+                ctx.arc(px, py, r, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+            }
+            ctx.restore();
+            ctx.restore();
+        }
+
+        function worldToScreen(x, y, cam) {
+            // Apply tilt (rotate around X axis)
+            let ct = Math.cos(cam.tilt), st = Math.sin(cam.tilt);
+            let wy = y * ct;
+            let wx = x;
+            let sx = W / 2 + (wx - cam.cx) * cam.zoom;
+            let sy = H / 2 + (wy - cam.cy) * cam.zoom;
+            return [sx, sy];
+        }
+
+        function drawOrbit(cx, cy, a, e, tilt, cam, color, alpha = 0.18) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            for (let t = 0; t <= 1.001; t += 0.012) {
+                let theta = t * Math.PI * 2;
+                let r = keplerEllipse(a, e, theta);
+                let x = cx + r * Math.cos(theta);
+                let y = cy + r * Math.sin(theta);
+                // Apply orbit tilt
+                let yt = y * Math.cos(tilt) - x * Math.sin(tilt);
+                let xt = x * Math.cos(tilt) + y * Math.sin(tilt);
+                let [sx, sy] = worldToScreen(xt, yt, cam);
+                if (t === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawStar(star, cam, time) {
+            let [sx, sy] = worldToScreen(0, 0, cam);
+            let r = star.radius * cam.zoom;
+            // Bloom
+            ctx.save();
+            ctx.globalAlpha = 0.22;
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.arc(sx, sy, r * (1.7 + i * 0.5), 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255,230,120,${0.13 - i * 0.03})`;
+                ctx.fill();
+            }
+            ctx.restore();
+            // Main body
+            let grad = ctx.createRadialGradient(sx, sy, r * 0.1, sx, sy, r);
+            grad.addColorStop(0, '#fffbe6');
+            grad.addColorStop(0.5, star.color);
+            grad.addColorStop(1, 'rgba(255,220,120,0.05)');
+            ctx.beginPath();
+            ctx.arc(sx, sy, r, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.shadowColor = star.color;
+            ctx.shadowBlur = 32 * cam.zoom;
+            ctx.globalAlpha = 1.0;
+            ctx.fill();
+        }
+
+        function drawPlanet(planet, pos, cam, time, focused) {
+            let [sx, sy] = worldToScreen(pos.x, pos.y, cam);
+            let r = planet.radius * cam.zoom;
+            // Shadow (eclipse)
+            if (planet.tidallyLocked) {
+                let shadowAngle = Math.atan2(pos.y, pos.x) + Math.PI;
+                ctx.save();
+                ctx.globalAlpha = 0.22;
+                ctx.beginPath();
+                ctx.arc(sx, sy, r * 1.08, shadowAngle - 0.7, shadowAngle + 0.7);
+                ctx.lineTo(sx, sy);
+                ctx.closePath();
+                ctx.fillStyle = '#000';
+                ctx.fill();
+                ctx.restore();
+            }
+            // Main sphere
+            ctx.save();
+            ctx.globalAlpha = focused ? 1.0 : 0.92;
+            let grad = ctx.createRadialGradient(sx - r * 0.25, sy - r * 0.32, r * 0.2, sx, sy, r);
+            grad.addColorStop(0, '#fff');
+            grad.addColorStop(0.18, planet.colorBase);
+            grad.addColorStop(0.95, '#222');
+            grad.addColorStop(1, 'rgba(0,0,0,0.7)');
+            ctx.beginPath();
+            ctx.arc(sx, sy, r, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.shadowColor = planet.colorBase;
+            ctx.shadowBlur = focused ? 24 * cam.zoom : 8 * cam.zoom;
+            ctx.fill();
+            // Surface texture
+            ctx.globalAlpha = 0.45;
+            if (planet.type === 'rocky' || planet.type === 'oceanic') {
+                for (let i = 0; i < 18; i++) {
+                    let ang = (i / 18) * Math.PI * 2 + time * 0.0001 * planet.rotationSpeed;
+                    let px = sx + Math.cos(ang) * r * randRange(mulberry32(planet.surfaceSeed + i), 0.7, 1.0);
+                    let py = sy + Math.sin(ang) * r * randRange(mulberry32(planet.surfaceSeed + i * 2), 0.7, 1.0);
+                    let cr = r * randRange(mulberry32(planet.surfaceSeed + i * 3), 0.08, 0.18);
+                    ctx.beginPath();
+                    ctx.arc(px, py, cr, 0, Math.PI * 2);
+                    ctx.fillStyle = planet.type === 'rocky' ? '#b8b6a0' : '#3a7fd7';
+                    ctx.fill();
+                }
+            } else if (planet.type === 'gas') {
+                for (let i = 0; i < 8; i++) {
+                    let bandY = sy + (i - 4) * r * 0.22 + Math.sin(time * 0.0002 + i) * r * 0.04;
+                    let grad2 = ctx.createLinearGradient(sx - r, bandY, sx + r, bandY);
+                    grad2.addColorStop(0, 'rgba(255,255,255,0.08)');
+                    grad2.addColorStop(0.5, planet.colorBase);
+                    grad2.addColorStop(1, 'rgba(0,0,0,0.13)');
+                    ctx.fillStyle = grad2;
+                    ctx.fillRect(sx - r, bandY - r * 0.07, r * 2, r * 0.14);
+                }
+                // Rim glow
+                ctx.save();
+                ctx.globalAlpha = 0.22;
+                ctx.beginPath();
+                ctx.arc(sx, sy, r * 1.08, 0, Math.PI * 2);
+                ctx.strokeStyle = planet.colorBase;
+                ctx.lineWidth = r * 0.13;
+                ctx.shadowColor = planet.colorBase;
+                ctx.shadowBlur = r * 0.18;
+                ctx.stroke();
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        function drawMoon(moon, pos, cam, time) {
+            let [sx, sy] = worldToScreen(pos.x, pos.y, cam);
+            let r = moon.radius * cam.zoom;
+            ctx.save();
+            let grad = ctx.createRadialGradient(sx - r * 0.18, sy - r * 0.22, r * 0.2, sx, sy, r);
+            grad.addColorStop(0, '#fff');
+            grad.addColorStop(0.2, moon.colorBase);
+            grad.addColorStop(1, '#222');
+            ctx.beginPath();
+            ctx.arc(sx, sy, r, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.shadowColor = moon.colorBase;
+            ctx.shadowBlur = 6 * cam.zoom;
+            ctx.globalAlpha = 0.92;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // --- Main Simulation State ---
+        let systemSeed = Math.floor(Math.random() * 1e9);
+        let system = generateSystem(systemSeed);
+        let cam = new Camera();
+        cam.zoom = 1.0; cam.target.zoom = 1.0;
+        let timeSpeed = 1.0;
+        let timeSpeedOptions = [1, 5, 50];
+        let timeSpeedIndex = 0;
+        let focusedPlanet = null;
+        let animTime = 0;
+
+        function regenerate(seed) {
+            systemSeed = seed;
+            system = generateSystem(systemSeed);
+            cam = new Camera();
+            cam.zoom = 1.0; cam.target.zoom = 1.0;
+            focusedPlanet = null;
+            hidePanel();
+        }
+
+        // --- Animation Loop ---
+        function animate(ts) {
+            requestAnimationFrame(animate);
+            let dt = 16 * timeSpeed;
+            animTime += dt;
+            cam.update(dt / 1000);
+            let rng = mulberry32(system.seed);
+            drawBackground(rng, cam, animTime);
+            drawStar(system.star, cam, animTime);
+            // Draw orbits
+            for (let p of system.planets) {
+                drawOrbit(0, 0, p.orbitA, p.orbitE, p.orbitTilt + cam.tilt, cam, '#b0c6ff', 0.13);
+                for (let m of p.moons) {
+                    let planetPos = getPlanetPos(p, animTime);
+                    drawOrbit(planetPos.x, planetPos.y, m.orbitA, m.orbitE, 0, cam, '#a0b0c0', 0.09);
+                }
+            }
+            // Draw planets and moons
+            for (let p of system.planets) {
+                let pos = getPlanetPos(p, animTime);
+                drawPlanet(p, pos, cam, animTime, focusedPlanet === p);
+                for (let m of p.moons) {
+                    let moonPos = getMoonPos(m, pos, animTime, p);
+                    drawMoon(m, moonPos, cam, animTime);
+                }
+            }
+        }
+
+        function getPlanetPos(p, t) {
+            let theta = p.orbitPhase + t * 0.00009 * p.orbitSpeed * (p.tidallyLocked ? 0.7 : 1);
+            let r = keplerEllipse(p.orbitA, p.orbitE, theta);
+            let x = Math.cos(theta) * r;
+            let y = Math.sin(theta) * r;
+            // Orbit tilt
+            let yt = y * Math.cos(p.orbitTilt) - x * Math.sin(p.orbitTilt);
+            let xt = x * Math.cos(p.orbitTilt) + y * Math.sin(p.orbitTilt);
+            return { x: xt, y: yt };
+        }
+        function getMoonPos(m, planetPos, t, planet) {
+            let theta = m.orbitPhase + t * 0.0002 * m.orbitSpeed + Math.sin(t * 0.0001 + m.orbitA) * 0.03 * (planet.mass / 30);
+            let r = keplerEllipse(m.orbitA, m.orbitE, theta);
+            let x = planetPos.x + Math.cos(theta) * r;
+            let y = planetPos.y + Math.sin(theta) * r;
+            return { x, y };
+        }
+
+        // --- Interaction ---
+        let dragging = false, lastX = 0, lastY = 0, dragStartTilt = 0;
+        canvas.addEventListener('mousedown', e => {
+            dragging = true;
+            lastX = e.clientX; lastY = e.clientY;
+            dragStartTilt = cam.target.tilt;
+        });
+        window.addEventListener('mousemove', e => {
+            if (dragging) {
+                let dx = e.clientY - lastY;
+                cam.target.tilt = clamp(dragStartTilt + dx * 0.008, -1.1, 1.1);
+            }
+        });
+        window.addEventListener('mouseup', e => { dragging = false; });
+        canvas.addEventListener('wheel', e => {
+            cam.target.zoom = clamp(cam.target.zoom * (1 - e.deltaY * 0.001), 0.18, 3.5);
+        });
+        canvas.addEventListener('click', e => {
+            let mx = e.clientX, my = e.clientY;
+            let found = null;
+            for (let p of system.planets) {
+                let pos = getPlanetPos(p, animTime);
+                let [sx, sy] = worldToScreen(pos.x, pos.y, cam);
+                let r = p.radius * cam.zoom;
+                if (Math.hypot(mx - sx, my - sy) < r * 1.1) {
+                    found = p; break;
+                }
+            }
+            if (found) {
+                focusedPlanet = found;
+                cam.setTarget(getPlanetPos(found, animTime).x, getPlanetPos(found, animTime).y, 0.7, cam.tilt);
+                showPanel(found);
+            } else {
+                focusedPlanet = null;
+                cam.setTarget(0, 0, 1.0, cam.tilt);
+                hidePanel();
+            }
+        });
+        window.addEventListener('keydown', e => {
+            if (e.key === 'r' || e.key === 'R') {
+                regenerate(Math.floor(Math.random() * 1e9));
+            } else if (e.key === 't' || e.key === 'T') {
+                timeSpeedIndex = (timeSpeedIndex + 1) % timeSpeedOptions.length;
+                timeSpeed = timeSpeedOptions[timeSpeedIndex];
+            }
+        });
+
+        // --- UI Panel ---
+        const panel = document.getElementById('ui-panel');
+        function showPanel(planet) {
+            panel.innerHTML = `<h2>${planet.name}</h2>
+    <table>
+      <tr><td class="label">Type</td><td>${planet.type.charAt(0).toUpperCase() + planet.type.slice(1)}</td></tr>
+      <tr><td class="label">Radius</td><td>${planet.radius.toFixed(1)} km</td></tr>
+      <tr><td class="label">Mass</td><td>${planet.mass.toFixed(2)} × Earth</td></tr>
+      <tr><td class="label">Orbital Period</td><td>${planet.orbitalPeriod.toFixed(2)} days</td></tr>
+      <tr><td class="label">Temperature</td><td>${planet.temp.toFixed(1)} K</td></tr>
+      <tr><td class="label">Habitability</td><td>${(planet.habitability * 100).toFixed(1)}%</td></tr>
+      <tr><td class="label">Moons</td><td>${planet.moons.length}</td></tr>
+      <tr><td class="label">Tidally Locked</td><td>${planet.tidallyLocked ? 'Yes' : 'No'}</td></tr>
+      <tr><td class="label">Axial Tilt</td><td>${(planet.axialTilt * 57.3).toFixed(1)}°</td></tr>
+    </table>`;
+            panel.classList.add('visible');
+        }
+        function hidePanel() {
+            panel.classList.remove('visible');
+        }
+
+        // --- Start ---
+        requestAnimationFrame(animate);
+    </script>
+</body>
+
+</html>

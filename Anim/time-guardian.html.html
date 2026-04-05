@@ -1,0 +1,1009 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Time Guardian Ribbon — Canvas 2D</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #05060c;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .hint {
+      position: fixed;
+      left: 14px;
+      bottom: 12px;
+      font: 12px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: rgba(220, 230, 255, 0.55);
+      user-select: none;
+      pointer-events: none;
+      text-shadow: 0 0 10px rgba(80, 140, 255, 0.25);
+      letter-spacing: 0.2px;
+      white-space: pre;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="c"></canvas>
+  <div class="hint">Move: bend ribbon • Click: time pulse • Wheel: temporal phase (slow ↔ hyper)</div>
+
+  <script>
+    (() => {
+      // =========================
+      // Canvas / DPR / Resize
+      // =========================
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d', { alpha: true });
+
+      let W = 0, H = 0, DPR = 1;
+      function resize() {
+        DPR = Math.min(2, window.devicePixelRatio || 1);
+        W = Math.floor(innerWidth);
+        H = Math.floor(innerHeight);
+        canvas.width = Math.floor(W * DPR);
+        canvas.height = Math.floor(H * DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+      window.addEventListener('resize', resize, { passive: true });
+      resize();
+
+      // =========================
+      // Helpers
+      // =========================
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smoothstep = (t) => t * t * (3 - 2 * t);
+      const hypot = Math.hypot;
+
+      // Fast hash/value noise (no libs)
+      function hash1(n) {
+        // deterministic pseudo-random in [0,1)
+        n = (n ^ 61) ^ (n >>> 16);
+        n = n + (n << 3);
+        n = n ^ (n >>> 4);
+        n = Math.imul(n, 0x27d4eb2d);
+        n = n ^ (n >>> 15);
+        return (n >>> 0) / 4294967296;
+      }
+      function noise1(x) {
+        const i = Math.floor(x);
+        const f = x - i;
+        const a = hash1(i);
+        const b = hash1(i + 1);
+        return lerp(a, b, smoothstep(f));
+      }
+      function fbm1(x) {
+        // fractal brownian motion
+        let v = 0, amp = 0.55, freq = 1.0;
+        for (let i = 0; i < 4; i++) {
+          v += amp * (noise1(x * freq) * 2 - 1);
+          freq *= 2.0;
+          amp *= 0.5;
+        }
+        return v;
+      }
+
+      function hsla(h, s, l, a) {
+        return `hsla(${h | 0},${s}%,${l}%,${a})`;
+      }
+
+      // =========================
+      // Interaction state
+      // =========================
+      const mouse = {
+        x: W * 0.5, y: H * 0.5,
+        vx: 0, vy: 0,
+        down: false,
+      };
+
+      let lastMX = mouse.x, lastMY = mouse.y;
+      window.addEventListener('pointermove', (e) => {
+        const x = e.clientX, y = e.clientY;
+        mouse.vx = x - lastMX;
+        mouse.vy = y - lastMY;
+        lastMX = x; lastMY = y;
+        mouse.x = x; mouse.y = y;
+      }, { passive: true });
+
+      window.addEventListener('pointerdown', () => {
+        mouse.down = true;
+        triggerPulse();
+      }, { passive: true });
+      window.addEventListener('pointerup', () => mouse.down = false, { passive: true });
+
+      // Wheel controls temporal phase / speed
+      let timeScaleTarget = 1.0;
+      let timeScale = 1.0;
+      window.addEventListener('wheel', (e) => {
+        // invert: wheel up => faster, wheel down => slower
+        const delta = -Math.sign(e.deltaY) * 0.12;
+        timeScaleTarget = clamp(timeScaleTarget * (1 + delta), 0.15, 3.2);
+      }, { passive: true });
+
+      // Pulse: slows shards & boosts trails briefly
+      let pulse = 0;          // 0..1
+      let pulseDir = 1;       // direction along ribbon particles
+      function triggerPulse() {
+        pulse = 1.0;
+        pulseDir = (Math.random() < 0.5) ? 1 : -1;
+      }
+
+      // =========================
+      // Background: dust + grid distortions
+      // =========================
+      const dust = [];
+      const DUST_N = 180;
+      for (let i = 0; i < DUST_N; i++) {
+        dust.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          r: 0.5 + Math.random() * 1.6,
+          a: 0.05 + Math.random() * 0.14,
+          vx: -4 + Math.random() * 8,
+          vy: -6 + Math.random() * 12,
+          tw: Math.random() * 10,
+        });
+      }
+
+      // =========================
+      // Ribbon definition
+      // =========================
+      const ribbon = {
+        n: 34,                 // control points count
+        ctrl: [],
+        prevY: [],
+        poly: [],              // densified polyline for collision/drawing
+        polyT: [],             // thickness per poly point
+        polyS: [],             // arc-length cumulative (0..1)
+        phase: 0,              // temporal phase offset
+        baseY: 0,
+        amp: 0,
+        thickness: 12,
+        flow: 0,               // motion intensity
+      };
+
+      function initRibbon() {
+        ribbon.ctrl.length = 0;
+        ribbon.prevY.length = 0;
+        for (let i = 0; i < ribbon.n; i++) {
+          const x = (i / (ribbon.n - 1)) * W;
+          const y = H * 0.5;
+          ribbon.ctrl.push({ x, y });
+          ribbon.prevY.push(y);
+        }
+      }
+      initRibbon();
+
+      // Catmull-Rom interpolation helper
+      function catmullRom(p0, p1, p2, p3, t) {
+        const t2 = t * t, t3 = t2 * t;
+        return 0.5 * (
+          (2 * p1) +
+          (-p0 + p2) * t +
+          (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+          (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+        );
+      }
+
+      function rebuildRibbonPolyline(dt, tNow) {
+        // base parameters
+        ribbon.baseY = H * (0.48 + 0.04 * Math.sin(tNow * 0.08));
+        ribbon.amp = Math.max(26, Math.min(H * 0.16, 90 + 40 * Math.sin(tNow * 0.11)));
+        ribbon.thickness = 10 + 4 * Math.sin(tNow * 0.15) + 4 * (timeScale - 1) * 0.7;
+        ribbon.phase += dt * (0.18 + 0.22 * timeScale);
+        // smooth timeScale
+        timeScale = lerp(timeScale, timeScaleTarget, 1 - Math.pow(0.0008, dt)); // exp smoothing
+
+        // Mouse influence: localized bend (gaussian)
+        const mx = mouse.x, my = mouse.y;
+        const influenceX = mx / Math.max(1, W);
+        const bendStrength = 0.36;
+        const sigma = W * 0.18;
+        const flowPush = clamp(mouse.vx / 80, -1.0, 1.0);
+
+        // Build control points Y as a living waveform.
+        let totalFlow = 0;
+        for (let i = 0; i < ribbon.n; i++) {
+          const u = i / (ribbon.n - 1);
+          const x = u * W;
+
+          const nx = (u * 3.8) + ribbon.phase;
+          const wobble = fbm1(nx) * ribbon.amp;
+
+          const distX = (x - mx);
+          const g = Math.exp(-(distX * distX) / (2 * sigma * sigma)); // gaussian weight
+          const bend = g * (my - ribbon.baseY) * bendStrength;
+
+          // "manipulating current": mouse motion slightly biases phase
+          const current = g * flowPush * 0.6;
+
+          const y = ribbon.baseY + wobble + bend + current * ribbon.amp * 0.2;
+          ribbon.ctrl[i].x = x;
+          ribbon.ctrl[i].y = y;
+
+          // flow magnitude from velocity
+          const vy = (y - ribbon.prevY[i]) / Math.max(1e-6, dt);
+          totalFlow += Math.abs(vy);
+          ribbon.prevY[i] = y;
+        }
+        ribbon.flow = lerp(ribbon.flow, totalFlow / ribbon.n, 0.08);
+
+        // Densify into polyline + thickness per point
+        ribbon.poly.length = 0;
+        ribbon.polyT.length = 0;
+
+        const sub = 12; // subdivisions per segment
+        for (let i = 0; i < ribbon.n - 1; i++) {
+          // indices for p0..p3 (clamped)
+          const i0 = Math.max(0, i - 1);
+          const i1 = i;
+          const i2 = i + 1;
+          const i3 = Math.min(ribbon.n - 1, i + 2);
+
+          const p0 = ribbon.ctrl[i0];
+          const p1 = ribbon.ctrl[i1];
+          const p2 = ribbon.ctrl[i2];
+          const p3 = ribbon.ctrl[i3];
+
+          for (let j = 0; j < sub; j++) {
+            const tt = j / sub;
+            const x = catmullRom(p0.x, p1.x, p2.x, p3.x, tt);
+            const y = catmullRom(p0.y, p1.y, p2.y, p3.y, tt);
+
+            ribbon.poly.push({ x, y });
+
+            // approximate curvature by local finite difference and use it to modulate thickness
+            // We'll compute later more precisely; for now store base and refine with neighbors after.
+            ribbon.polyT.push(ribbon.thickness);
+          }
+        }
+        // Include last point
+        const last = ribbon.ctrl[ribbon.n - 1];
+        ribbon.poly.push({ x: last.x, y: last.y });
+        ribbon.polyT.push(ribbon.thickness);
+
+        // Thickness modulation by curvature & flow
+        const flowBoost = clamp(ribbon.flow / 1100, 0, 1); // scaled to typical dt
+        for (let k = 1; k < ribbon.poly.length - 1; k++) {
+          const a = ribbon.poly[k - 1], b = ribbon.poly[k], c = ribbon.poly[k + 1];
+          const ax = b.x - a.x, ay = b.y - a.y;
+          const bx = c.x - b.x, by = c.y - b.y;
+          const al = Math.max(1e-6, Math.hypot(ax, ay));
+          const bl = Math.max(1e-6, Math.hypot(bx, by));
+          const dot = (ax * bx + ay * by) / (al * bl);
+          const angle = Math.acos(clamp(dot, -1, 1)); // 0..pi
+          const curv = clamp(angle / 1.2, 0, 1);      // normalized
+
+          const w = ribbon.thickness * (0.85 + 0.7 * curv + 0.55 * flowBoost);
+          ribbon.polyT[k] = w;
+        }
+
+        // Build arc-length cumulative for particle travel along ribbon
+        ribbon.polyS.length = 0;
+        let total = 0;
+        ribbon.polyS.push(0);
+        for (let k = 1; k < ribbon.poly.length; k++) {
+          const pA = ribbon.poly[k - 1], pB = ribbon.poly[k];
+          total += Math.hypot(pB.x - pA.x, pB.y - pA.y);
+          ribbon.polyS.push(total);
+        }
+        if (total > 0) {
+          for (let k = 0; k < ribbon.polyS.length; k++) {
+            ribbon.polyS[k] /= total; // 0..1
+          }
+        }
+      }
+
+      // Query ribbon y & thickness at x by searching nearest poly points (monotonic x)
+      function ribbonAtX(x) {
+        const poly = ribbon.poly;
+        if (!poly.length) return { y: H * 0.5, t: ribbon.thickness };
+        // binary-ish: since x increases with k
+        let lo = 0, hi = poly.length - 1;
+        while (hi - lo > 12) {
+          const mid = (lo + hi) >> 1;
+          if (poly[mid].x < x) lo = mid;
+          else hi = mid;
+        }
+        // linear scan within bracket
+        let bestK = lo;
+        let bestDx = Infinity;
+        for (let k = lo; k <= hi; k++) {
+          const dx = Math.abs(poly[k].x - x);
+          if (dx < bestDx) { bestDx = dx; bestK = k; }
+        }
+        return { y: poly[bestK].y, t: ribbon.polyT[bestK], k: bestK };
+      }
+
+      // Nearest point on ribbon polyline to a given (x,y) by local window search
+      function nearestOnRibbon(x, y) {
+        // pick approximate index by x
+        const rx = ribbonAtX(x);
+        let k0 = rx.k ?? 0;
+        const poly = ribbon.poly;
+        let bestK = clamp(k0, 0, poly.length - 1);
+        let bestD = Infinity;
+        const span = 40; // local window
+        const a = clamp(bestK - span, 0, poly.length - 1);
+        const b = clamp(bestK + span, 0, poly.length - 1);
+        for (let k = a; k <= b; k++) {
+          const dx = poly[k].x - x;
+          const dy = poly[k].y - y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < bestD) {
+            bestD = d2;
+            bestK = k;
+          }
+        }
+        return {
+          k: bestK,
+          x: poly[bestK].x,
+          y: poly[bestK].y,
+          s: ribbon.polyS[bestK] || 0,
+          t: ribbon.polyT[bestK] || ribbon.thickness,
+          d: Math.sqrt(bestD)
+        };
+      }
+
+      // =========================
+      // Shards (fall inward from top & bottom)
+      // =========================
+      const shards = [];
+      const shardParticles = []; // dissolved particles traveling along ribbon
+      const freeParticles = [];  // micro-sparks on dissolve
+
+      function makeShard(side, tNow) {
+        const x = Math.random() * W;
+        const y = (side === 'top') ? (-20 - Math.random() * 60) : (H + 20 + Math.random() * 60);
+        const baseSpeed = 40 + Math.random() * 140;
+        const vx = (-30 + Math.random() * 60) * (0.4 + Math.random());
+        const vy = (side === 'top') ? baseSpeed : -baseSpeed;
+
+        const typeRand = Math.random();
+        let kind = 'tri';
+        if (typeRand < 0.33) kind = 'tri';
+        else if (typeRand < 0.66) kind = 'line';
+        else kind = 'poly';
+
+        // local geometry
+        let pts = [];
+        const scale = 7 + Math.random() * 18;
+        if (kind === 'tri') {
+          pts = [
+            { x: 0, y: -1.0 },
+            { x: 0.85, y: 0.75 },
+            { x: -0.85, y: 0.75 }
+          ];
+        } else if (kind === 'line') {
+          pts = [
+            { x: -1.0, y: -0.15 },
+            { x: 1.0, y: 0.15 },
+            { x: 0.8, y: 0.35 },
+            { x: -0.8, y: -0.35 },
+          ];
+        } else {
+          const n = 4 + (Math.random() * 4 | 0);
+          for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 + Math.random() * 0.55;
+            const r = 0.6 + Math.random() * 0.6;
+            pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+          }
+        }
+
+        return {
+          x, y,
+          vx, vy,
+          ax: 0, ay: 0,
+          r: scale,
+          rot: Math.random() * Math.PI * 2,
+          av: (-1 + Math.random() * 2) * (0.9 + Math.random() * 1.2),
+          kind, pts,
+          side, // 'top' or 'bottom' for containment
+          seed: Math.random() * 1000,
+          life: 0,
+          hueBias: Math.random() * 30,
+          wob: 0.6 + Math.random() * 1.4,
+          // acceleration curve parameters (unstable gravity)
+          gBase: 60 + Math.random() * 260,
+        };
+      }
+
+      function spawnShards(tNow, dt) {
+        // spawn rate scales with speed and pulse
+        const density = lerp(0.9, 2.0, clamp((timeScale - 1) / 2.2, 0, 1));
+        const pulseDensity = 1 + pulse * 0.6;
+        const rate = 10.5 * density * pulseDensity; // shards/sec (split across top/bottom)
+        const expected = rate * dt;
+        let count = Math.floor(expected);
+        if (Math.random() < (expected - count)) count++;
+
+        for (let i = 0; i < count; i++) {
+          const side = (Math.random() < 0.5) ? 'top' : 'bottom';
+          shards.push(makeShard(side, tNow));
+        }
+
+        // cap to keep performance stable
+        if (shards.length > 520) shards.splice(0, shards.length - 520);
+      }
+
+      // Dissolve into (a) particles that travel along ribbon (b) free sparks
+      function absorbShard(sh) {
+        const near = nearestOnRibbon(sh.x, sh.y);
+        const baseHue = paletteHue + 20 + sh.hueBias;
+
+        // ribbon-travel particles
+        const n = 10 + (Math.random() * 14 | 0);
+        for (let i = 0; i < n; i++) {
+          const dir = (Math.random() < 0.5 ? 1 : -1) * (pulseDir || 1);
+          shardParticles.push({
+            s: near.s,
+            k: near.k,
+            // move along arc-length, not x
+            v: dir * (0.07 + Math.random() * 0.16) * (0.9 + timeScale * 0.25),
+            // lateral jitter
+            off: (-1 + Math.random() * 2) * (near.t * 0.45),
+            offv: (-1 + Math.random() * 2) * 26,
+            size: 1.2 + Math.random() * 2.6,
+            a: 0.95,
+            da: 0.7 + Math.random() * 1.3,
+            hue: baseHue + (-10 + Math.random() * 20),
+            sat: 80,
+            lum: 60,
+            tw: Math.random() * 10,
+          });
+        }
+
+        // free sparks
+        const m = 8 + (Math.random() * 14 | 0);
+        for (let i = 0; i < m; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const sp = 40 + Math.random() * 220;
+          freeParticles.push({
+            x: sh.x, y: sh.y,
+            vx: Math.cos(ang) * sp + sh.vx * 0.2,
+            vy: Math.sin(ang) * sp + sh.vy * 0.2,
+            a: 0.9,
+            r: 0.8 + Math.random() * 2.2,
+            hue: baseHue + (-18 + Math.random() * 36),
+          });
+        }
+      }
+
+      // =========================
+      // Glitch / performance sensing
+      // =========================
+      let slowMeter = 0;     // accumulates when dt is high
+      let glitch = 0;        // 0..1
+      function updateLoad(dt) {
+        // dt is in seconds
+        const ms = dt * 1000;
+        const heavy = ms > 28 ? 1 : 0;
+        slowMeter = clamp(slowMeter + (heavy ? 0.035 : -0.02), 0, 1);
+        // occasional spike when heavy
+        if (slowMeter > 0.55 && Math.random() < 0.03) glitch = 1.0;
+        glitch = Math.max(0, glitch - dt * 1.6);
+      }
+
+      // =========================
+      // Palette shift
+      // =========================
+      let paletteHue = 220; // deep blue start
+      function updatePalette(tNow, dt) {
+        // cycle: deep blue (~220) -> violet (~280) -> amber (~40) -> back
+        // use a smooth wandering hue around a looping curve
+        const cycle = (tNow * 0.015) % 1; // slow
+        // Map via smooth segments using sin blend
+        const hueA = 220, hueB = 280, hueC = 40, hueD = 220 + 360;
+        let h;
+        if (cycle < 0.45) {
+          const t = smoothstep(cycle / 0.45);
+          h = lerp(hueA, hueB, t);
+        } else if (cycle < 0.78) {
+          const t = smoothstep((cycle - 0.45) / (0.33));
+          h = lerp(hueB, hueC, t);
+        } else {
+          const t = smoothstep((cycle - 0.78) / (0.22));
+          h = lerp(hueC, hueD, t);
+        }
+        paletteHue = (h % 360 + 360) % 360;
+      }
+
+      // =========================
+      // Draw: background, ribbon, shards, particles
+      // =========================
+      function drawBackground(tNow, dt) {
+        // Motion trails base: adaptive alpha
+        const trailBase = lerp(0.08, 0.16, clamp((timeScale - 1) / 2.2, 0, 1));
+        const pulseTrail = pulse * 0.10;
+        // lower alpha => longer trails
+        const a = clamp(trailBase - pulseTrail, 0.035, 0.18);
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = `rgba(4,6,12,${a})`;
+        ctx.fillRect(0, 0, W, H);
+
+        // faint vignette
+        const g = ctx.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.1, W * 0.5, H * 0.5, Math.max(W, H) * 0.72);
+        g.addColorStop(0, 'rgba(0,0,0,0.0)');
+        g.addColorStop(1, 'rgba(0,0,0,0.22)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+
+        // grid distortions
+        const gridStep = clamp(Math.min(W, H) / 14, 44, 86);
+        const warp = 4 + 7 * slowMeter + 9 * pulse;
+        ctx.save();
+        ctx.globalAlpha = 0.16;
+        ctx.strokeStyle = hsla(paletteHue + 10, 50, 55, 0.17);
+        ctx.lineWidth = 1;
+
+        const ox = (fbm1(tNow * 0.12) * warp);
+        const oy = (fbm1(tNow * 0.13 + 40) * warp);
+
+        for (let x = -gridStep; x <= W + gridStep; x += gridStep) {
+          ctx.beginPath();
+          const n = 10;
+          for (let i = 0; i <= n; i++) {
+            const yy = (i / n) * H;
+            const dx = fbm1(x * 0.02 + yy * 0.01 + tNow * 0.22) * warp;
+            const dy = fbm1(x * 0.017 + yy * 0.013 + tNow * 0.18 + 99) * warp * 0.6;
+            const px = x + ox + dx;
+            const py = yy + oy + dy;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        }
+        for (let y = -gridStep; y <= H + gridStep; y += gridStep) {
+          ctx.beginPath();
+          const n = 12;
+          for (let i = 0; i <= n; i++) {
+            const xx = (i / n) * W;
+            const dx = fbm1(xx * 0.01 + y * 0.02 + tNow * 0.20 + 7) * warp * 0.7;
+            const dy = fbm1(xx * 0.013 + y * 0.017 + tNow * 0.17 + 11) * warp;
+            const px = xx + ox + dx;
+            const py = y + oy + dy;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // dust particles
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const d of dust) {
+          d.tw += dt * (0.6 + Math.random() * 0.2);
+          d.x += d.vx * dt * 0.7;
+          d.y += d.vy * dt * 0.7;
+
+          // gentle drift, wrap
+          if (d.x < -30) d.x = W + 30;
+          if (d.x > W + 30) d.x = -30;
+          if (d.y < -30) d.y = H + 30;
+          if (d.y > H + 30) d.y = -30;
+
+          const tw = 0.5 + 0.5 * Math.sin(d.tw);
+          const hue = paletteHue + 20 + 20 * tw;
+          ctx.fillStyle = hsla(hue, 60, 60, d.a * (0.55 + tw * 0.7));
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, d.r * (0.85 + tw * 0.5), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawRibbon(tNow, dt) {
+        const poly = ribbon.poly;
+        if (poly.length < 2) return;
+
+        // core + glow with additive blending
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        // Color dynamics
+        const hue = paletteHue;
+        const hue2 = (hue + 30) % 360;
+        const hue3 = (hue + 75) % 360;
+
+        // "Glow intensity responds to motion and interaction"
+        const flow = clamp(ribbon.flow / 1100, 0, 1);
+        const glowBoost = 0.35 + flow * 0.65 + pulse * 0.9;
+
+        // under glitch, introduce chromatic separation
+        const doChrom = (glitch > 0.1) || (slowMeter > 0.65 && Math.random() < 0.02);
+        const chromOff = (doChrom ? (1.5 + 6.0 * slowMeter + 4.0 * glitch) : 0);
+
+        // draw multi-pass segmented strokes with varying width
+        function strokePass(offsetX, offsetY, h, alphaMul, widthMul) {
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = hsla(h, 85, 60, 0.10 * glowBoost * alphaMul);
+          for (let k = 1; k < poly.length; k++) {
+            const a = poly[k - 1], b = poly[k];
+            const w = ribbon.polyT[k] * widthMul;
+            ctx.lineWidth = w;
+
+            ctx.beginPath();
+            ctx.moveTo(a.x + offsetX, a.y + offsetY);
+            ctx.lineTo(b.x + offsetX, b.y + offsetY);
+            ctx.stroke();
+          }
+        }
+
+        // Outer glow layers
+        strokePass(0, 0, hue3, 0.55, 2.5);
+        strokePass(0, 0, hue2, 0.70, 1.8);
+        strokePass(0, 0, hue, 0.95, 1.15);
+
+        // Core filament
+        ctx.strokeStyle = hsla(hue, 95, 70, 0.35 + 0.18 * pulse);
+        for (let k = 1; k < poly.length; k++) {
+          const a = poly[k - 1], b = poly[k];
+          ctx.lineWidth = Math.max(1.2, ribbon.polyT[k] * 0.30);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+
+        // Chromatic separation (glitch-like)
+        if (chromOff > 0) {
+          strokePass(-chromOff, 0, (hue + 0) % 360, 0.7, 0.95);
+          strokePass(+chromOff, 0, (hue + 110) % 360, 0.55, 0.90);
+          strokePass(0, -chromOff * 0.6, (hue + 220) % 360, 0.40, 0.90);
+        }
+
+        // Pulse ripple along ribbon: occasional bright beads
+        if (pulse > 0.02) {
+          const beadCount = 32;
+          for (let i = 0; i < beadCount; i++) {
+            const s = (i / (beadCount - 1));
+            // locate nearest poly index by s
+            // quick search (polyS monotonic)
+            let lo = 0, hi = ribbon.polyS.length - 1;
+            while (hi - lo > 10) {
+              const mid = (lo + hi) >> 1;
+              if (ribbon.polyS[mid] < s) lo = mid; else hi = mid;
+            }
+            let best = lo, bestD = 1e9;
+            for (let k = lo; k <= hi; k++) {
+              const d = Math.abs(ribbon.polyS[k] - s);
+              if (d < bestD) { bestD = d; best = k; }
+            }
+            const p = ribbon.poly[best];
+            const jitter = fbm1(s * 12 + tNow * 2.2) * 2.0;
+            const rr = 1.6 + 4.0 * pulse + 2.0 * Math.abs(jitter);
+            ctx.fillStyle = hsla(hue2, 95, 70, 0.10 + 0.25 * pulse);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        ctx.restore();
+      }
+
+      function drawShard(sh, tNow) {
+        // shards glow + trails use additive pass
+        const hue = (paletteHue + 60 + sh.hueBias) % 360;
+        const alpha = clamp(0.10 + 0.15 * (1 - slowMeter) + 0.25 * pulse, 0.08, 0.46);
+
+        ctx.save();
+        ctx.translate(sh.x, sh.y);
+        ctx.rotate(sh.rot);
+
+        // slight distortion (unstable)
+        const warp = 0.12 * Math.sin(tNow * 1.6 + sh.seed);
+        const sx = 1 + warp;
+        const sy = 1 - warp * 0.8;
+        ctx.scale(sx, sy);
+
+        // outer glow stroke
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        // draw polygon path
+        const pts = sh.pts;
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+          const px = pts[i].x * sh.r;
+          const py = pts[i].y * sh.r;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = hsla(hue, 90, 65, alpha * 0.85);
+        ctx.stroke();
+
+        ctx.lineWidth = 6.5;
+        ctx.strokeStyle = hsla(hue, 85, 60, alpha * 0.22);
+        ctx.stroke();
+
+        // internal filament
+        ctx.lineWidth = 1.1;
+        ctx.strokeStyle = hsla(hue + 30, 95, 75, alpha * 0.75);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      function drawShardParticles() {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        for (const p of shardParticles) {
+          // locate poly point by s
+          // binary search in polyS
+          const S = ribbon.polyS;
+          if (!S.length) continue;
+          let lo = 0, hi = S.length - 1;
+          const s = (p.s % 1 + 1) % 1;
+          while (hi - lo > 14) {
+            const mid = (lo + hi) >> 1;
+            if (S[mid] < s) lo = mid;
+            else hi = mid;
+          }
+          let best = lo, bestD = 1e9;
+          for (let k = lo; k <= hi; k++) {
+            const d = Math.abs(S[k] - s);
+            if (d < bestD) { bestD = d; best = k; }
+          }
+          const pt = ribbon.poly[best];
+          if (!pt) continue;
+
+          // normal estimate
+          const a = ribbon.poly[Math.max(0, best - 1)];
+          const b = ribbon.poly[Math.min(ribbon.poly.length - 1, best + 1)];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const len = Math.max(1e-6, Math.hypot(dx, dy));
+          const nx = -dy / len, ny = dx / len;
+
+          const wob = Math.sin(p.tw) * 0.7 + fbm1(s * 18 + p.tw * 0.2) * 0.6;
+          const off = p.off + wob * 3.0;
+
+          const x = pt.x + nx * off;
+          const y = pt.y + ny * off;
+
+          ctx.fillStyle = hsla(p.hue, p.sat, p.lum, p.a);
+          ctx.beginPath();
+          ctx.arc(x, y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+
+          // micro-trail
+          ctx.fillStyle = hsla(p.hue + 25, p.sat, p.lum + 5, p.a * 0.35);
+          ctx.beginPath();
+          ctx.arc(x - dx / len * 3, y - dy / len * 3, p.size * 0.9, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // free sparks
+        for (const f of freeParticles) {
+          ctx.fillStyle = hsla(f.hue, 90, 70, f.a * 0.6);
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      // =========================
+      // Update physics
+      // =========================
+      function updateShards(tNow, dt) {
+        // time pulse slows shards temporarily
+        const pulseSlow = lerp(1.0, 0.22, pulse);
+        const shardDt = dt * pulseSlow;
+
+        const repelK = 2400; // ribbon barrier repulsion
+        const jitterK = 60;
+
+        for (let i = shards.length - 1; i >= 0; i--) {
+          const sh = shards[i];
+          sh.life += shardDt;
+
+          // unstable gravity curve (varies per shard)
+          const g = sh.gBase * (1 + 0.55 * Math.sin(tNow * 0.9 + sh.seed) + 0.25 * Math.sin(tNow * 2.2 + sh.seed * 0.7));
+          // accelerate inward toward ribbon (top -> down, bottom -> up)
+          sh.ay = (sh.side === 'top') ? g : -g;
+
+          // lateral instability
+          const n = fbm1(tNow * 0.7 + sh.seed + sh.life * 0.8) * sh.wob;
+          sh.ax = (n * 220) + (Math.sin(tNow * 1.8 + sh.seed) * 40);
+
+          // integrate
+          sh.vx += sh.ax * shardDt;
+          sh.vy += sh.ay * shardDt;
+
+          // mild drag (stronger when timeScale high to reduce chaos)
+          const drag = 0.06 + 0.03 * clamp((timeScale - 1) / 2.2, 0, 1);
+          sh.vx *= (1 - drag * shardDt);
+          sh.vy *= (1 - drag * shardDt);
+
+          sh.x += sh.vx * shardDt;
+          sh.y += sh.vy * shardDt;
+
+          sh.rot += sh.av * shardDt;
+
+          // wrap horizontally so ribbon stays central actor
+          if (sh.x < -80) sh.x = W + 80;
+          if (sh.x > W + 80) sh.x = -80;
+
+          // containment: shards must never cross ribbon's central path
+          const rx = ribbonAtX(sh.x);
+          const ry = rx.y;
+          const barrier = rx.t * 0.65 + 7; // keep a soft buffer
+
+          // distance to ribbon centerline (approx at x)
+          const dy = sh.y - ry;
+          const sideSign = (sh.side === 'top') ? -1 : +1; // top should stay above (y < ry)
+          const signedDist = dy * sideSign; // positive means on "forbidden" side
+
+          // If too close / touching ribbon: absorb
+          // Use nearest distance for real collision
+          const near = nearestOnRibbon(sh.x, sh.y);
+          const collide = near.d < (near.t * 0.75 + sh.r * 0.12);
+
+          if (collide) {
+            absorbShard(sh);
+            shards.splice(i, 1);
+            continue;
+          }
+
+          // Soft barrier force: prevent crossing
+          // If approaching barrier, push back + damp
+          const distToBoundary = (sh.side === 'top')
+            ? ((ry - barrier) - sh.y)
+            : (sh.y - (ry + barrier));
+
+          if (distToBoundary < 0) {
+            // already inside forbidden zone -> project out and damp
+            if (sh.side === 'top') {
+              sh.y = (ry - barrier) - 1.5;
+              sh.vy = Math.min(sh.vy, 0) * 0.25;
+            } else {
+              sh.y = (ry + barrier) + 1.5;
+              sh.vy = Math.max(sh.vy, 0) * 0.25;
+            }
+          } else if (distToBoundary < barrier * 0.9) {
+            // repel when close
+            const push = (1 - distToBoundary / (barrier * 0.9));
+            const force = repelK * push * push;
+            sh.vy += (sh.side === 'top' ? -force : +force) * shardDt;
+            // small sideways jitter for "unstable gravity"
+            sh.vx += (fbm1(sh.seed + tNow * 2.3) * jitterK) * shardDt;
+          }
+
+          // Remove if too far out vertically (in case)
+          if (sh.y < -200 || sh.y > H + 200) {
+            shards.splice(i, 1);
+          }
+        }
+      }
+
+      function updateRibbonParticles(tNow, dt) {
+        for (let i = shardParticles.length - 1; i >= 0; i--) {
+          const p = shardParticles[i];
+
+          // travel along ribbon
+          p.s += p.v * dt * (0.65 + 0.6 * pulse);
+          p.tw += dt * (1.2 + 1.6 * timeScale);
+
+          // lateral oscillation relax
+          p.off += p.offv * dt;
+          p.offv *= (1 - 3.2 * dt);
+          p.off *= (1 - 1.6 * dt);
+
+          // fade out
+          p.a -= p.da * dt * 0.35 * (0.8 + timeScale * 0.25);
+          if (p.a <= 0) {
+            shardParticles.splice(i, 1);
+          }
+        }
+
+        // free sparks update
+        for (let i = freeParticles.length - 1; i >= 0; i--) {
+          const f = freeParticles[i];
+          // damp + drift + fade
+          f.vx *= (1 - 2.8 * dt);
+          f.vy *= (1 - 2.8 * dt);
+          f.x += f.vx * dt;
+          f.y += f.vy * dt;
+          f.a -= dt * 1.4;
+          if (f.a <= 0) freeParticles.splice(i, 1);
+        }
+
+        // cap to prevent overload
+        if (shardParticles.length > 1300) shardParticles.splice(0, shardParticles.length - 1300);
+        if (freeParticles.length > 900) freeParticles.splice(0, freeParticles.length - 900);
+      }
+
+      // =========================
+      // Main loop (frame-rate independent)
+      // =========================
+      let lastT = performance.now();
+      let t = 0;
+
+      function frame(now) {
+        const rawDt = Math.min(0.05, (now - lastT) / 1000);
+        lastT = now;
+
+        // global time scale for ribbon animation & palette
+        const dt = rawDt * timeScale;
+        t += dt;
+
+        updateLoad(rawDt);         // use raw dt to sense load
+        updatePalette(t, dt);
+
+        // pulse decay
+        if (pulse > 0) {
+          pulse = Math.max(0, pulse - rawDt * 1.45);
+        }
+
+        // rebuild ribbon geometry
+        rebuildRibbonPolyline(rawDt, t);
+
+        // spawn & update shards
+        spawnShards(t, rawDt);
+        updateShards(t, rawDt);
+        updateRibbonParticles(t, rawDt);
+
+        // draw
+        drawBackground(t, rawDt);
+
+        // shards first (so ribbon glows "over" them slightly)
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const sh of shards) drawShard(sh, t);
+        ctx.restore();
+
+        drawRibbon(t, rawDt);
+        drawShardParticles();
+
+        // subtle UI: temporal speed indicator bar
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.55;
+        const barW = 140, barH = 4;
+        const x = 16, y = 16;
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.fillRect(x, y, barW, barH);
+        const p = clamp((Math.log(timeScale) - Math.log(0.15)) / (Math.log(3.2) - Math.log(0.15)), 0, 1);
+        ctx.fillStyle = hsla(paletteHue + 30, 90, 65, 0.55);
+        ctx.fillRect(x, y, barW * p, barH);
+        ctx.restore();
+
+        requestAnimationFrame(frame);
+      }
+
+      requestAnimationFrame(frame);
+
+      // Re-init ribbon on resize
+      const ro = new ResizeObserver(() => {
+        resize();
+        initRibbon();
+      });
+      ro.observe(document.body);
+
+    })();
+  </script>
+</body>
+
+</html>

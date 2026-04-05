@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Work Stream Explorer — v4</title>
+    <style>
+        :root {
+            --bg: #0b1220;
+            --panel: #0f172a;
+            --viewer: #020617;
+            --card: #111827;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --line: #1f2937;
+            --accent: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: grid;
+            grid-template-rows: auto 1fr;
+            overflow: hidden;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(2, 6, 23, .92);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 14px;
+            letter-spacing: .2px;
+            font-weight: 750;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #22d3ee);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, .15);
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            appearance: none;
+            background: rgba(15, 23, 42, .55);
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 7px 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn:hover {
+            border-color: rgba(56, 189, 248, .75);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            height: 100%;
+            min-height: 0;
+        }
+
+        main {
+            padding: 14px;
+            overflow: auto;
+            min-height: 0;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(220px, 1fr));
+            gap: 12px;
+            align-items: start;
+        }
+
+        .column {
+            border: 1px dashed var(--line);
+            border-radius: 16px;
+            background: rgba(15, 23, 42, .30);
+            padding: 10px;
+            min-height: 150px;
+            transition: border-color .12s ease, box-shadow .12s ease, background .12s ease;
+        }
+
+        .column.dragover {
+            border-color: rgba(56, 189, 248, .95);
+            background: rgba(56, 189, 248, .06);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, .10) inset;
+        }
+
+        .colhead {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 4px 10px;
+            gap: 10px;
+        }
+
+        .colhead h2 {
+            margin: 0;
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 750;
+        }
+
+        .empty {
+            color: var(--muted);
+            font-size: 12px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 10px;
+            background: rgba(2, 6, 23, .25);
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 10px;
+            margin: 0 0 9px;
+            cursor: grab;
+            user-select: none;
+            transition: border-color .12s ease, transform .08s ease, box-shadow .12s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(56, 189, 248, .75);
+            box-shadow: 0 10px 26px rgba(0, 0, 0, .25);
+            transform: translateY(-1px);
+        }
+
+        .card.selected {
+            border-color: rgba(56, 189, 248, .95);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, .12) inset, 0 10px 26px rgba(0, 0, 0, .22);
+        }
+
+        .card.ghost {
+            opacity: .55;
+        }
+
+        .title {
+            font-size: 13px;
+            font-weight: 780;
+            margin: 0 0 6px;
+            line-height: 1.25;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 11px;
+            align-items: center;
+        }
+
+        .pill {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 2px 8px;
+            background: rgba(2, 6, 23, .22);
+        }
+
+        aside.viewer {
+            border-left: 1px solid var(--line);
+            background: var(--viewer);
+            padding: 14px;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .viewer-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .viewer-head .label {
+            margin: 0;
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 750;
+        }
+
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.55;
+            color: var(--text);
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            aside.viewer {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1><span class="dot"></span>Work Stream Explorer <span style="color:var(--muted);font-weight:750">v4</span>
+        </h1>
+        <span class="spacer"></span>
+        <label for="fileInput" class="btn" title="Import Markdown files">Import .md</label>
+        <input id="fileInput" type="file" accept=".md,text/markdown" multiple />
+    </header>
+
+    <div class="layout">
+        <main>
+            <div class="board" aria-label="Kanban board">
+                <section class="column" data-status="todo" aria-label="Todo column">
+                    <div class="colhead">
+                        <h2>Todo</h2>
+                    </div>
+                    <div class="empty" data-empty="todo">No tasks yet. Import Markdown files.</div>
+                </section>
+
+                <section class="column" data-status="doing" aria-label="Doing column">
+                    <div class="colhead">
+                        <h2>Doing</h2>
+                    </div>
+                    <div class="empty" data-empty="doing">Drag a card here to mark it as doing.</div>
+                </section>
+
+                <section class="column" data-status="done" aria-label="Done column">
+                    <div class="colhead">
+                        <h2>Done</h2>
+                    </div>
+                    <div class="empty" data-empty="done">Drag a card here to mark it as done.</div>
+                </section>
+            </div>
+        </main>
+
+        <aside class="viewer" aria-label="Markdown viewer">
+            <div class="viewer-head">
+                <p class="label">Markdown Viewer</p>
+                <span class="pill" id="viewerMeta">—</span>
+            </div>
+            <pre id="viewer" class="hint">Select a task to view raw Markdown.</pre>
+        </aside>
+    </div>
+
+    <script>
+        // =========================
+        // State (in-memory only)
+        // =========================
+        /** @type {Array<{id:string,type:string,status:'todo'|'doing'|'done',tags:string[],title:string,md:string}>} */
+        let tasks = [];
+        let selectedId = null;
+
+        const fileInput = document.getElementById('fileInput');
+        const columns = Array.from(document.querySelectorAll('.column'));
+        const viewerEl = document.getElementById('viewer');
+        const viewerMetaEl = document.getElementById('viewerMeta');
+
+        // =========================
+        // Parsing (safe frontmatter)
+        // =========================
+        /**
+         * Parse YAML frontmatter safely.
+         * If missing/malformed => meta {}, body = original md.
+         * @param {string} md
+         * @returns {{meta:Record<string,any>, body:string}}
+         */
+        function parseFrontmatter(md) {
+            try {
+                if (!md || !md.startsWith('---')) return { meta: {}, body: md };
+
+                const lines = md.split(/\r?\n/);
+                if ((lines[0] || '').trim() !== '---') return { meta: {}, body: md };
+
+                let end = -1;
+                for (let i = 1; i < lines.length; i++) {
+                    if ((lines[i] || '').trim() === '---') { end = i; break; }
+                }
+                if (end === -1) return { meta: {}, body: md };
+
+                const yamlLines = lines.slice(1, end);
+                const body = lines.slice(end + 1).join('\n'); // no trim; preserve body
+                const meta = parseMiniYaml(yamlLines);
+                return { meta: meta || {}, body };
+            } catch (_) {
+                return { meta: {}, body: md };
+            }
+        }
+
+        /**
+         * Minimal YAML subset parser (just what v1 needs):
+         * id, type, status, tags
+         * tags supports: [A, B] or multiline list.
+         * @param {string[]} yamlLines
+         * @returns {Record<string,any>}
+         */
+        function parseMiniYaml(yamlLines) {
+            const meta = {};
+            try {
+                for (let i = 0; i < yamlLines.length; i++) {
+                    const line = yamlLines[i];
+                    if (!line) continue;
+                    if (/^\s*#/.test(line)) continue;
+
+                    // multiline tags:
+                    if (/^\s*tags\s*:\s*$/i.test(line)) {
+                        const tags = [];
+                        for (let j = i + 1; j < yamlLines.length; j++) {
+                            const m = (yamlLines[j] || '').match(/^\s*-\s*(.+)\s*$/);
+                            if (!m) break;
+                            const v = cleanScalar(m[1]);
+                            if (v) tags.push(v);
+                            i = j;
+                        }
+                        meta.tags = tags;
+                        continue;
+                    }
+
+                    const kv = (line || '').match(/^\s*([A-Za-z0-9_-]+)\s*:\s*(.*)\s*$/);
+                    if (!kv) continue;
+
+                    const key = kv[1].toLowerCase();
+                    const rawVal = kv[2];
+
+                    if (key === 'id' || key === 'type' || key === 'status') {
+                        meta[key] = cleanScalar(rawVal);
+                    } else if (key === 'tags') {
+                        meta.tags = parseInlineArray(rawVal);
+                    }
+                }
+            } catch (_) {
+                return {};
+            }
+            return meta;
+        }
+
+        function cleanScalar(v) {
+            const s = String(v ?? '').trim();
+            // strip surrounding quotes if present
+            const m = s.match(/^["'](.*)["']$/);
+            return (m ? m[1] : s).trim();
+        }
+
+        function parseInlineArray(raw) {
+            try {
+                const s = String(raw ?? '').trim();
+                const m = s.match(/^\[(.*)\]$/);
+                if (!m) return [];
+                const inner = m[1].trim();
+                if (!inner) return [];
+                return inner.split(',').map(x => cleanScalar(x)).map(x => x.trim()).filter(Boolean);
+            } catch (_) {
+                return [];
+            }
+        }
+
+        function extractTitleFromBody(body, fallback) {
+            try {
+                const lines = String(body ?? '').split(/\r?\n/);
+                for (const line of lines) {
+                    const m = line.match(/^#\s+(.+)\s*$/);
+                    if (m) return m[1].trim();
+                }
+            } catch (_) { }
+            return fallback;
+        }

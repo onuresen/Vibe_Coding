@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronos OS | Stellar Sandbox</title>
+  <style>
+    :root {
+      --bg-color: #05070b;
+      --ui-border: #1a2332;
+      --ui-bg: rgba(7, 11, 19, 0.85);
+      --accent: #00e5ff;
+      --text: #c4d1e6;
+      --text-dim: #6c7a9c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #viewport {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    #viewport:active {
+      cursor: grabbing;
+    }
+
+    /* UI Overlays */
+    #dashboard {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      padding: 15px;
+      pointer-events: none;
+      backdrop-filter: blur(5px);
+      max-width: 320px;
+    }
+
+    .header {
+      border-bottom: 1px solid var(--ui-border);
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 14px;
+      color: var(--accent);
+      letter-spacing: 2px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      color: var(--text-dim);
+    }
+
+    .stat-val {
+      color: #fff;
+    }
+
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      padding: 10px;
+      font-size: 11px;
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+
+    .key-bind {
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    #inspector {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      padding: 15px;
+      width: 280px;
+      display: none;
+      backdrop-filter: blur(5px);
+    }
+
+    #inspector .title {
+      color: #fff;
+      font-size: 14px;
+      border-bottom: 1px solid var(--ui-border);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: var(--text-dim);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 14px;
+    }
+
+    .close-btn:hover {
+      color: #fff;
+    }
+
+    /* Visual grid background */
+    .grid-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(0, 229, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.02) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="grid-overlay"></div>
+  <canvas id="viewport"></canvas>
+
+  <div id="dashboard">
+    <div class="header">
+      <h1>System Status</h1>
+      <span id="system-seed" style="font-size: 11px; color: var(--accent);">SEED: 0</span>
+    </div>
+    <div class="stat-row"><span class="stat-label">Time Warp:</span><span class="stat-val" id="ui-warp">1x</span></div>
+    <div class="stat-row"><span class="stat-label">Planets:</span><span class="stat-val" id="ui-planet-count">0</span>
+    </div>
+    <div class="stat-row"><span class="stat-label">Star Type:</span><span class="stat-val" id="ui-star-type">-</span>
+    </div>
+    <div class="stat-row"><span class="stat-label">Zoom Level:</span><span class="stat-val" id="ui-zoom">1.0x</span>
+    </div>
+  </div>
+
+  <div id="inspector">
+    <button class="close-btn" id="close-inspector">X</button>
+    <div class="title" id="insp-name">Planet Node</div>
+    <div class="stat-row"><span class="stat-label">Classification:</span><span class="stat-val" id="insp-type">-</span>
+    </div>
+    <div class="stat-row"><span class="stat-label">Radius:</span><span class="stat-val" id="insp-radius">-</span></div>
+    <div class="stat-row"><span class="stat-label">Mass:</span><span class="stat-val" id="insp-mass">-</span></div>
+    <div class="stat-row"><span class="stat-label">Dist. to Star:</span><span class="stat-val" id="insp-dist">-</span>
+    </div>
+    <div class="stat-row"><span class="stat-label">Orbital Period:</span><span class="stat-val"
+        id="insp-period">-</span></div>
+    <div class="stat-row"><span class="stat-label">Surface Temp:</span><span class="stat-val" id="insp-temp">-</span>
+    </div>
+    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--ui-border);">
+      <div class="stat-row">
+        <span class="stat-label">Habitability:</span>
+        <span class="stat-val" id="insp-habit" style="color: var(--accent); font-weight:bold;">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    [<span class="key-bind">R</span>] Regenerate &nbsp;
+    [<span class="key-bind">T</span>] Cycle Time &nbsp;
+    [<span class="key-bind">Click</span>] Inspect &nbsp;
+    [<span class="key-bind">Drag</span>] Tilt Plane &nbsp;
+    [<span class="key-bind">Scroll</span>] Zoom
+  </div>
+
+  <script>
+    // --- 1. SEEDED RNG (LGC) ---
+    class PRNG {
+      constructor(seed) {
+        this.seed = seed;
+      }
+      next() {
+        this.seed = (this.seed * 1664525 + 1013904223) % 4294967296;
+        return this.seed / 4294967296;
+      }
+      nextRange(min, max) {
+        return min + this.next() * (max - min);
+      }
+      nextColor() {
+        const r = Math.floor(this.next() * 256);
+        const g = Math.floor(this.next() * 256);
+        const b = Math.floor(this.next() * 256);
+        return `rgb(${r},${g},${b})`;
+      }
+    }
+
+    // --- 2. CONFIG & STATE ---
+    const canvas = document.getElementById('viewport');
+    const ctx = canvas.getContext('2d');
+
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    let currentSeed = Math.floor(Math.random() * 100000);
+    let rng = new PRNG(currentSeed);
+
+    // State & View control
+    const state = {
+      scale: 0.8,
+      targetScale: 0.8,
+      tilt: 0.7, // Perspective squash (1.0 = top down, 0.1 = edge on)
+      tiltAngle: 0, // Orbital tilt rotation
+      camX: 0,
+      camY: 0,
+      targetCamX: 0,
+      targetCamY: 0,
+      timeScale: 1.0,
+      timeScales: [1.0, 5.0, 50.0],
+      timeScaleIdx: 0,
+      simTime: 0,
+      selectedBody: null,
+      dust: []
+    };
+
+    // UI binds
+    const uiWarp = document.getElementById('ui-warp');
+    const uiZoom = document.getElementById('ui-zoom');
+    const inspector = document.getElementById('inspector');
+
+    // Mouse/Interactions
+    let isDragging = false;
+    let lastMousePos = { x: 0, y: 0 };
+
+    // --- 3. PROCEDURAL BUILDERS ---
+    let sun = null;
+    let planets = [];
+
+    function generateSystem() {
+      rng = new PRNG(currentSeed);
+      state.dust = generateDust();
+      state.selectedBody = null;
+      state.targetCamX = 0;
+      state.targetCamY = 0;
+      state.targetScale = 0.8;
+      inspector.style.display = 'none';
+
+      // 1. Generate Central Star
+      const starClass = rng.next();
+      let sunColor, sunRadius, sunName;
+      if (starClass < 0.1) { [sunColor, sunRadius, sunName] = ['#ff8844', 45, 'Red Giant']; }
+      else if (starClass < 0.3) { [sunColor, sunRadius, sunName] = ['#77aaff', 25, 'Blue Subgiant']; }
+      else { [sunColor, sunRadius, sunName] = ['#ffd700', 35, 'Yellow Main Sequence']; }
+
+      sun = {
+        name: "Alpha Prime",
+        type: sunName,
+        x: 0, y: 0, z: 0,
+        radius: sunRadius,
+        color: sunColor,
+        mass: sunRadius * 10
+      };
+
+      // 2. Generate Planets (3 to 9)
+      planets = [];
+      const planetCount = Math.floor(rng.nextRange(3, 10));
+      let runningDistance = sunRadius + 60;
+
+      for (let i = 0; i < planetCount; i++) {
+        runningDistance += rng.nextRange(40, 90);
+        const radius = rng.nextRange(6, 22);
+        const mass = Math.pow(radius, 2) / 10;
+
+        // Physics params
+        const orbitalPeriod = Math.pow(runningDistance, 1.5) / 50;
+        const orbitalSpeed = (2 * Math.PI) / orbitalPeriod;
+        const startAngle = rng.next() * Math.PI * 2;
+
+        // Visual Aesthetics
+        const pTypeRoll = rng.next();
+        let pType, baseColor, featureColor, secondaryColor;
+        let atmosphere = false;
+        let ring = false;
+
+        if (runningDistance < 180) { // Hot Inner
+          pType = "Chthonian / Scorched";
+          baseColor = "#5a3a22"; featureColor = "#2c1a0f"; secondaryColor = "#8b3e2f";
+        } else if (radius > 16) { // Gas Giants
+          pType = rng.next() > 0.5 ? "Gas Giant" : "Ice Giant";
+          if (pType === "Gas Giant") {
+            baseColor = "#d4a373"; featureColor = "#a98467"; secondaryColor = "#fefae0"; ring = rng.next() > 0.4;
+          } else {
+            baseColor = "#4cc9f0"; featureColor = "#4361ee"; secondaryColor = "#7209b7"; atmosphere = true;
+          }
+        } else { // Temperate or Rocky
+          pType = rng.next() > 0.4 ? "Oceanic" : "Arid/Rocky";
+          if (pType === "Oceanic") {
+            baseColor = "#0077b6"; featureColor = "#0096c7"; secondaryColor = "#90e0ef"; atmosphere = true;
+          } else {
+            baseColor = "#b5838d"; featureColor = "#6d6875"; secondaryColor = "#ffb703";
+          }
+        }
+
+        // Dynamic Habitability logic
+        const distScale = runningDistance;
+        let habitability = 0;
+        if (pType === "Oceanic" && distScale > 200 && distScale < 400) {
+          habitability = rng.nextRange(70, 96);
+        } else if (pType === "Arid/Rocky" && distScale > 150 && distScale < 450) {
+          habitability = rng.nextRange(20, 55);
+        }
+
+        const temperature = Math.floor(5000 / Math.sqrt(runningDistance) - 273); // Inverse square approximation Celsius
+
+        const planet = {
+          id: i,
+          name: `Node-P${i + 1}`,
+          type: pType,
+          radius,
+          mass,
+          distance: runningDistance,
+          angle: startAngle,
+          orbitalSpeed,
+          baseColor,
+          featureColor,
+          secondaryColor,
+          ring,
+          atmosphere,
+          moons: [],
+          temperature,
+          habitability: habitability.toFixed(1),
+          x: 0, y: 0, // Computed per frame
+          rotAngle: rng.next() * Math.PI * 2,
+          rotSpeed: rng.nextRange(0.01, 0.04)
+        };
+
+        // Add 1-2 Moons to larger outer planets
+        if (radius > 12 && rng.next() > 0.3) {
+          const moonCount = Math.floor(rng.nextRange(1, 3));
+          for (let m = 0; m < moonCount; m++) {
+            const mRadius = rng.nextRange(2, planet.radius * 0.3);
+            planet.moons.push({
+              radius: mRadius,
+              distance: planet.radius + rng.nextRange(8, 20) + (m * 10),
+              angle: rng.next() * Math.PI * 2,
+              orbitalSpeed: rng.nextRange(0.05, 0.15),
+              color: "#888888"
+            });
+          }
+        }
+
+        planets.push(planet);
+      }
+
+      document.getElementById('system-seed').innerText = `SEED: ${currentSeed}`;
+      document.getElementById('ui-planet-count').innerText = planets.length;
+      document.getElementById('ui-star-type').innerText = sun.type;
+    }
+
+    function generateDust() {
+      const arr = [];
+      for (let i = 0; i < 200; i++) {
+        arr.push({
+          x: rng.nextRange(-2000, 2000),
+          y: rng.nextRange(-2000, 2000),
+          z: rng.nextRange(-100, 100),
+          size: rng.nextRange(0.5, 2),
+          alpha: rng.nextRange(0.1, 0.6)
+        });
+      }
+      return arr;
+    }
+
+    // --- 4. PHYSICS SIMULATION ---
+    function updatePhysics(deltaTime) {
+      state.simTime += deltaTime * state.timeScale;
+
+      planets.forEach(p => {
+        p.angle += p.orbitalSpeed * deltaTime * state.timeScale;
+        p.rotAngle += p.rotSpeed * deltaTime * state.timeScale;
+
+        // Base coordinates in orbit plane (flat top-down)
+        p.localX = Math.cos(p.angle) * p.distance;
+        p.localY = Math.sin(p.angle) * p.distance;
+
+        // Apply global tilt tiltAngle (rotate around center)
+        p.x = p.localX;
+        p.y = p.localY * state.tilt; // Squish vertical for pseudo-tilt
+
+        // Update Moons
+        p.moons.forEach(m => {
+          m.angle += m.orbitalSpeed * deltaTime * state.timeScale;
+          m.x = p.x + Math.cos(m.angle) * m.distance;
+          m.y = p.y + Math.sin(m.angle) * m.distance * state.tilt;
+        });
+      });
+
+      // Smooth camera tracking
+      state.scale += (state.targetScale - state.scale) * 0.1;
+
+      if (state.selectedBody) {
+        state.targetCamX = -state.selectedBody.x;
+        state.targetCamY = -state.selectedBody.y;
+      } else {
+        state.targetCamX = 0;
+        state.targetCamY = 0;
+      }
+
+      state.camX += (state.targetCamX - state.camX) * 0.1;
+      state.camY += (state.targetCamY - state.camY) * 0.1;
+
+      uiZoom.innerText = state.scale.toFixed(1) + "x";
+    }
+
+    // --- 5. PROCEDURAL RENDERING (CANVAS 2D) ---
+    function render() {
+      ctx.fillStyle = '#05070b';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.save();
+      // Translate to center + camera offset
+      ctx.translate(width / 2 + state.camX * state.scale, height / 2 + state.camY * state.scale);
+      ctx.scale(state.scale, state.scale);
+
+      // 1. Draw Background Dust
+      state.dust.forEach(d => {
+        ctx.fillStyle = `rgba(200, 220, 255, ${d.alpha})`;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y * state.tilt, d.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 2. Draw Orbit Trails
+      planets.forEach(p => {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.distance, p.distance * state.tilt, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.06)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // Order bodies by Y position to get overlap (Z-sorting)
+      const bodies = [sun, ...planets];
+      bodies.sort((a, b) => a.y - b.y);
+
+      bodies.forEach(b => {
+        if (b === sun) {
+          renderSun(b);
+        } else {
+          renderPlanet(b);
+        }
+      });
+
+      ctx.restore();
+    }
+
+    function renderSun(s) {
+      ctx.save();
+      ctx.translate(s.x, s.y);
+
+      // Star Bloom Effect
+      const glow = ctx.createRadialGradient(0, 0, s.radius * 0.5, 0, 0, s.radius * 3);
+      glow.addColorStop(0, s.color);
+      glow.addColorStop(1, 'transparent');
+
+      ctx.globalCompositeOperation = "screen";
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, s.radius * 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, s.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function renderPlanet(p) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+
+      // Simple Circle for visual bounding if needed
+      if (state.selectedBody === p) {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Draw planetary ring if gas giant
+      if (p.ring) {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.radius * 2, p.radius * 0.5, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(212, 163, 115, 0.4)';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      }
+
+      // --- FAKE 3D LIGHTING & SURFACE ---
+      // Draw spherical base
+      ctx.beginPath();
+      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = p.baseColor;
+      ctx.fill();
+
+      // Procedural Layer (Stripes or Noise approx by clipping & overlapping grads)
+      ctx.save();
+      ctx.clip(); // Mask within circle
+
+      if (p.type === "Gas Giant" || p.type === "Ice Giant") {
+        // Horizontal Turbulent Banding
+        for (let i = -p.radius; i < p.radius; i += 4) {
+          const offset = Math.sin((i / p.radius) * Math.PI + p.rotAngle) * 2;
+          ctx.fillStyle = (Math.sin(i) > 0) ? p.featureColor : p.secondaryColor;
+          ctx.fillRect(-p.radius, i + offset, p.radius * 2, 4);
+        }
+      } else if (p.type === "Oceanic") {
+        // Draw landmasses using rotated arcs
+        ctx.fillStyle = p.featureColor;
+        ctx.beginPath();
+        ctx.arc(-p.radius * 0.3 + Math.cos(p.rotAngle) * 5, Math.sin(p.rotAngle) * 5, p.radius * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(p.radius * 0.4 + Math.sin(p.rotAngle) * 4, -p.radius * 0.2, p.radius * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Arid crators/cracks
+        ctx.fillStyle = p.featureColor;
+        for (let i = 0; i < 5; i++) {
+          const cx = Math.sin(p.rotAngle + i) * p.radius * 0.6;
+          const cy = Math.cos(p.rotAngle * 0.5 + i) * p.radius * 0.6;
+          ctx.beginPath();
+          ctx.arc(cx, cy, p.radius * 0.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+
+      // --- SHADING (Lambert style rim dark) ---
+      // Calculate light angle from star (0,0)
+      const angleToSun = Math.atan2(-p.y, -p.x);
+      const lightGrad = ctx.createRadialGradient(
+        Math.cos(angleToSun) * p.radius * 0.4, Math.sin(angleToSun) * p.radius * 0.4, p.radius * 0.2, // Light source focus
+        0, 0, p.radius // Outer edge
+      );
+      lightGrad.addColorStop(0, 'rgba(255,255,255,0.4)');
+      lightGrad.addColorStop(0.7, 'rgba(0,0,0,0)');
+      lightGrad.addColorStop(1, 'rgba(0,0,0,0.8)'); // Shadow edge
+
+      ctx.beginPath();
+      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = lightGrad;
+      ctx.fill();
+
+      // Atmosphere Glow
+      if (p.atmosphere) {
+        ctx.globalCompositeOperation = "screen";
+        const atmosGrad = ctx.createRadialGradient(0, 0, p.radius, 0, 0, p.radius + 3);
+        atmosGrad.addColorStop(0, p.secondaryColor);
+        atmosGrad.addColorStop(1, 'transparent');
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius + 3, 0, Math.PI * 2);
+        ctx.fillStyle = atmosGrad;
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+      }
+
+      ctx.restore();
+
+      // Render moons independently
+      p.moons.forEach(m => {
+        ctx.fillStyle = m.color;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Small moon lighting
+        const moonGrad = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.radius);
+        moonGrad.addColorStop(0.5, 'transparent');
+        moonGrad.addColorStop(1, 'rgba(0,0,0,0.6)');
+        ctx.fillStyle = moonGrad;
+        ctx.fill();
+      });
+    }
+
+
+    // --- 6. EVENT BINDING & UI UPDATES ---
+
+    // UI Panel fill
+    function inspectPlanet(p) {
+      state.selectedBody = p;
+      if (!p) {
+        inspector.style.display = 'none';
+        return;
+      }
+      inspector.style.display = 'block';
+
+      document.getElementById('insp-name').innerText = p.name;
+      document.getElementById('insp-type').innerText = p.type;
+      document.getElementById('insp-radius').innerText = `${(p.radius * 100).toFixed(0)} km`;
+      document.getElementById('insp-mass').innerText = `${p.mass.toFixed(1)} EM`;
+      document.getElementById('insp-dist').innerText = `${(p.distance / 10).toFixed(2)} AU`;
+      document.getElementById('insp-period').innerText = `${(365 / p.orbitalSpeed / 100).toFixed(1)} S-Days`;
+      document.getElementById('insp-temp').innerText = `${p.temperature}°C`;
+      document.getElementById('insp-habit').innerText = `${p.habitability}%`;
+    }
+
+    // Mouse Events for Orbit Drag, Zoom, Clicks
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      lastMousePos = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      isDragging = false;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      const dx = e.clientX - lastMousePos.x;
+      const dy = e.clientY - lastMousePos.y;
+
+      // Shift tilt and offset relative to drags
+      state.tilt = Math.max(0.1, Math.min(1.0, state.tilt - dy * 0.005));
+
+      if (!state.selectedBody) {
+        state.camX += dx / state.scale;
+        state.camY += dy / state.scale;
+        state.targetCamX = state.camX;
+        state.targetCamY = state.camY;
+      }
+
+      lastMousePos = { x: e.clientX, y: e.clientY };
+    });
+
+    canvas.addEventListener('click', (e) => {
+      // Screen to simulation space
+      const mouseSimX = (e.clientX - width / 2) / state.scale - state.camX;
+      const mouseSimY = (e.clientY - height / 2) / state.scale - state.camY;
+
+      let clickedAny = false;
+      for (let p of planets) {
+        const dx = mouseSimX - p.x;
+        const dy = mouseSimY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < p.radius + 10) {
+          inspectPlanet(p);
+          state.targetScale = 2.5;
+          clickedAny = true;
+          break;
+        }
+      }
+
+      if (!clickedAny) {
+        inspectPlanet(null);
+        state.targetScale = 0.8;
+      }
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      if (e.deltaY < 0) {
+        state.targetScale = Math.min(state.targetScale + 0.2, 5.0);
+      } else {
+        state.targetScale = Math.max(state.targetScale - 0.2, 0.2);
+      }
+    });
+
+    document.getElementById('close-inspector').addEventListener('click', () => inspectPlanet(null));
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'r') {
+        currentSeed = Math.floor(Math.random() * 100000);
+        generateSystem();
+      }
+      if (e.key.toLowerCase() === 't') {
+        state.timeScaleIdx = (state.timeScaleIdx + 1) % state.timeScales.length;
+        state.timeScale = state.timeScales[state.timeScaleIdx];
+        uiWarp.innerText = state.timeScale + "x";
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    // --- 7. MAIN RUNTIME LOOP ---
+    let lastTime = 0;
+    function loop(timestamp) {
+      const delta = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      // Frame cap/clamp to prevent frame jumps
+      updatePhysics(Math.min(delta, 0.05));
+      render();
+
+      requestAnimationFrame(loop);
+    }
+
+    // Boot
+    generateSystem();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+
+</html>

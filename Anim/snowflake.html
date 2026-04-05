@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Recursive Snowflake Growth</title>
+  <style>
+    :root {
+      --bg0: #050712;
+      --bg1: #0a1030;
+      --ink: #dff7ff;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: radial-gradient(1200px 800px at 50% 40%, var(--bg1), var(--bg0) 65%, #02030a);
+      color: #cfefff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      overflow: hidden;
+    }
+
+    .wrap {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      gap: 10px;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    canvas {
+      width: 800px;
+      height: 800px;
+      image-rendering: auto;
+      border-radius: 24px;
+      box-shadow:
+        0 12px 60px rgba(0, 0, 0, .55),
+        inset 0 0 0 1px rgba(255, 255, 255, .06);
+      background: radial-gradient(900px 900px at 50% 50%, rgba(255, 255, 255, .03), rgba(255, 255, 255, 0) 60%);
+    }
+
+    .hint {
+      opacity: .7;
+      font-size: 12px;
+      user-select: none;
+      text-align: center;
+      letter-spacing: .02em;
+    }
+
+    .badge {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .06);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 99px;
+      background: #8ef2ff;
+      box-shadow: 0 0 18px rgba(142, 242, 255, .85);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: .75;
+      }
+
+      50% {
+        transform: scale(1.35);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <canvas id="c" width="800" height="800"></canvas>
+    <div class="hint">
+      <span class="badge"><span class="dot"></span> Recursive 6-arm snowflake growth + shimmer, auto-reset</span>
+    </div>
+  </div>
+
+  <script>
+    // ------------------------------------------------------------
+    // Recursive Snowflake Growth (single-file, no libs)
+    // ------------------------------------------------------------
+
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+
+    const W = canvas.width, H = canvas.height;
+    const CX = W / 2, CY = H / 2;
+
+    // Utility: random helpers
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const randi = (a, b) => Math.floor(rand(a, b + 1));
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    // Small seeded-ish variation per snowflake (not a true PRNG, but stable-ish within a generation)
+    function makeNoise(seed) {
+      return function (n) {
+        // deterministic-ish noise based on sin/hash, for gentle correlated variation
+        const x = Math.sin((n + 1) * 999.123 + seed * 7.77) * 43758.5453;
+        return x - Math.floor(x);
+      };
+    }
+
+    // Segment representation
+    // Each segment is a line from (x1,y1) -> (x2,y2), plus metadata used for ordering & shimmer.
+    class Segment {
+      constructor(x1, y1, x2, y2, depth, armIndex, orderKey) {
+        this.x1 = x1; this.y1 = y1; this.x2 = x2; this.y2 = y2;
+        this.depth = depth;
+        this.armIndex = armIndex;
+        this.orderKey = orderKey; // used for sorting reveal order (growing outward)
+        this.len = Math.hypot(x2 - x1, y2 - y1);
+        // shimmer phase
+        this.phase = rand(0, Math.PI * 2);
+        this.spark = Math.random() < 0.06; // occasional sparkly vertex/segment
+      }
+    }
+
+    // ------------------------------------------------------------
+    // Snowflake generator
+    // ------------------------------------------------------------
+    function generateSnowflake() {
+      const seed = Math.random() * 9999;
+      const noise = makeNoise(seed);
+
+      // Core parameters (tuned for "snowflake-like" and visually pleasant)
+      const maxDepth = randi(4, 6);                 // recursion depth
+      const mainLen = rand(230, 300);               // main arm length
+      const trunkStepRatio = rand(0.56, 0.68);      // how long children are relative to parent
+      const sideRatio = rand(0.35, 0.52);           // side branch length ratio
+      const baseBranchAngle = rand(25, 38) * Math.PI / 180; // degrees -> radians
+      const branchPoints = randi(2, 4);             // how many side-branch points per segment
+      const pointJitter = rand(0.08, 0.18);         // jitter along segment
+      const lenJitter = rand(0.08, 0.18);           // random length variation
+
+      const segments = [];
+
+      // Make 6 arms with rotational symmetry
+      for (let arm = 0; arm < 6; arm++) {
+        const angle = arm * (Math.PI / 3); // 60 degrees
+        // create initial trunk segment from center
+        const x2 = CX + Math.cos(angle) * mainLen;
+        const y2 = CY + Math.sin(angle) * mainLen;
+
+        // Create trunk and recursive structure for this arm
+        addSegmentRecursive(
+          CX, CY, x2, y2,
+          0, arm,
+          angle,
+          {
+            noise, maxDepth, trunkStepRatio, sideRatio,
+            baseBranchAngle, branchPoints,
+            pointJitter, lenJitter
+          },
+          segments
+        );
+      }
+
+      // Sort segments so they appear "growing outward"
+      // orderKey prefers smaller radius first, and shallower depth earlier.
+      segments.sort((a, b) => (a.orderKey - b.orderKey) || (a.depth - b.depth));
+
+      return {
+        seed, segments,
+        // Style parameters per snowflake
+        style: {
+          // A cool icy palette
+          baseHue: rand(185, 205),             // cyan-ish
+          baseSat: rand(70, 90),
+          baseLum: rand(72, 84),
+          glow: rand(0.55, 0.9),
+          lineBase: rand(1.0, 1.6),
+        }
+      };
+    }
+
+    // Recursive branch builder:
+    // - Create the segment
+    // - Along the segment, create ± side branches at regular-ish intervals
+    // - Create a continuation segment outward (shorter) to keep "growth" going
+    function addSegmentRecursive(x1, y1, x2, y2, depth, armIndex, angle, params, out) {
+      const { noise, maxDepth, trunkStepRatio, sideRatio, baseBranchAngle, branchPoints, pointJitter, lenJitter } = params;
+
+      // Compute an "order key" for reveal: based on average radius from center + depth
+      const midx = (x1 + x2) * 0.5;
+      const midy = (y1 + y2) * 0.5;
+      const r = Math.hypot(midx - CX, midy - CY);
+      const orderKey = r + depth * 3.5;
+
+      out.push(new Segment(x1, y1, x2, y2, depth, armIndex, orderKey));
+
+      if (depth >= maxDepth) return;
+
+      const dx = x2 - x1, dy = y2 - y1;
+      const segLen = Math.hypot(dx, dy);
+      if (segLen < 8) return;
+
+      // Side branches at multiple points along the segment
+      for (let i = 1; i <= branchPoints; i++) {
+        const tBase = i / (branchPoints + 1);
+        const tJit = (noise(depth * 10 + i * 3 + armIndex * 17) - 0.5) * pointJitter;
+        const t = clamp(tBase + tJit, 0.15, 0.88);
+
+        const px = x1 + dx * t;
+        const py = y1 + dy * t;
+
+        // Branch angle with slight variation per point/depth
+        const angVar = (noise(armIndex * 31 + depth * 13 + i * 7) - 0.5) * (8 * Math.PI / 180);
+        const bAng = baseBranchAngle + angVar;
+
+        // Side branch length
+        const lenVar = 1 + (noise(armIndex * 19 + depth * 11 + i * 5) - 0.5) * lenJitter * 2;
+        const bLen = segLen * sideRatio * lenVar * (1 - depth * 0.10);
+
+        // Two symmetric branches (+ and -)
+        const a1 = angle + bAng;
+        const a2 = angle - bAng;
+
+        const bx1 = px + Math.cos(a1) * bLen;
+        const by1 = py + Math.sin(a1) * bLen;
+        const bx2 = px + Math.cos(a2) * bLen;
+        const by2 = py + Math.sin(a2) * bLen;
+
+        // Recurse outward from these side branches a bit (smaller)
+        addSegmentRecursive(px, py, bx1, by1, depth + 1, armIndex, a1, params, out);
+        addSegmentRecursive(px, py, bx2, by2, depth + 1, armIndex, a2, params, out);
+      }
+
+      // Continuation trunk: a shorter segment continuing outward
+      const contVar = 1 + (noise(armIndex * 23 + depth * 29) - 0.5) * lenJitter * 1.8;
+      const contLen = segLen * trunkStepRatio * contVar;
+      const nx = x2 + Math.cos(angle) * contLen;
+      const ny = y2 + Math.sin(angle) * contLen;
+
+      // Recurse along the trunk for continued growth
+      addSegmentRecursive(x2, y2, nx, ny, depth + 1, armIndex, angle, params, out);
+    }
+
+    // ------------------------------------------------------------
+    // Renderer / Animator
+    // ------------------------------------------------------------
+
+    let snow = generateSnowflake();
+
+    // Stages: "grow" -> "shimmer" -> reset
+    let stage = "grow";
+    let t0 = performance.now();
+
+    // Grow stage controls
+    const SEGMENT_DRAW_MS = 18;     // time per segment to appear (controls speed)
+    const PARTIAL_MS = 16;          // time for partial segment drawing for smoother reveal
+
+    // Shimmer controls
+    const SHIMMER_DURATION_MS = 2400;
+    const SHIMMER_FREQ = 2.2;       // shimmer speed
+    const SPARKLE_RATE = 0.11;      // chance to spawn extra sparkle per frame
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, W, H);
+
+      // subtle vignette / background bloom inside canvas
+      const g = ctx.createRadialGradient(CX, CY, 10, CX, CY, 420);
+      g.addColorStop(0, "rgba(180, 240, 255, 0.06)");
+      g.addColorStop(0.45, "rgba(40, 110, 255, 0.02)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    function drawSegment(seg, style, alpha, widthMul = 1, glowMul = 1) {
+      const hue = style.baseHue;
+      const sat = style.baseSat;
+      const lum = style.baseLum;
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      // Outer glow
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = `hsla(${hue}, ${sat}%, ${lum}%, ${0.08 * alpha * style.glow * glowMul})`;
+      ctx.lineWidth = (style.lineBase * 4.2) * widthMul;
+      ctx.shadowColor = `hsla(${hue}, ${sat}%, ${lum}%, ${0.35 * alpha * style.glow * glowMul})`;
+      ctx.shadowBlur = 14 * glowMul;
+      ctx.beginPath();
+      ctx.moveTo(seg.x1, seg.y1);
+      ctx.lineTo(seg.x2, seg.y2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Main stroke
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = `hsla(${hue}, ${sat}%, ${lum}%, ${0.92 * alpha})`;
+      ctx.lineWidth = (style.lineBase * (1.0 - seg.depth * 0.08)) * widthMul;
+      ctx.shadowColor = `hsla(${hue}, ${sat}%, ${lum}%, ${0.22 * alpha})`;
+      ctx.shadowBlur = 2;
+      ctx.beginPath();
+      ctx.moveTo(seg.x1, seg.y1);
+      ctx.lineTo(seg.x2, seg.y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawPartialSegment(seg, style, alpha, portion) {
+      const x = seg.x1 + (seg.x2 - seg.x1) * portion;
+      const y = seg.y1 + (seg.y2 - seg.y1) * portion;
+      drawSegment({ ...seg, x2: x, y2: y }, style, alpha);
+    }
+
+    function drawSparkle(x, y, intensity, hue) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const r = 2 + intensity * 3;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 22 + intensity * 22);
+      g.addColorStop(0, `hsla(${hue}, 95%, 85%, ${0.7 * intensity})`);
+      g.addColorStop(0.2, `hsla(${hue}, 90%, 75%, ${0.18 * intensity})`);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, 18 + intensity * 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      // tiny star cross
+      ctx.strokeStyle = `hsla(${hue}, 100%, 88%, ${0.5 * intensity})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - r * 3, y);
+      ctx.lineTo(x + r * 3, y);
+      ctx.moveTo(x, y - r * 3);
+      ctx.lineTo(x, y + r * 3);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function animate(now) {
+      const elapsed = now - t0;
+      const { segments, style } = snow;
+
+      clearCanvas();
+
+      if (stage === "grow") {
+        // Determine how many segments are fully drawn and one partially
+        const totalSegments = segments.length;
+        const segTime = SEGMENT_DRAW_MS;
+        const fullCount = Math.floor(elapsed / segTime);
+        const idx = clamp(fullCount, 0, totalSegments);
+
+        // Draw fully revealed segments
+        for (let i = 0; i < idx; i++) {
+          drawSegment(segments[i], style, 1);
+        }
+
+        // Draw a partial segment for smoothness
+        if (idx < totalSegments) {
+          const within = (elapsed - idx * segTime);
+          const portion = clamp(within / PARTIAL_MS, 0, 1);
+          drawPartialSegment(segments[idx], style, 1, portion);
+        } else {
+          // Switch to shimmer stage when done
+          stage = "shimmer";
+          t0 = now;
+        }
+
+        // Center seed point (always visible)
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = "rgba(180,245,255,.65)";
+        ctx.shadowColor = "rgba(160,240,255,.85)";
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(CX, CY, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      else if (stage === "shimmer") {
+        const p = clamp(elapsed / SHIMMER_DURATION_MS, 0, 1);
+
+        // Draw all segments with gentle twinkle
+        // Twinkle modulates alpha based on per-segment phase + time.
+        const time = now * 0.001;
+        for (let i = 0; i < segments.length; i++) {
+          const s = segments[i];
+
+          const depthFade = 1.0 - s.depth * 0.06;
+          const tw = 0.72 + 0.28 * Math.sin(time * SHIMMER_FREQ + s.phase);
+          const a = (0.60 + 0.40 * tw) * depthFade;
+
+          // Subtle breathing glow
+          const glow = 0.85 + 0.35 * Math.sin(time * 1.6 + s.phase * 0.7);
+
+          drawSegment(s, style, a, 1.0, glow);
+
+          // occasional sparkle on a subset of segments
+          if (s.spark && Math.random() < 0.004) {
+            const sx = s.x2;
+            const sy = s.y2;
+            drawSparkle(sx, sy, rand(0.35, 0.9), style.baseHue);
+          }
+        }
+
+        // random drifting sparkles (rare, gentle)
+        if (Math.random() < SPARKLE_RATE * 0.25) {
+          const s = segments[randi(0, segments.length - 1)];
+          const u = rand(0.1, 1.0);
+          const x = s.x1 + (s.x2 - s.x1) * u;
+          const y = s.y1 + (s.y2 - s.y1) * u;
+          drawSparkle(x, y, rand(0.18, 0.45), style.baseHue);
+        }
+
+        // After shimmer duration, reset with a new snowflake
+        if (p >= 1) {
+          snow = generateSnowflake();
+          stage = "grow";
+          t0 = now;
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+
+    // Optional: click to instantly regenerate (handy for testing)
+    canvas.addEventListener("click", () => {
+      snow = generateSnowflake();
+      stage = "grow";
+      t0 = performance.now();
+    });
+  </script>
+</body>
+
+</html>
