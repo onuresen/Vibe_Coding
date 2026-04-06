@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>CONSTELLATION // Decision Engine</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0c;
+      --c-client: #f39c12;
+      /* Gold */
+      --c-designer: #9b59b6;
+      /* Purple */
+      --c-gc: #2ecc71;
+      /* Green */
+      --text: #f0efe8;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      overflow: hidden;
+    }
+
+    /* The "Instruction" Overlay */
+    #tutorial {
+      position: absolute;
+      bottom: 40px;
+      left: 40px;
+      z-index: 100;
+      max-width: 300px;
+      pointer-events: none;
+      opacity: 0.8;
+    }
+
+    #tutorial h3 {
+      font-family: 'Syne';
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      color: var(--c-client);
+    }
+
+    #tutorial p {
+      font-size: 0.75rem;
+      line-height: 1.6;
+      color: #888;
+    }
+
+    canvas {
+      display: block;
+      cursor: crosshair;
+    }
+
+    .hud-label {
+      position: absolute;
+      font-family: 'Syne';
+      font-size: 0.7rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="tutorial">
+    <h3>HOW TO ALIGN</h3>
+    <p>1. Click a <b>Node</b> to claim it for your role.<br>
+      2. Nodes drift toward the person who clicked last.<br>
+      3. Drag nodes into the <b>Center Orbit</b> to propose a consensus.<br>
+      4. If everyone agrees, the node "stills" and locks into the project.</p>
+  </div>
+
+  <div class="hud-label" style="top: 10%; left: 10%; color: var(--c-client);">Client / Value</div>
+  <div class="hud-label" style="top: 10%; right: 10%; color: var(--c-gc);">Contractor / Budget</div>
+  <div class="hud-label" style="bottom: 10%; left: 50%; transform: translateX(-50%); color: var(--c-designer);">Designer
+    / Vision</div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height, nodes = [];
+    let activeRole = 'designer'; // Switches on click for demo
+
+    const items = [
+      { name: "Triple Glazing", mass: 10 },
+      { name: "Solar Array", mass: 15 },
+      { name: "Exposed Steel", mass: 8 },
+      { name: "Custom Joinery", mass: 12 },
+      { name: "Underfloor Heat", mass: 9 },
+      { name: "Smart Glass", mass: 11 }
+    ];
+
+    class Node {
+      constructor(data) {
+        this.data = data;
+        this.x = Math.random() * window.innerWidth;
+        this.y = Math.random() * window.innerHeight;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.vy = (Math.random() - 0.5) * 2;
+        this.radius = data.mass * 1.5;
+        this.owner = null;
+        this.locked = false;
+      }
+
+      update() {
+        if (this.locked) return;
+
+        let target = { x: width / 2, y: height / 2 }; // Default: Center
+
+        // If someone clicked it, it pulls toward their corner
+        if (this.owner === 'client') target = { x: 100, y: 100 };
+        if (this.owner === 'gc') target = { x: width - 100, y: 100 };
+        if (this.owner === 'designer') target = { x: width / 2, y: height - 100 };
+
+        let dx = target.x - this.x;
+        let dy = target.y - this.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Physics: Attraction to target
+        this.vx += dx * 0.0002;
+        this.vy += dy * 0.0002;
+
+        // Friction
+        this.vx *= 0.98;
+        this.vy *= 0.98;
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Check for "Center Lock"
+        let distToCenter = Math.sqrt((width / 2 - this.x) ** 2 + (height / 2 - this.y) ** 2);
+        if (distToCenter < 60 && Math.abs(this.vx) < 0.1) {
+          this.locked = true;
+        }
+      }
+
+      draw() {
+        // Line to owner
+        if (this.owner && !this.locked) {
+          ctx.beginPath();
+          ctx.setLineDash([2, 4]);
+          ctx.strokeStyle = this.getColor(0.2);
+          ctx.moveTo(this.x, this.y);
+          let tx = this.owner === 'client' ? 0 : (this.owner === 'gc' ? width : width / 2);
+          let ty = this.owner === 'designer' ? height : 0;
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // The Node Body
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.locked ? '#fff' : this.getColor(0.4);
+        ctx.fill();
+
+        // Glow if locked
+        if (this.locked) {
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = "#fff";
+        }
+
+        // Text label
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 9px DM Sans";
+        ctx.textAlign = "center";
+        ctx.fillText(this.data.name.toUpperCase(), this.x, this.y + this.radius + 15);
+        ctx.shadowBlur = 0;
+      }
+
+      getColor(alpha) {
+        if (this.owner === 'client') return `rgba(243, 156, 18, ${alpha})`;
+        if (this.owner === 'designer') return `rgba(155, 89, 182, ${alpha})`;
+        if (this.owner === 'gc') return `rgba(46, 204, 113, ${alpha})`;
+        return `rgba(255,255,255,${alpha})`;
+      }
+    }
+
+    function init() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      nodes = items.map(i => new Node(i));
+      loop();
+    }
+
+    function loop() {
+      ctx.fillStyle = '#0a0a0c';
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw Center "Alignment" Zone
+      ctx.beginPath();
+      ctx.arc(width / 2, height / 2, 80, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.stroke();
+
+      nodes.forEach(n => {
+        n.update();
+        n.draw();
+      });
+
+      requestAnimationFrame(loop);
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      nodes.forEach(n => {
+        let d = Math.sqrt((e.clientX - n.x) ** 2 + (e.clientY - n.y) ** 2);
+        if (d < n.radius + 20) {
+          n.owner = activeRole;
+          n.locked = false; // "Unlock" to re-negotiate
+          // Switch roles for this demo
+          if (activeRole === 'designer') activeRole = 'client';
+          else if (activeRole === 'client') activeRole = 'gc';
+          else activeRole = 'designer';
+        }
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    init();
+  </script>
+</body>
+
+</html>
