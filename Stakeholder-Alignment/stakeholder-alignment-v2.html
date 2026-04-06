@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alignment Constellation // Project Strategy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #08080a;
+      --client: #ffcc00;
+      --designer: #a855f7;
+      --gc: #22c55e;
+      --text: #f0efe8;
+    }
+
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      overflow: hidden;
+    }
+
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .header {
+      padding: 30px;
+      pointer-events: auto;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      letter-spacing: 2px;
+      opacity: 0.6;
+    }
+
+    /* Stakeholder HUDs */
+    .hud {
+      position: absolute;
+      padding: 20px;
+      width: 220px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      pointer-events: auto;
+    }
+
+    #hud-client {
+      top: 100px;
+      left: 30px;
+      border-left: 4px solid var(--client);
+    }
+
+    #hud-designer {
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-bottom: 4px solid var(--designer);
+      width: 400px;
+      text-align: center;
+    }
+
+    #hud-gc {
+      top: 100px;
+      right: 30px;
+      border-right: 4px solid var(--gc);
+    }
+
+    .hud h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.8rem;
+      margin-bottom: 8px;
+      opacity: 0.8;
+    }
+
+    .hud p {
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 12px;
+    }
+
+    .control-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      transition: 0.3s;
+      pointer-events: auto;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Detail Modal */
+    #node-detail {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      background: #151518;
+      padding: 25px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: none;
+      pointer-events: auto;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="ui-layer">
+    <div class="header">
+      <h1>PROJECT ALIGNMENT // CONSTELLATION v1.0</h1>
+    </div>
+
+    <div class="hud" id="hud-client">
+      <h2>CLIENT PRIORITY</h2>
+      <p>Focus: ROI & Experience</p>
+      <button class="control-btn" onclick="boostGravity('client')">INCREASE PULL</button>
+    </div>
+
+    <div class="hud" id="hud-gc">
+      <h2>CONSTRUCTABILITY</h2>
+      <p>Focus: Risk & Budget</p>
+      <button class="control-btn" onclick="boostGravity('gc')">INCREASE PULL</button>
+    </div>
+
+    <div class="hud" id="hud-designer">
+      <h2>DESIGN VISION</h2>
+      <p>Current Node: <span id="active-node-name">Select a point</span></p>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button class="control-btn" onclick="vote('yes')">APPROVE</button>
+        <button class="control-btn" onclick="vote('no')">REJECT</button>
+      </div>
+    </div>
+
+    <div id="node-detail">
+      <h2 id="detail-title" style="font-family: Syne; margin-bottom: 10px;">Item</h2>
+      <p id="detail-desc" style="font-size: 0.8rem; line-height: 1.5; color: #aaa;"></p>
+    </div>
+  </div>
+
+  <canvas id="stage"></canvas>
+
+  <script>
+    const canvas = document.getElementById('stage');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    let nodes = [];
+    let points = {
+      client: { x: 150, y: 150, pull: 0.02 },
+      gc: { x: 0, y: 150, pull: 0.02 },
+      designer: { x: 0, y: 0, pull: 0.02 },
+      center: { x: 0, y: 0 }
+    };
+
+    const decisionItems = [
+      { name: "Mass Timber Frame", desc: "Sustainable but requires specialist GC sub-contractors.", cat: "Structure" },
+      { name: "Triple Glazing", desc: "Energy efficient. Long lead time from Europe.", cat: "Facade" },
+      { name: "Exposed Conduit", desc: "Industrial aesthetic. Harder to maintain.", cat: "MEP" },
+      { name: "Smart Access", desc: "Mobile-first entry system for all tenants.", cat: "Tech" },
+      { name: "Green Roof", desc: "High maintenance, huge public relations value.", cat: "Exterior" }
+    ];
+
+    class Node {
+      constructor(data, i) {
+        this.data = data;
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.vy = (Math.random() - 0.5) * 2;
+        this.radius = 6;
+        this.target = 'center';
+        this.hover = false;
+        this.consensus = 0; // 0 to 1
+      }
+
+      update() {
+        // Simple Physics
+        let targetPoint = (this.target === 'center') ? points.center : points[this.target];
+
+        let dx = targetPoint.x - this.x;
+        let dy = targetPoint.y - this.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Attraction
+        this.vx += dx * 0.0005;
+        this.vy += dy * 0.0005;
+
+        // Friction
+        this.vx *= 0.96;
+        this.vy *= 0.96;
+
+        this.x += this.vx;
+        this.y += this.vy;
+      }
+
+      draw() {
+        // Draw connection to center
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(points.center.x, points.center.y);
+        ctx.stroke();
+
+        // Draw node
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius + (this.hover ? 4 : 0), 0, Math.PI * 2);
+        ctx.fillStyle = this.hover ? '#fff' : 'rgba(255,255,255,0.4)';
+        ctx.fill();
+
+        if (this.hover || distTo(this.x, this.y, points.center.x, points.center.y) < 100) {
+          ctx.fillStyle = '#fff';
+          ctx.font = '10px DM Sans';
+          ctx.fillText(this.data.name, this.x + 15, this.y + 5);
+        }
+      }
+    }
+
+    function distTo(x1, y1, x2, y2) {
+      return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+    }
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      points.client = { x: 200, y: height / 2 - 100 };
+      points.gc = { x: width - 200, y: height / 2 - 100 };
+      points.designer = { x: width / 2, y: height - 150 };
+      points.center = { x: width / 2, y: height / 2 - 50 };
+    }
+
+    function init() {
+      resize();
+      nodes = decisionItems.map((item, i) => new Node(item, i));
+      animate();
+    }
+
+    function animate() {
+      ctx.fillStyle = varColor('--bg');
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw Gravity Zones
+      drawZone(points.client.x, points.client.y, varColor('--client'), "CLIENT");
+      drawZone(points.gc.x, points.gc.y, varColor('--gc'), "CONTRACTOR");
+      drawZone(points.designer.x, points.designer.y, varColor('--designer'), "DESIGNER");
+
+      // Draw Stable Orbit (Center)
+      ctx.beginPath();
+      ctx.setLineDash([5, 10]);
+      ctx.arc(points.center.x, points.center.y, 80, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      nodes.forEach(node => {
+        node.update();
+        node.draw();
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    function drawZone(x, y, color, label) {
+      ctx.beginPath();
+      ctx.arc(x, y, 40, 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.3;
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+
+      ctx.fillStyle = color;
+      ctx.font = 'bold 10px Syne';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x, y + 60);
+    }
+
+    function varColor(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    // Interaction
+    window.addEventListener('mousemove', (e) => {
+      let found = false;
+      nodes.forEach(node => {
+        if (distTo(e.clientX, e.clientY, node.x, node.y) < 20) {
+          node.hover = true;
+          document.getElementById('active-node-name').innerText = node.data.name;
+          found = true;
+        } else {
+          node.hover = false;
+        }
+      });
+      canvas.style.cursor = found ? 'pointer' : 'default';
+    });
+
+    window.addEventListener('mousedown', (e) => {
+      nodes.forEach(node => {
+        if (node.hover) {
+          // Show detail
+          const modal = document.getElementById('node-detail');
+          modal.style.display = 'block';
+          document.getElementById('detail-title').innerText = node.data.name;
+          document.getElementById('detail-desc').innerText = node.data.desc;
+
+          // Cycle through gravity targets for "game" feel
+          const targets = ['center', 'client', 'gc', 'designer'];
+          let next = targets[(targets.indexOf(node.target) + 1) % targets.length];
+          node.target = next;
+        }
+      });
+    });
+
+    window.addEventListener('resize', resize);
+    init();
+
+    function boostGravity(who) {
+      nodes.forEach(n => {
+        if (Math.random() > 0.5) n.target = who;
+      });
+    }
+
+    function vote(type) {
+      // Game logic for approving a node
+    }
+
+  </script>
+</body>
+
+</html>
