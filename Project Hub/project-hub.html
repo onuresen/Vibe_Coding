@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e10;
+    --surface: #18181c;
+    --surface2: #222228;
+    --border: #2e2e36;
+    --accent: #c8f03e;
+    --accent2: #3ecdf0;
+    --accent3: #f03e6e;
+    --text: #e8e8f0;
+    --text2: #8888a0;
+    --text3: #555566;
+    --radius: 10px;
+    --font-ui: 'Syne', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-ui); min-height: 100vh; display: flex; overflow: hidden; height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 220px; min-width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  }
+  .sidebar-logo {
+    padding: 24px 20px 16px; font-size: 18px; font-weight: 800; letter-spacing: -0.5px;
+    color: var(--accent); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sidebar-logo span { color: var(--text2); font-weight: 400; font-size: 12px; letter-spacing: 0; }
+  .sidebar-section { padding: 16px 12px 8px; font-size: 10px; font-family: var(--font-mono); color: var(--text3); letter-spacing: 2px; text-transform: uppercase; }
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 0 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 7px;
+    cursor: pointer; font-size: 13px; color: var(--text2); transition: all 0.15s; margin-bottom: 2px;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(200,240,62,0.1); color: var(--accent); }
+  .nav-item .icon { width: 16px; text-align: center; font-size: 14px; }
+  .nav-badge {
+    margin-left: auto; background: var(--surface2); color: var(--text3);
+    font-family: var(--font-mono); font-size: 10px; padding: 1px 6px; border-radius: 20px;
+  }
+  .nav-item.active .nav-badge { background: rgba(200,240,62,0.15); color: var(--accent); }
+
+  .sidebar-users { padding: 12px; border-top: 1px solid var(--border); }
+  .sidebar-users-title { font-size: 10px; font-family: var(--font-mono); color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .user-pill {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px;
+    cursor: pointer; transition: background 0.15s; margin-bottom: 4px;
+  }
+  .user-pill:hover { background: var(--surface2); }
+  .user-pill.selected { background: var(--surface2); }
+  .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+  .user-pill .user-name { font-size: 12px; color: var(--text2); }
+  .user-pill.selected .user-name { color: var(--text); }
+  .filter-dot { width: 6px; height: 6px; border-radius: 50%; margin-left: auto; }
+
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    height: 56px; display: flex; align-items: center; padding: 0 24px; gap: 16px;
+    border-bottom: 1px solid var(--border); background: var(--bg);
+  }
+  .topbar-title { font-size: 16px; font-weight: 700; flex: 1; }
+  .topbar-sub { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+    border-radius: 7px; font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #0e0e10; }
+  .btn-primary:hover { background: #d6f557; }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-danger { background: rgba(240,62,110,0.12); color: var(--accent3); border: 1px solid rgba(240,62,110,0.25); }
+  .btn-danger:hover { background: rgba(240,62,110,0.2); }
+
+  .content { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* STATS ROW */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat-label { font-size: 10px; font-family: var(--font-mono); color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+  .stat-value { font-size: 28px; font-weight: 800; }
+  .stat-sub { font-size: 11px; color: var(--text3); }
+  .stat-card.accent-card { border-color: rgba(200,240,62,0.3); background: rgba(200,240,62,0.05); }
+  .stat-card.accent-card .stat-value { color: var(--accent); }
+
+  /* PROJECT GRID */
+  .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .section-title { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .section-line { flex: 1; height: 1px; background: var(--border); }
+  .section-action { font-size: 11px; color: var(--text3); cursor: pointer; font-family: var(--font-mono); }
+  .section-action:hover { color: var(--accent); }
+
+  .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .project-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+  }
+  .project-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .project-card:hover { border-color: #444455; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .project-card.selected { border-color: var(--accent); }
+  .project-card.selected::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius); border: 1px solid var(--accent); pointer-events: none; }
+  .project-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .project-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .project-status { font-size: 10px; font-family: var(--font-mono); padding: 3px 8px; border-radius: 20px; }
+  .project-desc { font-size: 12px; color: var(--text2); margin-bottom: 14px; line-height: 1.6; }
+  .project-progress-wrap { margin-bottom: 12px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); font-family: var(--font-mono); margin-bottom: 5px; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+  .project-meta { display: flex; align-items: center; gap: 8px; }
+  .avatar-stack { display: flex; }
+  .avatar-stack .avatar { margin-right: -6px; border: 2px solid var(--surface); }
+  .project-task-count { margin-left: auto; font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
+
+  /* DETAIL PANEL */
+  .detail-panel {
+    width: 480px; min-width: 480px; background: var(--surface); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    transition: all 0.3s;
+  }
+  .detail-panel.hidden { width: 0; min-width: 0; overflow: hidden; }
+  .panel-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px; }
+  .panel-header-info { flex: 1; }
+  .panel-project-name { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .panel-project-desc { font-size: 12px; color: var(--text2); }
+  .panel-close { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 18px; padding: 2px 6px; }
+  .panel-close:hover { color: var(--text); }
+  .panel-tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 16px; }
+  .panel-tab {
+    padding: 10px 14px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text3);
+    border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -1px;
+  }
+  .panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .panel-tab:hover { color: var(--text); }
+  .panel-body { flex: 1; overflow-y: auto; padding: 16px; }
+
+  /* MILESTONES */
+  .milestone-item { margin-bottom: 16px; }
+  .milestone-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .milestone-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .milestone-name { font-size: 13px; font-weight: 700; flex: 1; }
+  .milestone-date { font-size: 11px; font-family: var(--font-mono); color: var(--text3); }
+  .milestone-progress { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 6px; }
+  .milestone-progress-fill { height: 100%; border-radius: 2px; }
+  .milestone-stats { display: flex; gap: 12px; }
+  .milestone-stat { font-size: 10px; font-family: var(--font-mono); color: var(--text3); }
+
+  /* TASKS */
+  .task-group { margin-bottom: 16px; }
+  .task-group-label {
+    font-size: 10px; font-family: var(--font-mono); letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text3); margin-bottom: 8px; padding-left: 4px;
+  }
+  .task-item {
+    display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+    background: var(--surface2); border-radius: 8px; margin-bottom: 6px; border: 1px solid transparent;
+    transition: border-color 0.15s; cursor: pointer;
+  }
+  .task-item:hover { border-color: var(--border); }
+  .task-check {
+    width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .task-check.done { background: var(--accent); border-color: var(--accent); color: #0e0e10; font-size: 10px; }
+  .task-body { flex: 1; min-width: 0; }
+  .task-title { font-size: 13px; margin-bottom: 3px; }
+  .task-title.done { text-decoration: line-through; color: var(--text3); }
+  .task-meta { display: flex; align-items: center; gap: 8px; }
+  .task-priority {
+    font-size: 10px; font-family: var(--font-mono); padding: 2px 6px; border-radius: 3px;
+  }
+  .task-assignee { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text3); }
+  .task-due { font-size: 10px; font-family: var(--font-mono); color: var(--text3); margin-left: auto; }
+  .task-due.overdue { color: var(--accent3); }
+  .task-item .task-right { display: flex; align-items: center; gap: 6px; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    width: 100%; max-width: 520px; padding: 28px;
+    transform: translateY(12px); transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 11px; font-family: var(--font-mono); color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; display: block; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; color: var(--text); font-family: var(--font-ui); font-size: 13px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-textarea { min-height: 80px; resize: vertical; }
+  .form-select option { background: var(--surface2); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .checkbox-group { display: flex; flex-direction: column; gap: 6px; }
+  .checkbox-item { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 8px; border-radius: 6px; }
+  .checkbox-item:hover { background: var(--surface2); }
+  .checkbox-item input { accent-color: var(--accent); }
+  .checkbox-item label { font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 48px; color: var(--text3); }
+  .empty-state .e-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state .e-title { font-size: 15px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+  .empty-state .e-sub { font-size: 13px; }
+
+  /* STATUS BADGES */
+  .s-active { background: rgba(200,240,62,0.12); color: var(--accent); }
+  .s-planning { background: rgba(62,205,240,0.12); color: var(--accent2); }
+  .s-onhold { background: rgba(240,62,110,0.12); color: var(--accent3); }
+  .s-done { background: rgba(120,120,160,0.12); color: var(--text2); }
+
+  .p-high { background: rgba(240,62,110,0.12); color: var(--accent3); }
+  .p-medium { background: rgba(240,180,62,0.12); color: #f0b43e; }
+  .p-low { background: rgba(62,205,240,0.12); color: var(--accent2); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #444455; }
+
+  /* GOALS TAB */
+  .goal-item { background: var(--surface2); border-radius: 8px; padding: 14px; margin-bottom: 10px; border: 1px solid transparent; }
+  .goal-item:hover { border-color: var(--border); }
+  .goal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .goal-name { font-size: 13px; font-weight: 700; }
+  .goal-desc { font-size: 12px; color: var(--text2); margin-bottom: 10px; line-height: 1.6; }
+  .goal-progress-label { display: flex; justify-content: space-between; font-size: 10px; font-family: var(--font-mono); color: var(--text3); margin-bottom: 4px; }
+  .goal-bar { height: 3px; background: var(--border); border-radius: 2px; }
+  .goal-fill { height: 100%; border-radius: 2px; background: var(--accent); }
+
+  /* PEOPLE TAB */
+  .person-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface2); border-radius: 8px; margin-bottom: 8px; }
+  .person-info { flex: 1; }
+  .person-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .person-role { font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
+  .person-task-count { font-size: 11px; font-family: var(--font-mono); color: var(--text3); }
+
+  /* ANIM */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .animate-in { animation: fadeIn 0.25s ease forwards; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">⬡ Hub <span>v1.0</span></div>
+  <div class="sidebar-nav">
+    <div class="sidebar-section">Views</div>
+    <div class="nav-item active" onclick="setView('overview')">
+      <span class="icon">◈</span> Overview
+      <span class="nav-badge" id="badge-overview">0</span>
+    </div>
+    <div class="nav-item" onclick="setView('tasks')">
+      <span class="icon">☐</span> All Tasks
+      <span class="nav-badge" id="badge-tasks">0</span>
+    </div>
+    <div class="nav-item" onclick="setView('milestones')">
+      <span class="icon">◎</span> Milestones
+      <span class="nav-badge" id="badge-milestones">0</span>
+    </div>
+    <div class="nav-item" onclick="setView('goals')">
+      <span class="icon">◇</span> Goals
+      <span class="nav-badge" id="badge-goals">0</span>
+    </div>
+    <div class="sidebar-section" style="margin-top:8px;">Team</div>
+  </div>
+  <div class="sidebar-users" id="sidebar-users"></div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Overview</div>
+    <div class="topbar-sub" id="topbar-sub"></div>
+    <button class="btn btn-ghost" style="font-size:12px;" onclick="showAddProject()">+ Project</button>
+    <button class="btn btn-primary" id="main-action-btn" onclick="handleMainAction()">+ Task</button>
+  </div>
+  <div class="content" id="main-content"></div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel hidden" id="detail-panel">
+  <div class="panel-header">
+    <div class="panel-header-info">
+      <div class="panel-project-name" id="panel-project-name"></div>
+      <div class="panel-project-desc" id="panel-project-desc"></div>
+    </div>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="panel-tabs">
+    <div class="panel-tab active" onclick="setTab('tasks')" id="tab-tasks">Tasks</div>
+    <div class="panel-tab" onclick="setTab('milestones')" id="tab-milestones">Milestones</div>
+    <div class="panel-tab" onclick="setTab('goals')" id="tab-goals">Goals</div>
+    <div class="panel-tab" onclick="setTab('people')" id="tab-people">People</div>
+  </div>
+  <div class="panel-body" id="panel-body"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">New Project</div>
+    <div class="modal-sub">Set up a new project workspace</div>
+    <div class="form-group">
+      <label class="form-label">Project Name</label>
+      <input class="form-input" id="proj-name" placeholder="e.g. 210 King Tower B">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-textarea" id="proj-desc" placeholder="What is this project about?"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="proj-status">
+          <option value="planning">Planning</option>
+          <option value="active">Active</option>
+          <option value="onhold">On Hold</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color</label>
+        <select class="form-select" id="proj-color">
+          <option value="#c8f03e">Lime</option>
+          <option value="#3ecdf0">Cyan</option>
+          <option value="#f03e6e">Red</option>
+          <option value="#f0b43e">Amber</option>
+          <option value="#9b3ef0">Purple</option>
+          <option value="#3ef09b">Mint</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Team Members</label>
+      <div class="checkbox-group" id="proj-members"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-project')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProject()">Create Project</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-task" onclick="closeModal('modal-task')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">New Task</div>
+    <div class="modal-sub">Add a task to the project</div>
+    <div class="form-group">
+      <label class="form-label">Task Title</label>
+      <input class="form-input" id="task-title" placeholder="What needs to be done?">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Project</label>
+        <select class="form-select" id="task-project"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Milestone</label>
+        <select class="form-select" id="task-milestone"><option value="">— none —</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Assignee</label>
+        <select class="form-select" id="task-assignee"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="form-select" id="task-priority">
+          <option value="high">High</option>
+          <option value="medium" selected>Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Due Date</label>
+      <input class="form-input" type="date" id="task-due">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-task')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-milestone" onclick="closeModal('modal-milestone')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">New Milestone</div>
+    <div class="modal-sub">Define a key milestone for this project</div>
+    <div class="form-group">
+      <label class="form-label">Milestone Name</label>
+      <input class="form-input" id="ms-name" placeholder="e.g. Design Approval">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Target Date</label>
+        <input class="form-input" type="date" id="ms-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color</label>
+        <select class="form-select" id="ms-color">
+          <option value="#c8f03e">Lime</option>
+          <option value="#3ecdf0">Cyan</option>
+          <option value="#f03e6e">Red</option>
+          <option value="#f0b43e">Amber</option>
+          <option value="#9b3ef0">Purple</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-milestone')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMilestone()">Add Milestone</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-goal" onclick="closeModal('modal-goal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">New Goal</div>
+    <div class="modal-sub">Define a high-level goal for this project</div>
+    <div class="form-group">
+      <label class="form-label">Goal Title</label>
+      <input class="form-input" id="goal-name" placeholder="e.g. Ship MVP by Q3">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-textarea" id="goal-desc" placeholder="What does success look like?"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-goal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGoal()">Add Goal</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-member" onclick="closeModal('modal-member')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">Add Team Member</div>
+    <div class="modal-sub">Add someone to the workspace</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-input" id="member-name" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <input class="form-input" id="member-role" placeholder="e.g. Architect">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Avatar Color</label>
+      <select class="form-select" id="member-color">
+        <option value="#c8f03e,#111">Lime</option>
+        <option value="#3ecdf0,#111">Cyan</option>
+        <option value="#f03e6e,#fff">Red</option>
+        <option value="#f0b43e,#111">Amber</option>
+        <option value="#9b3ef0,#fff">Purple</option>
+        <option value="#3ef09b,#111">Mint</option>
+        <option value="#f09b3e,#111">Orange</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-member')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMember()">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let state = {
+  members: [
+    { id: 'm1', name: 'Onur', role: 'Lead', color: '#c8f03e,#111' },
+    { id: 'm2', name: 'Kenji', role: 'Engineer', color: '#3ecdf0,#111' },
+    { id: 'm3', name: 'Aiko', role: 'Designer', color: '#f03e6e,#fff' },
+  ],
+  projects: [
+    {
+      id: 'p1', name: '210 King', desc: 'Multi-building residential development - Tower A & B',
+      status: 'active', color: '#c8f03e', members: ['m1','m2','m3'],
+      goals: [
+        { id: 'g1', name: 'Complete Schematic Design', desc: 'All floors planned, core resolved.', progress: 70 },
+        { id: 'g2', name: 'Client Approval on Facade', desc: 'Material selection and facade system signed off.', progress: 30 },
+      ],
+      milestones: [
+        { id: 'ms1', name: 'DD Package', date: '2026-05-15', color: '#c8f03e' },
+        { id: 'ms2', name: 'Permit Submission', date: '2026-07-01', color: '#3ecdf0' },
+      ],
+      tasks: [
+        { id: 't1', title: 'Model Tower B Level 3–8', milestoneId: 'ms1', assigneeId: 'm1', priority: 'high', done: false, due: '2026-04-20' },
+        { id: 't2', title: 'Wall type schedule cleanup', milestoneId: 'ms1', assigneeId: 'm2', priority: 'medium', done: true, due: '2026-04-15' },
+        { id: 't3', title: 'Facade detail drawings', milestoneId: 'ms2', assigneeId: 'm3', priority: 'high', done: false, due: '2026-06-10' },
+        { id: 't4', title: 'Core section coordination', milestoneId: '', assigneeId: 'm1', priority: 'low', done: false, due: '2026-05-01' },
+      ]
+    },
+    {
+      id: 'p2', name: 'Revit MCP Server', desc: 'Claude Desktop ↔ Revit integration via Model Context Protocol',
+      status: 'active', color: '#9b3ef0', members: ['m1'],
+      goals: [
+        { id: 'g3', name: 'Phase 1: Read-only Vault Access', desc: 'Claude can query Revit model data via MCP tools.', progress: 85 },
+        { id: 'g4', name: 'Phase 2: BHoM Integration', desc: 'Typed objects flow through BHoM middleware.', progress: 10 },
+      ],
+      milestones: [
+        { id: 'ms3', name: 'Working Prototype', date: '2026-04-30', color: '#9b3ef0' },
+      ],
+      tasks: [
+        { id: 't5', title: 'Wrap Revit API in MCP tool schema', milestoneId: 'ms3', assigneeId: 'm1', priority: 'high', done: true, due: '2026-04-10' },
+        { id: 't6', title: 'Graphic override tool implementation', milestoneId: 'ms3', assigneeId: 'm1', priority: 'medium', done: false, due: '2026-04-25' },
+        { id: 't7', title: 'Write SCHEMA.md contract', milestoneId: '', assigneeId: 'm1', priority: 'low', done: false, due: '2026-05-05' },
+      ]
+    }
+  ],
+  selectedProject: null,
+  selectedMemberFilter: null,
+  currentView: 'overview',
+  currentTab: 'tasks',
+};
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+const uid = () => Math.random().toString(36).slice(2, 9);
+const getMember = id => state.members.find(m => m.id === id);
+const getProject = id => state.projects.find(p => p.id === id);
+
+function avatarColors(colorStr) {
+  const [bg, fg] = colorStr.split(',');
+  return { bg, fg };
+}
+
+function initials(name) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function statusClass(s) {
+  return { active: 's-active', planning: 's-planning', onhold: 's-onhold', done: 's-done' }[s] || 's-planning';
+}
+function statusLabel(s) {
+  return { active: 'Active', planning: 'Planning', onhold: 'On Hold', done: 'Done' }[s] || s;
+}
+function priorityClass(p) {
+  return { high: 'p-high', medium: 'p-medium', low: 'p-low' }[p] || '';
+}
+
+function projectProgress(proj) {
+  const tasks = proj.tasks;
+  if (!tasks.length) return 0;
+  return Math.round((tasks.filter(t => t.done).length / tasks.length) * 100);
+}
+
+function isOverdue(dateStr) {
+  if (!dateStr) return false;
+  return new Date(dateStr) < new Date();
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ─── RENDER SIDEBAR USERS ─────────────────────────────────────────────────────
+function renderSidebarUsers() {
+  const container = document.getElementById('sidebar-users');
+  container.innerHTML = `<div class="sidebar-users-title">Filter by member</div>`;
+  state.members.forEach(m => {
+    const { bg, fg } = avatarColors(m.color);
+    const selected = state.selectedMemberFilter === m.id;
+    const div = document.createElement('div');
+    div.className = 'user-pill' + (selected ? ' selected' : '');
+    div.onclick = () => toggleMemberFilter(m.id);
+    div.innerHTML = `
+      <div class="avatar" style="background:${bg};color:${fg}">${initials(m.name)}</div>
+      <span class="user-name">${m.name}</span>
+      ${selected ? `<div class="filter-dot" style="background:${bg}"></div>` : ''}
+    `;
+    container.appendChild(div);
+  });
+  const addBtn = document.createElement('div');
+  addBtn.className = 'user-pill';
+  addBtn.style.color = 'var(--text3)';
+  addBtn.onclick = () => openModal('modal-member');
+  addBtn.innerHTML = `<div class="avatar" style="background:var(--surface2);color:var(--text3)">+</div><span class="user-name">Add member</span>`;
+  container.appendChild(addBtn);
+}
+
+function toggleMemberFilter(id) {
+  state.selectedMemberFilter = state.selectedMemberFilter === id ? null : id;
+  renderSidebarUsers();
+  renderContent();
+}
+
+// ─── BADGES ──────────────────────────────────────────────────────────────────
+function updateBadges() {
+  const allTasks = state.projects.flatMap(p => p.tasks);
+  const allMs = state.projects.flatMap(p => p.milestones);
+  const allGoals = state.projects.flatMap(p => p.goals);
+  document.getElementById('badge-overview').textContent = state.projects.length;
+  document.getElementById('badge-tasks').textContent = allTasks.filter(t => !t.done).length;
+  document.getElementById('badge-milestones').textContent = allMs.length;
+  document.getElementById('badge-goals').textContent = allGoals.length;
+}
+
+// ─── VIEW ROUTING ─────────────────────────────────────────────────────────────
+function setView(view) {
+  state.currentView = view;
+  state.selectedProject = null;
+  closePanel();
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => {
+    if (el.getAttribute('onclick')?.includes(view)) el.classList.add('active');
+  });
+  const titles = { overview: 'Overview', tasks: 'All Tasks', milestones: 'Milestones', goals: 'Goals' };
+  document.getElementById('topbar-title').textContent = titles[view] || view;
+  const actionBtnLabels = { overview: '+ Task', tasks: '+ Task', milestones: '+ Milestone', goals: '+ Goal' };
+  document.getElementById('main-action-btn').textContent = actionBtnLabels[view];
+  renderContent();
+}
+
+function handleMainAction() {
+  if (state.currentView === 'milestones') {
+    if (!state.selectedProject && state.projects.length) {
+      state.selectedProject = state.projects[0].id;
+    }
+    openMilestoneModal();
+  } else if (state.currentView === 'goals') {
+    if (!state.selectedProject && state.projects.length) {
+      state.selectedProject = state.projects[0].id;
+    }
+    openGoalModal();
+  } else {
+    showAddTask();
+  }
+}
+
+// ─── RENDER CONTENT ───────────────────────────────────────────────────────────
+function renderContent() {
+  const container = document.getElementById('main-content');
+  container.innerHTML = '';
+  updateBadges();
+  if (state.currentView === 'overview') renderOverview(container);
+  else if (state.currentView === 'tasks') renderAllTasks(container);
+  else if (state.currentView === 'milestones') renderAllMilestones(container);
+  else if (state.currentView === 'goals') renderAllGoals(container);
+}
+
+// ─── OVERVIEW ────────────────────────────────────────────────────────────────
+function renderOverview(container) {
+  const allTasks = state.projects.flatMap(p => p.tasks);
+  const open = allTasks.filter(t => !t.done);
+  const overdue = open.filter(t => isOverdue(t.due));
+  const myFilter = state.selectedMemberFilter;
+  const myTasks = myFilter ? open.filter(t => t.assigneeId === myFilter) : open;
+
+  // Stats
+  const statsDiv = document.createElement('div');
+  statsDiv.className = 'stats-row animate-in';
+  statsDiv.innerHTML = `
+    <div class="stat-card accent-card">
+      <div class="stat-label">Open Tasks</div>
+      <div class="stat-value">${myTasks.length}</div>
+      <div class="stat-sub">${myFilter ? 'assigned to ' + getMember(myFilter)?.name : 'across all projects'}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Projects</div>
+      <div class="stat-value">${state.projects.length}</div>
+      <div class="stat-sub">${state.projects.filter(p=>p.status==='active').length} active</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Overdue</div>
+      <div class="stat-value" style="color:var(--accent3)">${overdue.length}</div>
+      <div class="stat-sub">need attention</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Completed</div>
+      <div class="stat-value">${allTasks.filter(t=>t.done).length}</div>
+      <div class="stat-sub">of ${allTasks.length} total</div>
+    </div>
+  `;
+  container.appendChild(statsDiv);
+
+  // Projects
+  const hdr = document.createElement('div');
+  hdr.innerHTML = `
+    <div class="section-header">
+      <div class="section-title">Projects</div>
+      <div class="section-line"></div>
+      <div class="section-action" onclick="showAddProject()">+ New</div>
+    </div>
+  `;
+  container.appendChild(hdr);
+
+  const grid = document.createElement('div');
+  grid.className = 'project-grid animate-in';
+  const visibleProjects = myFilter
+    ? state.projects.filter(p => p.members.includes(myFilter))
+    : state.projects;
+  if (!visibleProjects.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="e-icon">◈</div>
+      <div class="e-title">No projects yet</div>
+      <div class="e-sub">Click "+ Project" to create one</div>
+    </div>`;
+  }
+  visibleProjects.forEach(proj => {
+    const card = document.createElement('div');
+    card.className = 'project-card' + (state.selectedProject === proj.id ? ' selected' : '');
+    card.onclick = () => openProject(proj.id);
+    const prog = projectProgress(proj);
+    const memberAvatars = proj.members.map(mid => {
+      const m = getMember(mid);
+      if (!m) return '';
+      const { bg, fg } = avatarColors(m.color);
+      return `<div class="avatar" style="background:${bg};color:${fg};width:22px;height:22px;font-size:9px">${initials(m.name)}</div>`;
+    }).join('');
+    card.innerHTML = `
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${proj.color};border-radius:var(--radius) var(--radius) 0 0"></div>
+      <div class="project-card-header">
+        <div>
+          <div class="project-name">${proj.name}</div>
+        </div>
+        <div class="project-status ${statusClass(proj.status)}">${statusLabel(proj.status)}</div>
+      </div>
+      <div class="project-desc">${proj.desc}</div>
+      <div class="project-progress-wrap">
+        <div class="progress-label"><span>Progress</span><span>${prog}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${prog}%;background:${proj.color}"></div></div>
+      </div>
+      <div class="project-meta">
+        <div class="avatar-stack">${memberAvatars}</div>
+        <div class="project-task-count">${proj.tasks.filter(t=>!t.done).length} open · ${proj.tasks.length} total</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
+
+// ─── ALL TASKS ────────────────────────────────────────────────────────────────
+function renderAllTasks(container) {
+  let tasks = state.projects.flatMap(p => p.tasks.map(t => ({ ...t, projectId: p.id, projectName: p.name, projectColor: p.color })));
+  if (state.selectedMemberFilter) tasks = tasks.filter(t => t.assigneeId === state.selectedMemberFilter);
+  const open = tasks.filter(t => !t.done);
+  const done = tasks.filter(t => t.done);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'animate-in';
+  if (!open.length && !done.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="e-icon">☐</div><div class="e-title">No tasks</div><div class="e-sub">Add tasks via the "+ Task" button</div></div>`;
+  } else {
+    if (open.length) {
+      wrap.innerHTML += `<div class="task-group"><div class="task-group-label">Open · ${open.length}</div>${open.map(t => taskHTML(t, true)).join('')}</div>`;
+    }
+    if (done.length) {
+      wrap.innerHTML += `<div class="task-group"><div class="task-group-label" style="margin-top:16px">Completed · ${done.length}</div>${done.map(t => taskHTML(t, true)).join('')}</div>`;
+    }
+  }
+  container.appendChild(wrap);
+  attachTaskCheckHandlers(container);
+}
+
+function taskHTML(task, showProject = false) {
+  const assignee = getMember(task.assigneeId);
+  const { bg, fg } = assignee ? avatarColors(assignee.color) : { bg: '#333', fg: '#999' };
+  const overdue = !task.done && isOverdue(task.due);
+  const projBadge = showProject && task.projectName
+    ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text3);padding:2px 6px;background:var(--surface);border-radius:3px;border:1px solid var(--border)">${task.projectName}</span>`
+    : '';
+  return `
+    <div class="task-item" data-task-id="${task.id}" data-project-id="${task.projectId || ''}">
+      <div class="task-check ${task.done ? 'done' : ''}" onclick="toggleTask(event,'${task.id}','${task.projectId || ''}')">${task.done ? '✓' : ''}</div>
+      <div class="task-body">
+        <div class="task-title ${task.done ? 'done' : ''}">${task.title}</div>
+        <div class="task-meta">
+          <span class="task-priority ${priorityClass(task.priority)}">${task.priority}</span>
+          ${projBadge}
+          ${assignee ? `<span class="task-assignee"><div class="avatar" style="background:${bg};color:${fg};width:16px;height:16px;font-size:8px">${initials(assignee.name)}</div>${assignee.name}</span>` : ''}
+          ${task.due ? `<span class="task-due ${overdue ? 'overdue' : ''}">${overdue ? '⚠ ' : ''}${formatDate(task.due)}</span>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function attachTaskCheckHandlers(container) {
+  // Already using onclick in HTML, no extra binding needed
+}
+
+function toggleTask(e, taskId, projectId) {
+  e.stopPropagation();
+  const proj = getProject(projectId);
+  if (!proj) {
+    // find in all projects
+    for (const p of state.projects) {
+      const t = p.tasks.find(t => t.id === taskId);
+      if (t) { t.done = !t.done; break; }
+    }
+  } else {
+    const t = proj.tasks.find(t => t.id === taskId);
+    if (t) t.done = !t.done;
+  }
+  renderContent();
+  if (state.selectedProject) renderPanel(state.selectedProject);
+}
+
+// ─── ALL MILESTONES ───────────────────────────────────────────────────────────
+function renderAllMilestones(container) {
+  const wrap = document.createElement('div');
+  wrap.className = 'animate-in';
+  state.projects.forEach(proj => {
+    if (!proj.milestones.length) return;
+    wrap.innerHTML += `
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title" style="color:${proj.color}">${proj.name}</div>
+        <div class="section-line"></div>
+      </div>
+    `;
+    proj.milestones.forEach(ms => {
+      const msTasks = proj.tasks.filter(t => t.milestoneId === ms.id);
+      const doneCount = msTasks.filter(t => t.done).length;
+      const pct = msTasks.length ? Math.round((doneCount / msTasks.length) * 100) : 0;
+      wrap.innerHTML += `
+        <div class="milestone-item" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+          <div class="milestone-header">
+            <div class="milestone-dot" style="background:${ms.color}"></div>
+            <div class="milestone-name">${ms.name}</div>
+            <div class="milestone-date">${formatDate(ms.date)}</div>
+          </div>
+          <div class="milestone-progress"><div class="milestone-progress-fill" style="width:${pct}%;background:${ms.color}"></div></div>
+          <div class="milestone-stats">
+            <span class="milestone-stat">${doneCount}/${msTasks.length} tasks</span>
+            <span class="milestone-stat">${pct}% complete</span>
+            ${isOverdue(ms.date) && pct < 100 ? '<span class="milestone-stat" style="color:var(--accent3)">⚠ overdue</span>' : ''}
+          </div>
+        </div>
+      `;
+    });
+  });
+  if (!wrap.innerHTML) {
+    wrap.innerHTML = `<div class="empty-state"><div class="e-icon">◎</div><div class="e-title">No milestones</div><div class="e-sub">Select a project and add milestones</div></div>`;
+  }
+  container.appendChild(wrap);
+}
+
+// ─── ALL GOALS ────────────────────────────────────────────────────────────────
+function renderAllGoals(container) {
+  const wrap = document.createElement('div');
+  wrap.className = 'animate-in';
+  state.projects.forEach(proj => {
+    if (!proj.goals.length) return;
+    wrap.innerHTML += `
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title" style="color:${proj.color}">${proj.name}</div>
+        <div class="section-line"></div>
+      </div>
+    `;
+    proj.goals.forEach(g => {
+      wrap.innerHTML += `
+        <div class="goal-item">
+          <div class="goal-header">
+            <div class="goal-name">${g.name}</div>
+            <span style="font-size:11px;font-family:var(--font-mono);color:var(--accent)">${g.progress}%</span>
+          </div>
+          <div class="goal-desc">${g.desc}</div>
+          <div class="goal-progress-label"><span>Progress</span><span>${g.progress}%</span></div>
+          <div class="goal-bar"><div class="goal-fill" style="width:${g.progress}%"></div></div>
+        </div>
+      `;
+    });
+  });
+  if (!wrap.innerHTML) {
+    wrap.innerHTML = `<div class="empty-state"><div class="e-icon">◇</div><div class="e-title">No goals defined</div><div class="e-sub">Add goals to track high-level outcomes</div></div>`;
+  }
+  container.appendChild(wrap);
+}
+
+// ─── DETAIL PANEL ────────────────────────────────────────────────────────────
+function openProject(projId) {
+  state.selectedProject = projId;
+  document.getElementById('detail-panel').classList.remove('hidden');
+  document.querySelectorAll('.project-card').forEach(c => c.classList.remove('selected'));
+  renderPanel(projId);
+  renderContent();
+}
+
+function closePanel() {
+  state.selectedProject = null;
+  document.getElementById('detail-panel').classList.add('hidden');
+  document.querySelectorAll('.project-card').forEach(c => c.classList.remove('selected'));
+  renderContent();
+}
+
+function setTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (state.selectedProject) renderPanel(state.selectedProject);
+}
+
+function renderPanel(projId) {
+  const proj = getProject(projId);
+  if (!proj) return;
+  document.getElementById('panel-project-name').textContent = proj.name;
+  document.getElementById('panel-project-desc').textContent = proj.desc;
+
+  const body = document.getElementById('panel-body');
+  body.innerHTML = '';
+
+  if (state.currentTab === 'tasks') {
+    // Add task btn
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-ghost';
+    addBtn.style.cssText = 'width:100%;margin-bottom:12px;font-size:12px;justify-content:center';
+    addBtn.textContent = '+ Add Task';
+    addBtn.onclick = () => showAddTask(projId);
+    body.appendChild(addBtn);
+
+    let tasks = proj.tasks;
+    if (state.selectedMemberFilter) tasks = tasks.filter(t => t.assigneeId === state.selectedMemberFilter);
+    const open = tasks.filter(t => !t.done);
+    const done = tasks.filter(t => t.done);
+
+    if (!tasks.length) {
+      body.innerHTML += `<div class="empty-state"><div class="e-icon">☐</div><div class="e-title">No tasks yet</div></div>`;
+    } else {
+      if (open.length) body.innerHTML += `<div class="task-group"><div class="task-group-label">Open</div>${open.map(t => taskHTML({ ...t, projectId: projId })).join('')}</div>`;
+      if (done.length) body.innerHTML += `<div class="task-group"><div class="task-group-label" style="margin-top:12px">Done</div>${done.map(t => taskHTML({ ...t, projectId: projId })).join('')}</div>`;
+    }
+  }
+
+  else if (state.currentTab === 'milestones') {
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-ghost';
+    addBtn.style.cssText = 'width:100%;margin-bottom:12px;font-size:12px;justify-content:center';
+    addBtn.textContent = '+ Add Milestone';
+    addBtn.onclick = () => openMilestoneModal();
+    body.appendChild(addBtn);
+
+    if (!proj.milestones.length) {
+      body.innerHTML += `<div class="empty-state"><div class="e-icon">◎</div><div class="e-title">No milestones</div></div>`;
+    }
+    proj.milestones.forEach(ms => {
+      const msTasks = proj.tasks.filter(t => t.milestoneId === ms.id);
+      const doneCount = msTasks.filter(t => t.done).length;
+      const pct = msTasks.length ? Math.round((doneCount / msTasks.length) * 100) : 0;
+      const el = document.createElement('div');
+      el.className = 'milestone-item';
+      el.innerHTML = `
+        <div class="milestone-header">
+          <div class="milestone-dot" style="background:${ms.color}"></div>
+          <div class="milestone-name">${ms.name}</div>
+          <div class="milestone-date">${formatDate(ms.date)}</div>
+        </div>
+        <div class="milestone-progress"><div class="milestone-progress-fill" style="width:${pct}%;background:${ms.color}"></div></div>
+        <div class="milestone-stats">
+          <span class="milestone-stat">${doneCount}/${msTasks.length} tasks · ${pct}%</span>
+          ${isOverdue(ms.date) && pct < 100 ? '<span class="milestone-stat" style="color:var(--accent3)">⚠ overdue</span>' : ''}
+        </div>
+        ${msTasks.map(t => taskHTML({ ...t, projectId: projId })).join('')}
+      `;
+      body.appendChild(el);
+    });
+    // Unassigned tasks
+    const unassigned = proj.tasks.filter(t => !t.milestoneId);
+    if (unassigned.length) {
+      const el = document.createElement('div');
+      el.className = 'milestone-item';
+      el.style.marginTop = '12px';
+      el.innerHTML = `<div class="task-group-label" style="margin-bottom:8px">No Milestone</div>${unassigned.map(t => taskHTML({ ...t, projectId: projId })).join('')}`;
+      body.appendChild(el);
+    }
+  }
+
+  else if (state.currentTab === 'goals') {
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-ghost';
+    addBtn.style.cssText = 'width:100%;margin-bottom:12px;font-size:12px;justify-content:center';
+    addBtn.textContent = '+ Add Goal';
+    addBtn.onclick = () => openGoalModal();
+    body.appendChild(addBtn);
+
+    if (!proj.goals.length) {
+      body.innerHTML += `<div class="empty-state"><div class="e-icon">◇</div><div class="e-title">No goals yet</div></div>`;
+    }
+    proj.goals.forEach(g => {
+      const el = document.createElement('div');
+      el.className = 'goal-item';
+      el.innerHTML = `
+        <div class="goal-header">
+          <div class="goal-name">${g.name}</div>
+          <span style="font-size:11px;font-family:var(--font-mono);color:var(--accent)">${g.progress}%</span>
+        </div>
+        <div class="goal-desc">${g.desc}</div>
+        <div class="goal-progress-label"><span>Progress</span><span>${g.progress}%</span></div>
+        <div class="goal-bar"><div class="goal-fill" style="width:${g.progress}%"></div></div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <input type="range" min="0" max="100" value="${g.progress}" style="flex:1;accent-color:var(--accent)" oninput="updateGoalProgress('${proj.id}','${g.id}',this.value,this.nextElementSibling)">
+          <span style="font-size:11px;font-family:var(--font-mono);color:var(--text3);width:32px">${g.progress}%</span>
+        </div>
+      `;
+      el.querySelector('input[type=range]').addEventListener('change', function() {
+        const g2 = proj.goals.find(g3 => g3.id === g.id);
+        if (g2) { g2.progress = parseInt(this.value); renderPanel(projId); renderContent(); }
+      });
+      body.appendChild(el);
+    });
+  }
+
+  else if (state.currentTab === 'people') {
+    const projMembers = proj.members.map(mid => getMember(mid)).filter(Boolean);
+    projMembers.forEach(m => {
+      const { bg, fg } = avatarColors(m.color);
+      const assignedTasks = proj.tasks.filter(t => t.assigneeId === m.id);
+      const openCount = assignedTasks.filter(t => !t.done).length;
+      const el = document.createElement('div');
+      el.className = 'person-item';
+      el.innerHTML = `
+        <div class="avatar" style="background:${bg};color:${fg};width:36px;height:36px;font-size:13px">${initials(m.name)}</div>
+        <div class="person-info">
+          <div class="person-name">${m.name}</div>
+          <div class="person-role">${m.role}</div>
+        </div>
+        <div class="person-task-count">${openCount} open<br><span style="color:var(--text3);font-size:10px">${assignedTasks.length} total</span></div>
+      `;
+      body.appendChild(el);
+    });
+    if (!projMembers.length) {
+      body.innerHTML += `<div class="empty-state"><div class="e-icon">◯</div><div class="e-title">No members</div></div>`;
+    }
+  }
+}
+
+function updateGoalProgress(projId, goalId, val, label) {
+  label.textContent = val + '%';
+}
+
+// ─── MODALS ───────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showAddProject() {
+  // populate member checkboxes
+  const c = document.getElementById('proj-members');
+  c.innerHTML = state.members.map(m => `
+    <div class="checkbox-item">
+      <input type="checkbox" id="pm-${m.id}" value="${m.id}" checked>
+      <label for="pm-${m.id}">
+        ${(() => { const { bg, fg } = avatarColors(m.color); return `<div class="avatar" style="background:${bg};color:${fg};width:20px;height:20px;font-size:9px">${initials(m.name)}</div>`; })()}
+        ${m.name} <span style="color:var(--text3);font-size:11px;font-family:var(--font-mono)">${m.role}</span>
+      </label>
+    </div>
+  `).join('');
+  document.getElementById('proj-name').value = '';
+  document.getElementById('proj-desc').value = '';
+  openModal('modal-project');
+}
+
+function saveProject() {
+  const name = document.getElementById('proj-name').value.trim();
+  if (!name) return;
+  const members = [...document.querySelectorAll('#proj-members input:checked')].map(cb => cb.value);
+  const proj = {
+    id: uid(), name,
+    desc: document.getElementById('proj-desc').value.trim(),
+    status: document.getElementById('proj-status').value,
+    color: document.getElementById('proj-color').value,
+    members, goals: [], milestones: [], tasks: []
+  };
+  state.projects.push(proj);
+  closeModal('modal-project');
+  renderContent();
+}
+
+function showAddTask(preProjectId) {
+  const sel = document.getElementById('task-project');
+  sel.innerHTML = state.projects.map(p => `<option value="${p.id}" ${p.id === preProjectId ? 'selected' : ''}>${p.name}</option>`).join('');
+  populateTaskProjectDependents(preProjectId || state.projects[0]?.id);
+  sel.onchange = () => populateTaskProjectDependents(sel.value);
+  const assignSel = document.getElementById('task-assignee');
+  assignSel.innerHTML = state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  document.getElementById('task-title').value = '';
+  document.getElementById('task-due').value = '';
+  openModal('modal-task');
+}
+
+function populateTaskProjectDependents(projId) {
+  const proj = getProject(projId);
+  const msSel = document.getElementById('task-milestone');
+  msSel.innerHTML = `<option value="">— none —</option>` + (proj?.milestones || []).map(ms => `<option value="${ms.id}">${ms.name}</option>`).join('');
+  // filter assignee to project members
+  const assignSel = document.getElementById('task-assignee');
+  const members = proj ? proj.members.map(id => getMember(id)).filter(Boolean) : state.members;
+  assignSel.innerHTML = members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+function saveTask() {
+  const title = document.getElementById('task-title').value.trim();
+  if (!title) return;
+  const projId = document.getElementById('task-project').value;
+  const proj = getProject(projId);
+  if (!proj) return;
+  proj.tasks.push({
+    id: uid(), title,
+    milestoneId: document.getElementById('task-milestone').value,
+    assigneeId: document.getElementById('task-assignee').value,
+    priority: document.getElementById('task-priority').value,
+    due: document.getElementById('task-due').value,
+    done: false,
+  });
+  closeModal('modal-task');
+  renderContent();
+  if (state.selectedProject === projId) renderPanel(projId);
+}
+
+function openMilestoneModal() {
+  document.getElementById('ms-name').value = '';
+  document.getElementById('ms-date').value = '';
+  openModal('modal-milestone');
+}
+
+function saveMilestone() {
+  const name = document.getElementById('ms-name').value.trim();
+  if (!name) return;
+  const projId = state.selectedProject || state.projects[0]?.id;
+  const proj = getProject(projId);
+  if (!proj) return;
+  proj.milestones.push({
+    id: uid(), name,
+    date: document.getElementById('ms-date').value,
+    color: document.getElementById('ms-color').value,
+  });
+  closeModal('modal-milestone');
+  renderContent();
+  if (state.selectedProject) renderPanel(projId);
+}
+
+function openGoalModal() {
+  document.getElementById('goal-name').value = '';
+  document.getElementById('goal-desc').value = '';
+  openModal('modal-goal');
+}
+
+function saveGoal() {
+  const name = document.getElementById('goal-name').value.trim();
+  if (!name) return;
+  const projId = state.selectedProject || state.projects[0]?.id;
+  const proj = getProject(projId);
+  if (!proj) return;
+  proj.goals.push({ id: uid(), name, desc: document.getElementById('goal-desc').value.trim(), progress: 0 });
+  closeModal('modal-goal');
+  renderContent();
+  if (state.selectedProject) renderPanel(projId);
+}
+
+function saveMember() {
+  const name = document.getElementById('member-name').value.trim();
+  if (!name) return;
+  state.members.push({
+    id: uid(), name,
+    role: document.getElementById('member-role').value.trim() || 'Team',
+    color: document.getElementById('member-color').value,
+  });
+  closeModal('modal-member');
+  renderSidebarUsers();
+  renderContent();
+}
+
+// ─── KEYBOARD ─────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+    if (!document.querySelector('.modal-overlay.open')) closePanel();
+  }
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderSidebarUsers();
+renderContent();
+</script>
+</body>
+</html>
