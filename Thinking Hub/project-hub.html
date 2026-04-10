@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Hub</title>
+  <script src="hub-links.js"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap"
     rel="stylesheet">
@@ -2217,6 +2218,11 @@
       const projBadge = showProject && task.projectName
         ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text3);padding:1px 6px;background:var(--surface3);border-radius:4px;border-left:2px solid ${task.projectColor}">${task.projectName}</span>`
         : '';
+      const safeTitle = (task.title || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      const linkCount = typeof HubLinks !== 'undefined' ? HubLinks.getLinksFor('project-hub', task.id).length : 0;
+      const linkBadge = linkCount > 0
+        ? `<button class="hl-badge" onclick="event.stopPropagation();HubLinks.showLinksPopover('project-hub','${task.id}',this)">🔗 ${linkCount}</button>`
+        : '';
       return `
     <div class="task-item" data-task-id="${task.id}" data-project-id="${task.projectId || ''}">
       <div class="task-check ${task.done ? 'done' : ''}" onclick="toggleTask(event,'${task.id}','${task.projectId || ''}')">${task.done ? '✓' : ''}</div>
@@ -2227,9 +2233,11 @@
           ${projBadge}
           ${assignee ? `<span class="task-assignee"><div class="avatar" style="background:${bg};color:${fg};width:16px;height:16px;font-size:8px">${initials(assignee.name)}</div>${assignee.name}</span>` : ''}
           ${task.due ? `<span class="task-due ${overdue ? 'overdue' : ''}">${overdue ? '⚠ ' : ''}${formatDate(task.due)}</span>` : ''}
+          ${linkBadge}
         </div>
       </div>
       <div class="task-item-actions">
+        <button class="hl-btn" title="Link to tool" onclick="event.stopPropagation();HubLinks.openModal('project-hub','${task.id}','${safeTitle}')">🔗</button>
         <button class="task-action-btn edit" title="Rename" onclick="startInlineEdit(event,'${task.id}','${task.projectId || ''}')">✎</button>
         <button class="task-action-btn del" title="Delete" onclick="deleteTask(event,'${task.id}','${task.projectId || ''}')">✕</button>
       </div>

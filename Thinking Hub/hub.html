@@ -568,6 +568,14 @@ function openApp(id) {
   frame.src = app.file;
   frame.style.display = 'block';
 
+  // Send highlight once the tool finishes loading
+  frame.onload = () => {
+    if (_pendingHighlight) {
+      frame.contentWindow.postMessage({ type: 'hub-highlight', itemId: _pendingHighlight }, '*');
+      _pendingHighlight = null;
+    }
+  };
+
   // Hide dashboard
   document.getElementById('home-dashboard').style.display = 'none';
 
@@ -611,6 +619,18 @@ function initSession() {
 document.getElementById('session-name').addEventListener('input', function () {
   saveSession({ sessionName: this.value });
   setGreeting();
+});
+
+// ── Cross-tool navigation (postMessage from tools) ────────────────────────────
+
+let _pendingHighlight = null;
+
+window.addEventListener('message', e => {
+  if (!e.data || e.data.type !== 'hub-navigate') return;
+  const { tool, itemId } = e.data;
+  if (!tool) return;
+  _pendingHighlight = itemId || null;
+  openApp(tool);
 });
 
 // ── Keyboard shortcut (Escape → home) ────────────────────────────────────────
