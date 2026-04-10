@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>OptionMap — Comparison Board</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #0f0f11;
+      color: #f0efe8;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      margin: 0;
+    }
+
+    header {
+      padding: 16px 20px;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: 0.2px;
+      border-bottom: 1px solid #23232a;
+    }
+
+    header span {
+      color: #7c6af5;
+    }
+
+    .main {
+      max-width: 900px;
+      margin: 24px auto;
+      background: #18181f;
+      border-radius: 14px;
+      box-shadow: 0 6px 32px #0004;
+      padding: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 18px;
+    }
+
+    th,
+    td {
+      border: 1px solid #23232a;
+      padding: 10px 8px;
+      font-size: 14px;
+      background: #222228;
+    }
+
+    th {
+      background: #1a1a1f;
+      color: #b7b6c3;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    tr.dragging {
+      opacity: 0.5;
+    }
+
+    td input,
+    td select {
+      width: 100%;
+      background: #18181f;
+      color: #f0efe8;
+      border: none;
+      font-size: 14px;
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+
+    td input:focus,
+    td select:focus {
+      outline: 2px solid #7c6af5;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      background: #23232a;
+      color: #b7b6c3;
+      transition: background .12s, color .12s;
+    }
+
+    button.primary {
+      background: #7c6af5;
+      color: #fff;
+    }
+
+    button.danger {
+      background: #e8455a;
+      color: #fff;
+    }
+
+    button:hover {
+      background: #353545;
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: #6a5ae5;
+    }
+
+    button.danger:hover {
+      background: #c73245;
+    }
+
+    .drag-handle {
+      cursor: grab;
+      color: #7c6af5;
+      font-size: 16px;
+      padding-right: 6px;
+    }
+
+    @media (max-width: 700px) {
+      .main {
+        padding: 8px;
+      }
+
+      th,
+      td {
+        font-size: 12px;
+        padding: 6px 4px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>Option<span>Map</span> — Comparison Board</header>
+  <div class="main">
+    <div class="actions">
+      <button class="primary" onclick="addRow()">+ Add Option</button>
+      <button onclick="exportJSON()">Export JSON</button>
+      <button onclick="importJSON()">Import</button>
+      <button onclick="copyMarkdown()">Copy as Markdown</button>
+      <button class="danger" onclick="resetAll()">Reset</button>
+      <input type="file" id="file" accept="application/json" style="display:none">
+    </div>
+    <table id="optionTable">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Option / Tool</th>
+          <th>Upside</th>
+          <th>Downside</th>
+          <th>Irreversibility</th>
+          <th>Risk Owner</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div style="color:#b7b6c3;font-size:12px;">Drag rows to reorder. All data is autosaved locally.</div>
+  </div>
+  <script>
+    const STORAGE_KEY = 'optionmap-v1';
+    let data = [];
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+    function load() {
+      try {
+        data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch { data = []; }
+    }
+    function render() {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+      data.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        tr.draggable = true;
+        tr.ondragstart = e => { tr.classList.add('dragging'); e.dataTransfer.setData('row', i); };
+        tr.ondragend = () => tr.classList.remove('dragging');
+        tr.ondragover = e => { e.preventDefault(); tr.style.background = '#2a2a32'; };
+        tr.ondragleave = () => tr.style.background = '';
+        tr.ondrop = e => {
+          e.preventDefault();
+          tr.style.background = '';
+          const from = +e.dataTransfer.getData('row');
+          if (from !== i) {
+            const moved = data.splice(from, 1)[0];
+            data.splice(i, 0, moved);
+            save(); render();
+          }
+        };
+        tr.innerHTML = `
+      <td class="drag-handle" title="Drag to reorder">☰</td>
+      <td><input value="${row.option || ''}" onchange="updateCell(${i},'option',this.value)"></td>
+      <td><input value="${row.upside || ''}" onchange="updateCell(${i},'upside',this.value)"></td>
+      <td><input value="${row.downside || ''}" onchange="updateCell(${i},'downside',this.value)"></td>
+      <td>
+        <select onchange="updateCell(${i},'irreversibility',this.value)">
+          <option value="">—</option>
+          <option value="Low" ${row.irreversibility === 'Low' ? 'selected' : ''}>Low</option>
+          <option value="Medium" ${row.irreversibility === 'Medium' ? 'selected' : ''}>Medium</option>
+          <option value="High" ${row.irreversibility === 'High' ? 'selected' : ''}>High</option>
+        </select>
+      </td>
+      <td><input value="${row.owner || ''}" onchange="updateCell(${i},'owner',this.value)"></td>
+      <td><button onclick="removeRow(${i})" class="danger" title="Delete">✕</button></td>
+    `;
+        tbody.appendChild(tr);
+      });
+    }
+    function addRow() {
+      data.push({ option: '', upside: '', downside: '', irreversibility: '', owner: '' });
+      save(); render();
+    }
+    function removeRow(i) {
+      if (confirm('Delete this row?')) {
+        data.splice(i, 1); save(); render();
+      }
+    }
+    function updateCell(i, key, val) {
+      data[i][key] = val;
+      save();
+    }
+    function resetAll() {
+      if (confirm('Clear all options?')) {
+        data = []; save(); render();
+      }
+    }
+    function exportJSON() {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'optionmap.json';
+      a.click();
+    }
+    function importJSON() {
+      document.getElementById('file').value = '';
+      document.getElementById('file').click();
+    }
+    document.getElementById('file').addEventListener('change', async function () {
+      const file = this.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const arr = JSON.parse(text);
+        if (!Array.isArray(arr)) throw 0;
+        if (!confirm(`Import will REPLACE current board. Continue?`)) return;
+        data = arr;
+        save(); render();
+      } catch { alert('Invalid JSON.'); }
+    });
+    function copyMarkdown() {
+      let md = '| Option/Tool | Upside | Downside | Irreversibility | Risk Owner |\n|---|---|---|---|---|\n';
+      data.forEach(r => {
+        md += `| ${r.option || ''} | ${r.upside || ''} | ${r.downside || ''} | ${r.irreversibility || ''} | ${r.owner || ''} |\n`;
+      });
+      navigator.clipboard.writeText(md).then(() => alert('Copied as Markdown!'));
+    }
+    window.updateCell = updateCell;
+    window.removeRow = removeRow;
+    load(); render();
+  </script>
+</body>
+
+</html>

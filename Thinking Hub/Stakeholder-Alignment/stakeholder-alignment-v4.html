@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>THE ALIGNMENT NEXUS // V3</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050506;
+      --accent-1: #ffaa00;
+      /* Client */
+      --accent-2: #bf5af2;
+      /* Designer */
+      --accent-3: #30d158;
+      /* GC */
+      --text: #f0efe8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .title-block h1 {
+      font-family: 'Syne';
+      font-size: 1.2rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    .title-block p {
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    .stats {
+      font-family: 'Syne';
+      font-size: 0.7rem;
+      text-align: right;
+    }
+
+    .stat-row {
+      margin-bottom: 10px;
+    }
+
+    .stat-val {
+      color: var(--accent-3);
+      display: block;
+      font-size: 1rem;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+    }
+
+    .stakeholder-tag {
+      text-align: center;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .stakeholder-tag:hover {
+      opacity: 0.7;
+      transform: translateY(-5px);
+    }
+
+    .tag-label {
+      font-family: 'Syne';
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .tag-circle {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin: 0 auto;
+      border: 2px solid white;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    #detail-pane {
+      position: absolute;
+      right: 40px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 240px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      padding-left: 20px;
+      pointer-events: none;
+      opacity: 0;
+      transition: 0.5s;
+    }
+
+    #detail-pane.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #detail-pane h2 {
+      font-family: 'Syne';
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    #detail-pane p {
+      font-size: 0.75rem;
+      color: #888;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="ui-overlay">
+    <div class="header">
+      <div class="title-block">
+        <h1>Alignment Nexus</h1>
+        <p>PROJECT_ID: BUILD_CON_2026</p>
+      </div>
+      <div class="stats">
+        <div class="stat-row">CONSENSUS RATE <span class="stat-val" id="consensus-percent">0%</span></div>
+        <div class="stat-row">NODES ACTIVE <span class="stat-val" id="node-count">06</span></div>
+      </div>
+    </div>
+
+    <div id="detail-pane">
+      <span style="font-size: 0.5rem; color: var(--accent-2);">SELECTED_ITEM</span>
+      <h2 id="item-title">Triple Glazing</h2>
+      <p id="item-desc">High performance thermal envelope. Increases initial capital expenditure but lowers 10-year
+        operational costs.</p>
+      <div style="margin-top: 20px; font-size: 0.6rem; color: #555;">CLICK TO TOGGLE OWNER</div>
+    </div>
+
+    <div class="footer">
+      <div class="stakeholder-tag" onclick="setRole('client')">
+        <span class="tag-label" style="color: var(--accent-1);">CLIENT</span>
+        <div class="tag-circle" style="background: var(--accent-1);"></div>
+      </div>
+      <div class="stakeholder-tag" onclick="setRole('designer')">
+        <span class="tag-label" style="color: var(--accent-2);">DESIGNER</span>
+        <div class="tag-circle" style="background: var(--accent-2);"></div>
+      </div>
+      <div class="stakeholder-tag" onclick="setRole('gc')">
+        <span class="tag-label" style="color: var(--accent-3);">CONTRACTOR</span>
+        <div class="tag-circle" style="background: var(--accent-3);"></div>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, nodes = [];
+    let activeRole = 'designer';
+    let rotation = 0;
+
+    const projectData = [
+      { title: "Exposed Mass Timber", desc: "Sustainable structural system. Requires coordination with fire specs.", role: 'designer' },
+      { title: "Solar Integration", desc: "Renewable energy source. Client ROI calculated at 7 years.", role: 'client' },
+      { title: "Prefab Facade", desc: "Off-site construction modules. Lowers site risk and schedule.", role: 'gc' },
+      { title: "Smart HVAC", desc: "AI-driven environmental control. High MEP complexity.", role: 'designer' },
+      { title: "Marble Flooring", desc: "Premium aesthetic finish. Long lead time from Italy.", role: 'client' },
+      { title: "Ground Source Heat", desc: "Highly efficient heating. Requires significant site excavation.", role: 'gc' }
+    ];
+
+    class Node {
+      constructor(data, index) {
+        this.data = data;
+        this.index = index;
+        this.x = Math.random() * window.innerWidth;
+        this.y = Math.random() * window.innerHeight;
+        this.vx = 0;
+        this.vy = 0;
+        this.owner = data.role;
+        this.angle = (index / projectData.length) * Math.PI * 2;
+        this.locked = false;
+        this.pulse = 0;
+      }
+
+      update() {
+        let tx, ty;
+        const center = { x: width / 2, y: height / 2 };
+
+        // Target Logic
+        if (this.locked) {
+          // Orbit the center
+          tx = center.x + Math.cos(this.angle + rotation) * 120;
+          ty = center.y + Math.sin(this.angle + rotation) * 120;
+        } else {
+          // Pull to stakeholder corner
+          if (this.owner === 'client') { tx = 100; ty = 100; }
+          if (this.owner === 'designer') { tx = width / 2; ty = height - 100; }
+          if (this.owner === 'gc') { tx = width - 100; ty = 100; }
+        }
+
+        this.vx += (tx - this.x) * 0.03;
+        this.vy += (ty - this.y) * 0.03;
+        this.vx *= 0.85;
+        this.vy *= 0.85;
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        this.pulse += 0.05;
+      }
+
+      draw() {
+        const color = this.owner === 'client' ? '#ffaa00' : (this.owner === 'designer' ? '#bf5af2' : '#30d158');
+
+        // Tether Beam
+        ctx.beginPath();
+        ctx.strokeStyle = this.locked ? 'rgba(255,255,255,0.1)' : color + '33';
+        ctx.lineWidth = 1;
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(width / 2, height / 2);
+        ctx.stroke();
+
+        // Node Geometry
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.pulse * 0.2);
+
+        ctx.strokeStyle = this.locked ? '#fff' : color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-8, -8, 16, 16);
+
+        if (this.locked) {
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(-3, -3, 6, 6);
+        }
+
+        // Pulse Ring
+        if (!this.locked) {
+          ctx.beginPath();
+          ctx.arc(0, 0, 15 + Math.sin(this.pulse) * 5, 0, Math.PI * 2);
+          ctx.strokeStyle = color + '44';
+          ctx.stroke();
+        }
+
+        ctx.restore();
+
+        // Label
+        ctx.fillStyle = this.locked ? '#fff' : '#888';
+        ctx.font = '700 9px DM Sans';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.data.title.toUpperCase(), this.x, this.y + 30);
+      }
+    }
+
+    function init() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      nodes = projectData.map((d, i) => new Node(d, i));
+      loop();
+    }
+
+    function loop() {
+      ctx.fillStyle = varColor('--bg');
+      ctx.fillRect(0, 0, width, height);
+
+      rotation += 0.005;
+      const center = { x: width / 2, y: height / 2 };
+
+      // Draw Central Nexus Core
+      ctx.save();
+      ctx.translate(center.x, center.y);
+      ctx.rotate(-rotation);
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      for (let i = 0; i < 3; i++) {
+        ctx.rotate(Math.PI * 2 / 3);
+        ctx.strokeRect(-150, -150, 300, 300);
+      }
+      ctx.restore();
+
+      nodes.forEach(n => {
+        n.update();
+        n.draw();
+      });
+
+      // Update Consensus Stat
+      const lockedCount = nodes.filter(n => n.locked).length;
+      document.getElementById('consensus-percent').innerText = Math.round((lockedCount / nodes.length) * 100) + "%";
+
+      requestAnimationFrame(loop);
+    }
+
+    canvas.addEventListener('click', (e) => {
+      let hit = false;
+      nodes.forEach(n => {
+        const d = Math.hypot(e.clientX - n.x, e.clientY - n.y);
+        if (d < 40) {
+          n.locked = !n.locked; // Toggle consensus
+          document.getElementById('detail-pane').classList.add('active');
+          document.getElementById('item-title').innerText = n.data.title;
+          document.getElementById('item-desc').innerText = n.data.desc;
+          hit = true;
+        }
+      });
+      if (!hit) document.getElementById('detail-pane').classList.remove('active');
+    });
+
+    function setRole(role) {
+      activeRole = role;
+      // Highlight the active tag UI if you want to add that
+    }
+
+    function varColor(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    init();
+  </script>
+</body>
+
+</html>

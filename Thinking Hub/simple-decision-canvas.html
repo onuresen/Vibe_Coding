@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Decision Canvas</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:#0f0f11;color:#f0efe8;height:100vh;display:flex;flex-direction:column
+    }
+    header{
+      padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);
+      font-weight:700;display:flex;align-items:center;gap:8px
+    }
+    header span{color:#7c6af5}
+    .main{flex:1;padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+    .card{
+      background:#1a1a1f;border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px
+    }
+    .title{font-size:12px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#b7b6c3}
+    textarea,input{
+      background:#222228;border:1px solid rgba(255,255,255,.08);
+      border-radius:10px;color:#f0efe8;font-size:13px;padding:8px;resize:vertical
+    }
+    textarea{min-height:80px;line-height:1.55}
+    .footer{
+      border-top:1px solid rgba(255,255,255,.08);padding:10px 16px;display:flex;gap:8px
+    }
+    button{
+      border:none;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer
+    }
+    .primary{background:#7c6af5;color:#fff}
+    .ghost{background:transparent;color:#b7b6c3;border:1px solid rgba(255,255,255,.12)}
+    .ghost:hover{background:#222228;color:#fff}
+  </style>
+</head>
+<body>
+  <header>Simple <span>Decision Canvas</span></header>
+
+  <div class="main">
+    <div class="card">
+      <div class="title">Decision Question</div>
+      <textarea placeholder="What decision are we making?"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="title">Context / Constraints</div>
+      <textarea placeholder="Project, timing, cost, site, rules..."></textarea>
+    </div>
+
+    <div class="card">
+      <div class="title">Options</div>
+      <textarea placeholder="Option A / B / C"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="title">What We Know</div>
+      <textarea placeholder="Facts, data, assumptions"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="title">Risks / Trade-offs</div>
+      <textarea placeholder="What could go wrong? What do we give up?"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="title">Decision & Next Action</div>
+      <textarea placeholder="Chosen option and immediate next step"></textarea>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="primary" onclick="save()">Save</button>
+    <button class="ghost" onclick="resetCanvas()">Reset</button>
+    <button class="ghost" onclick="exportJSON()">Export</button>
+    <input type="file" id="file" accept="application/json" hidden>
+  </div>
+
+<script>
+const KEY = 'simple-decision-canvas';
+const fields = Array.from(document.querySelectorAll('textarea'));
+
+function save(){
+  const data = fields.map(f=>f.value);
+  localStorage.setItem(KEY, JSON.stringify(data));
+}
+
+function load(){
+  const raw = localStorage.getItem(KEY);
+  if(!raw) return;
+  JSON.parse(raw).forEach((v,i)=>fields[i].value=v);
+}
+
+function resetCanvas(){
+  if(!confirm('Clear this canvas?')) return;
+  fields.forEach(f=>f.value='');
+  localStorage.removeItem(KEY);
+}
+
+function exportJSON(){
+  const data = { exportedAt:new Date().toISOString(), values:fields.map(f=>f.value) };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'decision-canvas.json';
+  a.click();
+}
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DecisionJam // Tri-Party Alignment (Standalone)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0f0f11; --surface:#17171c; --surface2:#1f1f26;
+      --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.14);
+      --text:#f0efe8; --muted:#9a99a3; --muted2:#5b5a64;
+      --client:#ffaa00; --designer:#bf5af2; --gc:#30d158;
+      --ok:#2ecc7a; --warn:#f5a623; --bad:#e8455a;
+      --r:16px; --rsm:10px;
+      --left-w: 300px; --right-w: 340px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:"DM Sans",system-ui,sans-serif;
+      background:var(--bg); color:var(--text);
+      height:100vh; overflow:hidden; user-select:none;
+      display:flex; flex-direction:column;
+    }
+    header{
+      padding:12px 18px;
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:12px;
+    }
+    .logo{
+      font-family:"Syne",sans-serif;
+      font-weight:800; letter-spacing:-.3px;
+    }
+    .logo span{opacity:.7;font-weight:700;color:var(--muted)}
+    .role-pill{
+      margin-left:8px;
+      display:flex; align-items:center; gap:8px;
+      padding:6px 10px; border:1px solid var(--border);
+      border-radius:999px; background:rgba(255,255,255,0.03);
+    }
+    select, input{
+      background:var(--surface); color:var(--text);
+      border:1px solid var(--border); border-radius:8px;
+      padding:6px 8px; outline:none; font-size:12.5px;
+    }
+    select:focus, input:focus{border-color:var(--border2)}
+    .header-stats{margin-left:auto; display:flex; gap:14px; align-items:center;}
+    .stat{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+    .dot{width:8px;height:8px;border-radius:50%}
+    .main{flex:1; display:flex; overflow:hidden}
+    .panel-left{
+      width:var(--left-w); min-width:220px; max-width:520px;
+      border-right:1px solid var(--border);
+      padding:14px; display:flex; flex-direction:column; gap:10px;
+    }
+    .panel-right{
+      width:var(--right-w); min-width:260px; max-width:560px;
+      border-left:1px solid var(--border);
+      display:flex; flex-direction:column; overflow:hidden;
+    }
+    .resize-handle{
+      width:4px; cursor:col-resize; flex-shrink:0;
+      position:relative; z-index:20; background:transparent;
+    }
+    .resize-handle:hover, .resize-handle.dragging{background:rgba(191,90,242,.9)}
+    .resize-handle::after{content:"";position:absolute;inset:0 -6px}
+    .label{
+      font-family:"Syne",sans-serif;
+      font-size:10px; letter-spacing:1.7px; text-transform:uppercase;
+      color:var(--muted2);
+    }
+    textarea{
+      flex:1; resize:none; outline:none;
+      background:var(--surface);
+      border:1px solid var(--border); border-radius:var(--rsm);
+      color:var(--text); padding:10px 12px;
+      font-size:12.5px; line-height:1.55;
+      min-height:220px;
+    }
+    textarea::placeholder{color:var(--muted2)}
+    .hint{font-size:11px;color:var(--muted2);line-height:1.45}
+    .btn{
+      background:rgba(255,255,255,0.08);
+      border:1px solid var(--border);
+      color:var(--text); border-radius:var(--rsm);
+      padding:9px 12px; cursor:pointer; font-size:12.5px;
+      transition:.15s transform,.15s opacity,.15s border-color;
+      display:inline-flex; align-items:center; gap:8px; justify-content:center;
+    }
+    .btn:hover{opacity:.92;border-color:var(--border2)}
+    .btn:active{transform:scale(.98)}
+    .btn.primary{background:rgba(191,90,242,.18); border-color:rgba(191,90,242,.45)}
+    .btn.primary:hover{border-color:rgba(191,90,242,.85)}
+    .btn.ok{background:rgba(46,204,122,.14); border-color:rgba(46,204,122,.35)}
+    .btn.warn{background:rgba(245,166,35,.14); border-color:rgba(245,166,35,.35)}
+    .btn.bad{background:rgba(232,69,90,.14); border-color:rgba(232,69,90,.35)}
+    .stage{
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      position:relative; overflow:hidden;
+    }
+    .progress{
+      position:absolute; top:16px; left:50%; transform:translateX(-50%);
+      width:min(520px,82%); display:none; flex-direction:column; gap:6px;
+    }
+    .bar{height:3px;background:var(--border);border-radius:99px;overflow:hidden}
+    .fill{height:100%;background:rgba(191,90,242,.9);width:0%;transition:width .3s ease}
+    .plabel{font-size:11px;color:var(--muted2);text-align:center}
+    .card{
+      width:min(520px,86%); max-width:560px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--r); padding:22px 22px 18px;
+      box-shadow:0 20px 70px rgba(0,0,0,.55);
+      display:none; position:relative;
+    }
+    .card-top{display:flex; gap:10px; align-items:flex-start; margin-bottom:10px}
+    .badge{
+      font-family:"Syne",sans-serif; font-size:10px; letter-spacing:1.2px;
+      text-transform:uppercase; padding:4px 8px; border-radius:999px;
+      border:1px solid var(--border);
+      color:var(--muted); background:rgba(255,255,255,0.03);
+      flex-shrink:0;
+    }
+    .badge.role-client{border-color:rgba(255,170,0,.35); color:var(--client)}
+    .badge.role-designer{border-color:rgba(191,90,242,.35); color:var(--designer)}
+    .badge.role-gc{border-color:rgba(48,209,88,.35); color:var(--gc)}
+    .title{font-size:18px; line-height:1.3; font-weight:700}
+    .desc{margin-top:10px; font-size:13px; line-height:1.6; color:var(--muted)}
+    .meta{margin-top:10px; font-size:11px; color:var(--muted2); display:flex; gap:10px; flex-wrap:wrap}
+    .actions{
+      margin-top:18px;
+      display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+    }
+    .kbd-hint{
+      position:absolute; bottom:18px;
+      font-size:11px; color:var(--muted2);
+      display:none; gap:12px; align-items:center;
+    }
+    kbd{
+      background:var(--surface2); border:1px solid var(--border2);
+      border-radius:6px; padding:1px 7px; font-size:10px; color:var(--muted);
+      font-family:inherit;
+    }
+    .empty{
+      display:none; align-items:center; justify-content:center; flex-direction:column;
+      gap:10px; text-align:center; padding:30px;
+    }
+    .empty .big{font-family:"Syne"; font-size:18px}
+    .tabs{display:flex;border-bottom:1px solid var(--border); flex-shrink:0}
+    .tab{
+      flex:1; padding:10px 8px; background:none; border:none;
+      color:var(--muted2); cursor:pointer; font-size:12px;
+      border-bottom:2px solid transparent;
+    }
+    .tab.active{color:var(--text); border-bottom-color:rgba(191,90,242,.9)}
+    .rbody{flex:1; overflow:auto; padding:12px; display:flex; flex-direction:column; gap:10px}
+    .rbody::-webkit-scrollbar{width:3px}
+    .rbody::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+    .item{
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:12px; padding:10px 12px;
+    }
+    .item-top{display:flex; gap:10px; align-items:flex-start}
+    .pill{
+      font-size:10px; font-weight:700;
+      border-radius:999px; padding:2px 8px;
+      border:1px solid var(--border);
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .pill.ok{border-color:rgba(46,204,122,.35); color:var(--ok)}
+    .pill.warn{border-color:rgba(245,166,35,.35); color:var(--warn)}
+    .pill.bad{border-color:rgba(232,69,90,.35); color:var(--bad)}
+    .it-title{font-size:12.8px; font-weight:700; line-height:1.35}
+    .it-sub{margin-top:6px; font-size:11.3px; color:var(--muted); line-height:1.5}
+    .mini{
+      font-size:10.5px; color:var(--muted2); margin-top:7px;
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .footer{
+      padding:10px 12px; border-top:1px solid var(--border);
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+
+    /* Alignment Map */
+    .map-wrap{background:rgba(255,255,255,0.02); border:1px solid var(--border);
+      border-radius:12px; padding:10px 12px;
+    }
+    canvas{width:100%; height:220px; display:block; border-radius:10px; background:#0b0b0e;}
+    .map-legend{display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; font-size:11px; color:var(--muted2)}
+    .lg{display:flex; gap:6px; align-items:center}
+    .lg .dot{width:9px;height:9px}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">DecisionJam <span>// tri-party alignment</span></div>
+
+  <div class="role-pill" title="Each participant exports their own file. Host imports all files to see consensus.">
+    <span class="mono" style="font-size:11px;color:var(--muted2)">Role</span>
+    <select id="role">
+      <option value="client">Client</option>
+      <option value="designer" selected>Designer</option>
+      <option value="gc">General Contractor</option>
+    </select>
+    <span class="mono" style="font-size:11px;color:var(--muted2)">Name</span>
+    <input id="name" placeholder="Your name…" maxlength="24" style="width:140px"/>
+  </div>
+
+  <div class="header-stats">
+    <div class="stat"><span class="dot" style="background:var(--ok)"></span><span id="s-ok">0 approve</span></div>
+    <div class="stat"><span class="dot" style="background:var(--warn)"></span><span id="s-warn">0 concern</span></div>
+    <div class="stat"><span class="dot" style="background:var(--bad)"></span><span id="s-bad">0 block</span></div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- LEFT -->
+  <div class="panel-left" id="panel-left">
+    <div class="label">Decision Items</div>
+    <textarea id="input" placeholder="One per line. Format:
+Title | Description | Category
+
+Example:
+Triple glazing | Higher capex, lower opex | Facade
+Prefab facade | Faster schedule, more upfront coordination | Envelope
+Ground source heat | Efficient but excavation-heavy | MEP"></textarea>
+    <div class="hint">
+      Workflow: <b>Load → Decide → Export</b> (each person) → <b>Import → Consensus</b> (host).<br/>
+      Shortcuts: <kbd>1</kbd> Approve · <kbd>2</kbd> Concern · <kbd>3</kbd> Block · <kbd>←/→</kbd> Prev/Next
+    </div>
+    <button class="btn primary" onclick="loadItems()">Load Items →</button>
+    <button class="btn" onclick="clearSession()">Clear My Session</button>
+  </div>
+
+  <div class="resize-handle" id="rh-left" title="Drag to resize"></div>
+
+  <!-- STAGE -->
+  <div class="stage">
+    <div class="progress" id="progress">
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="plabel" id="plabel"></div>
+    </div>
+
+    <div class="card" id="card">
+      <div class="card-top">
+        <div class="badge" id="roleBadge">ROLE</div>
+        <div style="flex:1">
+          <div class="title" id="title">Title</div>
+          <div class="desc" id="desc">Description</div>
+          <div class="meta">
+            <span>Category: <span id="cat" class="mono">—</span></span>
+            <span>Item: <span id="idx" class="mono">—</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn ok" onclick="vote('approve')">✅ Approve <span class="mono">(1)</span></button>
+        <button class="btn warn" onclick="vote('concern')">⚠️ Concern <span class="mono">(2)</span></button>
+        <button class="btn bad" onclick="vote('block')">⛔ Block <span class="mono">(3)</span></button>
+      </div>
+    </div>
+
+    <div class="empty" id="empty">
+      <div style="font-size:34px">✦</div>
+      <div class="big">All reviewed</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.55;max-width:520px">
+        Export your votes and share the JSON file. The host can import multiple files to see consensus + the alignment map.
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px">
+        <button class="btn primary" onclick="exportVotes()">↓ Export my votes</button>
+        <button class="btn" onclick="switchTab('consensus')">Open Consensus →</button>
+      </div>
+    </div>
+
+    <div class="kbd-hint" id="kbd">
+      <span><kbd>1</kbd> Approve</span>
+      <span><kbd>2</kbd> Concern</span>
+      <span><kbd>3</kbd> Block</span>
+      <span style="opacity:.7"><kbd>←</kbd>/<kbd>→</kbd> Navigate</span>
+    </div>
+  </div>
+
+  <div class="resize-handle" id="rh-right" title="Drag to resize"></div>
+
+  <!-- RIGHT -->
+  <div class="panel-right" id="panel-right">
+    <div class="tabs">
+      <button class="tab active" id="tab-my" onclick="switchTab('my')">My Votes</button>
+      <button class="tab" id="tab-consensus" onclick="switchTab('consensus')">Consensus</button>
+      <button class="tab" id="tab-import" onclick="switchTab('import')">Import/Export</button>
+    </div>
+
+    <div class="rbody" id="rbody"></div>
+
+    <div class="footer">
+      <button class="btn primary" onclick="exportVotes()">↓ Export my votes</button>
+      <button class="btn" onclick="document.getElementById('file').click()">↑ Import files</button>
+      <input id="file" type="file" accept=".json" multiple style="display:none" onchange="importFiles(this.files)"/>
+      <button class="btn" onclick="resetImports()">Reset imports</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================
+   DecisionJam (Standalone)
+   - no backend
+   - export/import JSON
+   ========================= */
+
+const STORAGE_KEY = "decisionjam_myVotes_v1";
+const IMPORT_KEY  = "decisionjam_imports_v1";
+
+let items = [];        // [{id,title,desc,cat}]
+let iCur = 0;
+let myVotes = {};      // id -> {vote:'approve|concern|block', ts, role, name}
+let imported = [];     // array of voter payloads
+
+const el = (id)=>document.getElementById(id);
+const voteScore = (v)=> v==="approve" ? 1 : v==="concern" ? 0 : -1;
+const voteSupport = (v)=> v==="approve" ? 1 : v==="concern" ? 0.5 : 0;
+
+function safeParseJSON(s){ try{return JSON.parse(s);}catch{return null;} }
+
+function loadPersisted(){
+  const saved = safeParseJSON(localStorage.getItem(STORAGE_KEY) || "null");
+  if(saved && typeof saved==="object") myVotes = saved;
+  const imp = safeParseJSON(localStorage.getItem(IMPORT_KEY) || "null");
+  if(Array.isArray(imp)) imported = imp;
+}
+function persist(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(myVotes)); } catch(e) {}
+  try { localStorage.setItem(IMPORT_KEY, JSON.stringify(imported)); } catch(e) {}
+}
+
+function parseLines(raw){
+  return raw.split("\n")
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith("#"))
+    .map((line, idx)=>{
+      const parts = line.split("|").map(x=>x.trim());
+      const title = parts[0] || `Item ${idx+1}`;
+      const desc  = parts[1] || "";
+      const cat   = parts[2] || "General";
+      const id = "d_" + hash(title + "|" + desc + "|" + cat);
+      return {id, title, desc, cat};
+    });
+}
+function hash(s){
+  let h=2166136261;
+  for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h>>>0).toString(36);
+}
+
+function loadItems(){
+  const raw = el("input").value;
+  const parsed = parseLines(raw);
+  if(!parsed.length){ alert("Add at least one decision item."); return; }
+  items = parsed;
+  iCur = 0;
+  showCard();
+  renderRight();
+}
+
+function clearSession(){
+  if(!confirm("Clear your local votes? (Imports remain)")) return;
+  myVotes = {};
+  persist();
+  showCard();
+  renderRight();
+}
+
+function getCSS(varName){
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+function showCard(){
+  const hasItems = items.length>0;
+  el("progress").style.display = hasItems ? "flex" : "none";
+  el("kbd").style.display = hasItems ? "flex" : "none";
+
+  if(!hasItems){
+    el("card").style.display="none";
+    el("empty").style.display="flex";
+    el("empty").querySelector(".big").textContent = "Load items to start";
+    el("empty").querySelector("div:nth-child(3)").textContent = "Paste decision items on the left, then hit Load Items.";
+    return;
+  }
+
+  const total = items.length;
+  const reviewed = items.filter(it => myVotes[it.id]).length;
+
+  if(reviewed >= total){
+    el("card").style.display="none";
+    el("empty").style.display="flex";
+    el("fill").style.width="100%";
+    el("plabel").textContent = `${total}/${total} — all reviewed`;
+    updateStats();
+    return;
+  }
+
+  let idx = iCur;
+  for(let k=0;k<total;k++){
+    const j = (idx+k) % total;
+    if(!myVotes[items[j].id]) { idx = j; break; }
+  }
+  iCur = idx;
+
+  const it = items[iCur];
+  const role = el("role").value;
+  const badge = el("roleBadge");
+  badge.textContent = role.toUpperCase();
+  badge.className = "badge role-" + role;
+
+  el("title").textContent = it.title;
+  el("desc").textContent  = it.desc || "—";
+  el("cat").textContent   = it.cat;
+  el("idx").textContent   = `${iCur+1} / ${items.length}`;
+
+  el("card").style.display="block";
+  el("empty").style.display="none";
+
+  const pct = Math.round((reviewed/items.length)*100);
+  el("fill").style.width = pct + "%";
+  el("plabel").textContent = `${reviewed}/${items.length} reviewed`;
+  updateStats();
+}
+
+function vote(v){
+  if(!items.length) return;
+  const it = items[iCur];
+  const role = el("role").value;
+  const name = (el("name").value.trim() || "Anonymous");
+  myVotes[it.id] = { vote:v, ts:Date.now(), role, name };
+  persist();
+
+  flashBorder(v);
+  next();
+  renderRight();
+}
+
+function flashBorder(v){
+  const card = el("card");
+  const c = v==="approve" ? "rgba(46,204,122,.75)" :
+            v==="concern" ? "rgba(245,166,35,.75)" : "rgba(232,69,90,.75)";
+  card.style.borderColor = c;
+  setTimeout(()=>card.style.borderColor="var(--border)", 180);
+}
+
+function next(){
+  if(!items.length) return;
+  iCur = Math.min(iCur+1, items.length-1);
+  showCard();
+}
+function prev(){
+  if(!items.length) return;
+  iCur = Math.max(iCur-1, 0);
+  showCard();
+}
+
+function updateStats(){
+  const vals = Object.values(myVotes).map(x=>x.vote);
+  const a = vals.filter(v=>v==="approve").length;
+  const c = vals.filter(v=>v==="concern").length;
+  const b = vals.filter(v=>v==="block").length;
+  el("s-ok").textContent = `${a} approve`;
+  el("s-warn").textContent = `${c} concern`;
+  el("s-bad").textContent = `${b} block`;
+}
+
+/* =========================
+   Export / Import
+   ========================= */
+
+function exportVotes(){
+  const name = (el("name").value.trim() || "Anonymous");
+  const role = el("role").value;
+  const reviewed = Object.keys(myVotes).length;
+  if(!reviewed){ alert("No votes yet."); return; }
+
+  const payload = {
+    _type: "decisionjam_votes_v1",
+    exportedAt: new Date().toISOString(),
+    voter: { name, role },
+    items: items.map(it=>({id:it.id, title:it.title, desc:it.desc, cat:it.cat})),
+    votes: myVotes
+  };
+
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safeName = name.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
+  a.href = url;
+  a.download = `decisionjam-${role}-${safeName}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importFiles(files){
+  const list = [...files];
+  if(!list.length) return;
+  const readers = list.map(f => new Promise(res=>{
+    const r = new FileReader();
+    r.onload = e => {
+      const data = safeParseJSON(e.target.result);
+      if(!data || data._type!=="decisionjam_votes_v1"){ res(null); return; }
+      res(data);
+    };
+    r.readAsText(f);
+  }));
+  Promise.all(readers).then(all=>{
+    const good = all.filter(Boolean);
+    if(!good.length){ alert("No valid DecisionJam vote files found."); return; }
+
+    for(const p of good){
+      const key = (p.voter?.name||"") + "|" + (p.voter?.role||"");
+      const idx = imported.findIndex(x => ((x.voter?.name||"")+"|"+(x.voter?.role||""))===key);
+      if(idx>=0) imported[idx]=p; else imported.push(p);
+    }
+
+    if(!items.length && good[0].items?.length){
+      items = good[0].items;
+      iCur = 0;
+    }
+
+    persist();
+    renderRight();
+    showCard();
+    switchTab("consensus");
+    el('file').value = '';
+  });
+}
+
+function resetImports(){
+  if(!confirm("Remove all imported voters?")) return;
+  imported = [];
+  persist();
+  renderRight();
+}
+
+/* =========================
+   Consensus + Alignment Map
+   ========================= */
+
+function computeConsensus(){
+  const voters = [...imported];
+
+  const myTotal = Object.keys(myVotes).length;
+  if(myTotal){
+    const name = (el("name").value.trim() || "Me");
+    const role = el("role").value;
+    const key = name + "|" + role;
+    if(!voters.some(v => (v.voter?.name+"|"+v.voter?.role)===key)){
+      voters.push({
+        _type:"decisionjam_votes_v1",
+        voter:{name, role},
+        items: items,
+        votes: myVotes
+      });
+    }
+  }
+
+  const byItem = new Map();
+  for(const it of items){
+    byItem.set(it.id, {
+      it,
+      roles: {
+        client:{score:0,support:0,n:0, approve:0, concern:0, block:0},
+        designer:{score:0,support:0,n:0, approve:0, concern:0, block:0},
+        gc:{score:0,support:0,n:0, approve:0, concern:0, block:0},
+      }
+    });
+  }
+
+  for(const v of voters){
+    const role = v.voter?.role;
+    if(!role || !["client","designer","gc"].includes(role)) continue;
+    const votes = v.votes || {};
+    for(const [id, rec] of Object.entries(votes)){
+      const entry = byItem.get(id);
+      if(!entry) continue;
+      const vv = rec.vote;
+      entry.roles[role].score += voteScore(vv);
+      entry.roles[role].support += voteSupport(vv);
+      entry.roles[role].n += 1;
+      if(entry.roles[role][vv] !== undefined) entry.roles[role][vv] += 1;
+    }
+  }
+
+  const out = [];
+  for(const entry of byItem.values()){
+    const R = entry.roles;
+    const rolesN = ["client","designer","gc"].map(r => R[r].n).reduce((a,b)=>a+b,0);
+    const totalScore = R.client.score + R.designer.score + R.gc.score;
+    const blocks = R.client.block + R.designer.block + R.gc.block;
+    const approves = R.client.approve + R.designer.approve + R.gc.approve;
+    const positives = approves + (R.client.concern + R.designer.concern + R.gc.concern);
+    const positiveRate = rolesN ? positives / rolesN : 0;
+
+    const hasEach = ["client","designer","gc"].every(r => R[r].n > 0);
+    const aligned = hasEach && blocks===0 && ["client","designer","gc"].every(r => (R[r].approve>0));
+    out.push({ entry, rolesN, totalScore, blocks, approves, positiveRate, aligned });
+  }
+
+  out.sort((a,b)=> (a.blocks-b.blocks) || (b.totalScore-a.totalScore) || (b.approves-a.approves));
+  return { voters, rows: out };
+}
+
+function drawMap(consensus){
+  const canvas = document.getElementById("map");
+  if(!canvas) return;
+  const ctx = canvas.getContext("2d");
+
+  const wrap = canvas.parentElement;
+  const W = canvas.width = Math.max(300, wrap.clientWidth) * devicePixelRatio;
+  const H = canvas.height = 220 * devicePixelRatio;
+
+  const pad = 26*devicePixelRatio;
+  const A = { x: pad, y: pad };                 // client
+  const B = { x: W-pad, y: pad };               // gc
+  const C = { x: W/2, y: H-pad };               // designer
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = "#0b0b0e";
+  ctx.fillRect(0,0,W,H);
+
+  ctx.lineWidth = 2*devicePixelRatio;
+  ctx.strokeStyle = "rgba(255,255,255,0.10)";
+  ctx.beginPath();
+  ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.lineTo(C.x,C.y); ctx.closePath();
+  ctx.stroke();
+
+  ctx.font = `${11*devicePixelRatio}px Syne`;
+  ctx.fillStyle = getCSS("--client");  ctx.fillText("CLIENT", A.x, A.y-6*devicePixelRatio);
+  ctx.fillStyle = getCSS("--gc");      ctx.fillText("GC", B.x-22*devicePixelRatio, B.y-6*devicePixelRatio);
+  ctx.fillStyle = getCSS("--designer");ctx.fillText("DESIGNER", C.x-52*devicePixelRatio, C.y+18*devicePixelRatio);
+
+  const rows = consensus.rows.slice(0, 30);
+  for(const r of rows){
+    const R = r.entry.roles;
+    const sc = (role)=> R[role].n ? (R[role].support / R[role].n) : 0.33;
+
+    const wc = sc("client"), wg = sc("gc"), wd = sc("designer");
+    const sum = wc + wg + wd || 1;
+
+    const x = (wc*A.x + wg*B.x + wd*C.x) / sum;
+    const y = (wc*A.y + wg*B.y + wd*C.y) / sum;
+
+    const rad = (r.aligned ? 6.5 : 5.2) * devicePixelRatio;
+    const col = r.aligned ? "rgba(46,204,122,0.95)" :
+                r.blocks>0 ? "rgba(232,69,90,0.85)" :
+                "rgba(245,166,35,0.85)";
+
+    ctx.beginPath();
+    ctx.arc(x,y,rad,0,Math.PI*2);
+    ctx.fillStyle = col;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x,y,rad*2.1,0,Math.PI*2);
+    ctx.strokeStyle = col.replace("0.85","0.18").replace("0.95","0.18");
+    ctx.lineWidth = 1.2*devicePixelRatio;
+    ctx.stroke();
+  }
+}
+
+function pillFor(v){
+  if(v==="approve") return `<span class="pill ok">Approve</span>`;
+  if(v==="concern") return `<span class="pill warn">Concern</span>`;
+  return `<span class="pill bad">Block</span>`;
+}
+
+/* =========================
+   Right Panel rendering
+   ========================= */
+let activeTab = "my";
+
+function switchTab(tab){
+  activeTab = tab;
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  el("tab-" + tab).classList.add("active");
+  renderRight();
+}
+
+function renderRight(){
+  const rb = el("rbody");
+  if(activeTab==="my"){
+    const voted = Object.entries(myVotes)
+      .map(([id, rec]) => ({it: items.find(x=>x.id===id), rec}))
+      .filter(x=>x.it)
+      .sort((a,b)=>b.rec.ts-a.rec.ts);
+
+    if(!items.length){
+      rb.innerHTML = `<div class="item"><div class="it-title">Paste items and load.</div>
+        <div class="it-sub">This panel will show your decisions and imported consensus.</div></div>`;
+      return;
+    }
+    if(!voted.length){
+      rb.innerHTML = `<div class="item"><div class="it-title">No votes yet.</div>
+        <div class="it-sub">Start deciding in the center card.</div></div>`;
+      return;
+    }
+    rb.innerHTML = voted.map(x=>`
+      <div class="item">
+        <div class="item-top">
+          ${pillFor(x.rec.vote)}
+          <div style="flex:1">
+            <div class="it-title">${esc(x.it.title)}</div>
+            <div class="it-sub">${esc(x.it.desc || "—")}</div>
+            <div class="mini">
+              <span>Cat: <span class="mono">${esc(x.it.cat)}</span></span>
+              <span>Role: <span class="mono">${esc(x.rec.role)}</span></span>
+              <span>Time: <span class="mono">${new Date(x.rec.ts).toLocaleString()}</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  if(activeTab==="import"){
+    rb.innerHTML = `
+      <div class="item">
+        <div class="it-title">Export / Import</div>
+        <div class="it-sub">
+          Each participant exports one JSON file. The host imports multiple files to see consensus.
+        </div>
+        <div class="mini">
+          <span>Imported voters: <span class="mono">${imported.length}</span></span>
+          <span>My votes: <span class="mono">${Object.keys(myVotes).length}</span></span>
+        </div>
+      </div>
+      <div class="item">
+        <div class="it-title">Tip</div>
+        <div class="it-sub">
+          Keep item text stable. IDs are derived from Title|Description|Category (changing text creates a new ID).
+        </div>
+      </div>
+    `;
+  }
+
+  if(activeTab==="consensus"){
+    const c = computeConsensus();
+    if(!items.length){
+      rb.innerHTML = `<div class="item"><div class="it-title">No items loaded.</div>
+        <div class="it-sub">Load items or import vote files that include item definitions.</div></div>`;
+      return;
+    }
+
+    const voters = c.voters;
+    const rows = c.rows;
+
+    const header = `
+      <div class="item">
+        <div class="it-title">Consensus Overview</div>
+        <div class="it-sub">
+          Sorting: fewer blocks → higher total score → more approvals.
+        </div>
+        <div class="mini">
+          <span>Voters: <span class="mono">${voters.length}</span></span>
+          <span>Items: <span class="mono">${items.length}</span></span>
+          <span>Aligned (strict): <span class="mono">${rows.filter(r=>r.aligned).length}</span></span>
+        </div>
+      </div>
+    `;
+
+    const map = `
+      <div class="map-wrap">
+        <div class="it-title">Alignment Map (Top 30)</div>
+        <div class="it-sub">Green = aligned (all approve) · Red = someone blocks · Orange = mixed</div>
+        <canvas id="map"></canvas>
+        <div class="map-legend">
+          <div class="lg"><span class="dot" style="background:var(--client)"></span>Client corner</div>
+          <div class="lg"><span class="dot" style="background:var(--designer)"></span>Designer corner</div>
+          <div class="lg"><span class="dot" style="background:var(--gc)"></span>GC corner</div>
+        </div>
+      </div>
+    `;
+
+    const list = rows.slice(0, 60).map((r, idx)=>{
+      const it = r.entry.it;
+      const R = r.entry.roles;
+      const scoreColor = r.totalScore>0 ? "var(--ok)" : r.totalScore<0 ? "var(--bad)" : "var(--muted2)";
+      const strict = r.aligned ? `<span class="pill ok">Aligned</span>` : (r.blocks>0 ? `<span class="pill bad">Has blocks</span>` : `<span class="pill warn">Mixed</span>`);
+      const perRole = (role,label,color)=> {
+        const x = R[role];
+        if(!x.n) return `<span style="color:var(--muted2)">${label}: —</span>`;
+        return `<span style="color:${color}">${label}: +${x.approve} · ~${x.concern} · -${x.block}</span>`;
+      };
+      return `
+        <div class="item">
+          <div class="item-top">
+            <div class="pill" style="border-color:rgba(255,255,255,.12);color:var(--muted)">#${idx+1}</div>
+            <div style="flex:1">
+              <div class="it-title">${esc(it.title)} ${strict}</div>
+              <div class="it-sub">${esc(it.desc || "—")}</div>
+              <div class="mini">
+                <span>Cat: <span class="mono">${esc(it.cat)}</span></span>
+                <span>Total score: <span class="mono" style="color:${scoreColor}">${r.totalScore}</span></span>
+                <span>Blocks: <span class="mono">${r.blocks}</span></span>
+                <span>Positive rate: <span class="mono">${Math.round(r.positiveRate*100)}%</span></span>
+              </div>
+              <div class="mini" style="gap:12px">
+                ${perRole("client","Client",getCSS("--client"))}
+                ${perRole("designer","Designer",getCSS("--designer"))}
+                ${perRole("gc","GC",getCSS("--gc"))}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    rb.innerHTML = header + map + list;
+    setTimeout(()=>drawMap(c), 0);
+  }
+}
+
+function esc(s){
+  return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+/* =========================
+   Keyboard shortcuts
+   ========================= */
+document.addEventListener("keydown", (e)=>{
+  const t = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+  if(t==="textarea" || t==="input" || t==="select") return;
+
+  if(e.key==="1") vote("approve");
+  if(e.key==="2") vote("concern");
+  if(e.key==="3") vote("block");
+  if(e.key==="ArrowRight") next();
+  if(e.key==="ArrowLeft") prev();
+});
+
+/* =========================
+   Panel resize
+   ========================= */
+const SIZES_KEY = "decisionjam_panel_sizes_v1";
+function saveSizes(){
+  const lw = getComputedStyle(document.documentElement).getPropertyValue("--left-w").trim();
+  const rw = getComputedStyle(document.documentElement).getPropertyValue("--right-w").trim();
+  try { localStorage.setItem(SIZES_KEY, JSON.stringify({lw,rw})); } catch(e) {}
+}
+function loadSizes(){
+  const x = safeParseJSON(localStorage.getItem(SIZES_KEY) || "null");
+  if(!x) return;
+  if(x.lw) document.documentElement.style.setProperty("--left-w", x.lw);
+  if(x.rw) document.documentElement.style.setProperty("--right-w", x.rw);
+}
+function setupResize(handleId, panelId, side){
+  const handle = el(handleId);
+  const panel = el(panelId);
+  let dragging=false, startX=0, startW=0;
+  handle.addEventListener("mousedown", (ev)=>{
+    dragging=true; startX=ev.clientX; startW=panel.offsetWidth;
+    handle.classList.add("dragging");
+    document.body.style.cursor="col-resize";
+    document.body.style.userSelect="none";
+    ev.preventDefault();
+  });
+  document.addEventListener("mousemove", (ev)=>{
+    if(!dragging) return;
+    const delta = side==="left" ? (ev.clientX-startX) : (startX-ev.clientX);
+    const newW = Math.max(220, Math.min(560, startW+delta));
+    const prop = side==="left" ? "--left-w" : "--right-w";
+    document.documentElement.style.setProperty(prop, newW+"px");
+  });
+  document.addEventListener("mouseup", ()=>{
+    if(!dragging) return;
+    dragging=false;
+    handle.classList.remove("dragging");
+    document.body.style.cursor="";
+    document.body.style.userSelect="";
+    saveSizes();
+  });
+}
+
+setupResize("rh-left","panel-left","left");
+setupResize("rh-right","panel-right","right");
+
+/* boot */
+loadPersisted();
+loadSizes();
+renderRight();
+showCard();
+
+// redraw map on resize if consensus tab open
+window.addEventListener('resize', ()=>{
+  if(activeTab==='consensus'){
+    const c = computeConsensus();
+    setTimeout(()=>drawMap(c), 0);
+  }
+});
+</script>
+</body>
+</html>

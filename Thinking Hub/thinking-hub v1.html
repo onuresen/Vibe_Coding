@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Local Decision OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #0f0f11;
+      --panel: #15151a;
+      --border: #26262e;
+      --text: #f0efe8;
+      --text-dim: #8f8fa0;
+      --accent: #7c6af5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo {
+      padding: 16px;
+      font-weight: 800;
+      letter-spacing: .3px;
+    }
+
+    .nav {
+      flex: 1;
+      padding: 8px;
+    }
+
+    .nav button {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .nav button.active {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: rgba(124, 106, 245, .1);
+    }
+
+    .footer {
+      padding: 12px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .session-bar {
+      height: 44px;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+    }
+
+    .session-bar input {
+      background: #1c1c22;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 8px;
+      border-radius: 6px;
+    }
+
+    .app-host {
+      flex: 1;
+      position: relative;
+    }
+
+    iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">Decision OS</div>
+    <div class="nav">
+      <button onclick="openApp('ideaswipe.html',this)">Idea Swipe</button>
+      <button onclick="openApp('kmqt-board.html',this)">KMQT Board</button>
+      <button onclick="openApp('project-hub.html',this)">Project Hub</button>
+      <hr style="border:none;border-top:1px solid var(--border);margin:10px 0">
+      <button onclick="openApp('decision-log.html',this)">Decision Log</button>
+    </div>
+    <div class="footer">
+      Local · Offline · Files stay yours
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="session-bar">
+      Session:
+      <input id="sessionName" placeholder="e.g. April Planning">
+      <span id="autosave">autosaved</span>
+    </div>
+    <div class="app-host">
+      <iframe id="appFrame"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const appFrame = document.getElementById('appFrame');
+
+    function openApp(file, btn) {
+      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      appFrame.src = file;
+    }
+
+    // simple shared context
+    const KEY = 'decision-os-session';
+    const input = document.getElementById('sessionName');
+
+    input.value = localStorage.getItem(KEY) || '';
+    input.oninput = () => localStorage.setItem(KEY, input.value);
+  </script>
+
+</body>
+
+</html>
