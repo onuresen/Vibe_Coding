@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decision Workspace</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f0f11;
+      --surface:     #1a1a1f;
+      --surface2:    #222228;
+      --surface3:    #2a2a35;
+      --border:      rgba(255,255,255,0.08);
+      --border2:     rgba(255,255,255,0.14);
+      --text:        #f0efe8;
+      --text2:       #9998a0;
+      --text3:       #55545c;
+      --accent:      #b8f033;
+      --accent-bg:   rgba(184,240,51,0.10);
+      --accent-dim:  rgba(184,240,51,0.06);
+      --ok:          #2ecc7a;
+      --bad:         #e8455a;
+      --font-d:      'Syne', sans-serif;
+      --font-b:      'DM Sans', sans-serif;
+      --font-m:      'JetBrains Mono', monospace;
+      --r:           14px;
+      --r-sm:        8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-b);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .dw-header {
+      height: 54px;
+      min-height: 54px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+    }
+
+    .dw-logo {
+      font-family: var(--font-d);
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--accent);
+      white-space: nowrap;
+      letter-spacing: -0.3px;
+    }
+
+    .dw-logo-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border2);
+      flex-shrink: 0;
+    }
+
+    #dw-title {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text2);
+      font-family: var(--font-b);
+      font-size: 13px;
+      font-weight: 500;
+      outline: none;
+      min-width: 0;
+    }
+    #dw-title::placeholder { color: var(--text3); }
+    #dw-title:focus {
+      color: var(--text);
+      border-bottom: 1px solid var(--accent);
+    }
+
+    .dw-header-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* ── Buttons ── */
+    button {
+      font-family: var(--font-b);
+      font-size: 12.5px;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 7px 13px;
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      line-height: 1;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #111;
+    }
+    .btn-primary:hover { background: #ceff55; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--text3);
+      border: 1px solid transparent;
+      padding: 5px 8px;
+    }
+    .btn-danger:hover { background: var(--bad); color: #fff; border-color: var(--bad); }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      padding: 8px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .tab {
+      padding: 7px 16px;
+      border-radius: var(--r-sm);
+      border: 1px solid transparent;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-b);
+      color: var(--text2);
+      background: transparent;
+      cursor: pointer;
+    }
+    .tab:hover { color: var(--text); background: var(--surface2); }
+    .tab.active {
+      color: var(--accent);
+      background: var(--accent-dim);
+      border-color: rgba(184,240,51,0.22);
+    }
+
+    /* ── Panels ── */
+    .tab-panel {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .tab-panel.active { display: flex; }
+
+    .panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .panel-hint {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text3);
+      font-family: var(--font-m);
+    }
+
+    .panel-scroll {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    /* ── Card Grid (Problem Lens + Decision Canvas) ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 16px 20px;
+    }
+
+    @media (max-width: 680px) {
+      .card-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .card-label {
+      font-family: var(--font-m);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--text3);
+    }
+
+    textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text);
+      font-family: var(--font-b);
+      font-size: 13px;
+      line-height: 1.6;
+      padding: 9px 10px;
+      resize: vertical;
+      min-height: 100px;
+      width: 100%;
+    }
+    textarea::placeholder { color: var(--text3); }
+    textarea:focus {
+      outline: none;
+      border-color: rgba(184,240,51,0.4);
+      background: rgba(184,240,51,0.03);
+    }
+
+    /* ── Option Map Table ── */
+    .table-wrapper {
+      padding: 16px 20px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1px solid var(--surface3);
+      padding: 9px 10px;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      background: var(--surface);
+      color: var(--text3);
+      font-family: var(--font-m);
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    td { background: var(--surface2); vertical-align: middle; }
+
+    td input, td select {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 13px;
+      font-family: var(--font-b);
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    td input:focus, td select:focus {
+      outline: 1px solid var(--accent);
+      background: var(--accent-dim);
+    }
+    td select option { background: var(--surface2); }
+
+    tr.drag-over td { background: var(--surface3); }
+    tr.dragging { opacity: 0.35; }
+
+    .drag-handle {
+      cursor: grab;
+      color: var(--text3);
+      text-align: center;
+      user-select: none;
+      width: 28px;
+      font-size: 15px;
+    }
+    .drag-handle:active { cursor: grabbing; }
+
+    td:last-child { width: 36px; text-align: center; }
+
+    .irreversibility-low    { color: var(--ok); }
+    .irreversibility-medium { color: var(--accent); }
+    .irreversibility-high   { color: var(--bad); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      border-radius: 999px;
+      padding: 8px 20px;
+      font-size: 13px;
+      color: var(--text);
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+    .toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Autosave indicator ── */
+    #save-indicator {
+      font-family: var(--font-m);
+      font-size: 10px;
+      color: var(--text3);
+      transition: color 0.3s;
+    }
+    #save-indicator.saving { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="dw-header">
+    <div class="dw-logo">Decision Workspace</div>
+    <div class="dw-logo-sep"></div>
+    <input id="dw-title" type="text" placeholder="Name this workspace…" autocomplete="off" spellcheck="false">
+    <span id="save-indicator">saved</span>
+    <div class="dw-header-actions">
+      <button class="btn-ghost" onclick="exportAll()">Export All</button>
+    </div>
+  </header>
+
+  <!-- Tab Bar -->
+  <nav class="tab-bar">
+    <button class="tab active" data-tab="problem">Problem Lens</button>
+    <button class="tab"        data-tab="canvas">Decision Canvas</button>
+    <button class="tab"        data-tab="options">Option Map</button>
+  </nav>
+
+  <!-- ── Tab 1: Problem Lens ── -->
+  <section id="panel-problem" class="tab-panel active">
+    <div class="panel-actions">
+      <button class="btn-primary" onclick="saveProblem()">Save</button>
+      <button class="btn-ghost"   onclick="resetProblem()">Reset</button>
+      <button class="btn-ghost"   onclick="exportProblem()">Export</button>
+      <span class="panel-hint">Focus on the problem — no solutions yet</span>
+    </div>
+    <div class="panel-scroll">
+      <div class="card-grid" id="problem-grid"></div>
+    </div>
+  </section>
+
+  <!-- ── Tab 2: Decision Canvas ── -->
+  <section id="panel-canvas" class="tab-panel">
+    <div class="panel-actions">
+      <button class="btn-primary" onclick="saveCanvas()">Save</button>
+      <button class="btn-ghost"   onclick="resetCanvas()">Reset</button>
+      <button class="btn-ghost"   onclick="exportCanvas()">Export</button>
+      <span class="panel-hint">Frame the decision and commit to a direction</span>
+    </div>
+    <div class="panel-scroll">
+      <div class="card-grid" id="canvas-grid"></div>
+    </div>
+  </section>
+
+  <!-- ── Tab 3: Option Map ── -->
+  <section id="panel-options" class="tab-panel">
+    <div class="panel-actions">
+      <button class="btn-primary" onclick="addOptionRow()">+ Add Option</button>
+      <button class="btn-ghost"   onclick="exportOptionsJSON()">Export JSON</button>
+      <button class="btn-ghost"   onclick="copyOptionsMarkdown()">Copy Markdown</button>
+      <button class="btn-ghost"   onclick="importOptions()">Import</button>
+      <button class="btn-ghost"   onclick="resetOptions()">Reset</button>
+      <span class="panel-hint">Drag rows to reorder · Autosaved locally</span>
+      <input type="file" id="import-file" accept="application/json" hidden>
+    </div>
+    <div class="panel-scroll">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:28px"></th>
+              <th>Option / Tool</th>
+              <th>Upside</th>
+              <th>Downside</th>
+              <th style="width:120px">Irreversibility</th>
+              <th>Risk Owner</th>
+              <th style="width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="option-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+<script>
+// ── Shared utilities ──────────────────────────────────────────────────────────
+
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function downloadJSON(obj, filename) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function showToast(msg, duration = 2200) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => el.classList.add('visible'));
+  });
+  setTimeout(() => {
+    el.classList.remove('visible');
+    setTimeout(() => el.remove(), 300);
+  }, duration);
+}
+
+function flashSaved() {
+  const el = document.getElementById('save-indicator');
+  el.textContent = 'saved';
+  el.classList.add('saving');
+  setTimeout(() => el.classList.remove('saving'), 1000);
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === id));
+  document.querySelectorAll('.tab-panel').forEach(p =>
+    p.classList.toggle('active', p.id === 'panel-' + id));
+}
+
+document.querySelectorAll('.tab').forEach(btn =>
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+// ── Workspace title ───────────────────────────────────────────────────────────
+
+const TITLE_KEY = 'dw-title-v1';
+
+(function loadTitle() {
+  document.getElementById('dw-title').value = localStorage.getItem(TITLE_KEY) || '';
+})();
+
+document.getElementById('dw-title').addEventListener('input', function () {
+  localStorage.setItem(TITLE_KEY, this.value);
+});
+
+// ── Problem Lens ──────────────────────────────────────────────────────────────
+
+const PROBLEM_KEY = 'dw-problem-v1';
+
+const PROBLEM_FIELDS = [
+  { label: 'Problem to Be Solved',          placeholder: 'What problem are we actually trying to solve?' },
+  { label: 'Who Is Affected',               placeholder: 'Who experiences the pain? Client, site, design, operations?' },
+  { label: 'Why This Matters Now',          placeholder: 'Why now? Trigger, deadline, risk, opportunity?' },
+  { label: 'What Happens If We Do Nothing', placeholder: 'Cost, risk, delay, lost opportunity' },
+  { label: 'Constraints & Assumptions',     placeholder: 'Budget, schedule, regulation, fixed decisions' },
+  { label: 'Out of Scope',                  placeholder: 'What is explicitly NOT part of this problem?' },
+];
+
+(function buildProblemGrid() {
+  const grid = document.getElementById('problem-grid');
+  PROBLEM_FIELDS.forEach((f, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-label">${f.label}</div>
+      <textarea class="problem-field" data-i="${i}" placeholder="${f.placeholder}" rows="4"></textarea>
+    `;
+    grid.appendChild(card);
+  });
+  loadProblem();
+})();
+
+function saveProblem() {
+  const vals = [...document.querySelectorAll('.problem-field')].map(t => t.value);
+  localStorage.setItem(PROBLEM_KEY, JSON.stringify(vals));
+  flashSaved();
+}
+
+function loadProblem() {
+  try {
+    const raw = localStorage.getItem(PROBLEM_KEY);
+    if (!raw) return;
+    JSON.parse(raw).forEach((v, i) => {
+      const el = document.querySelector(`.problem-field[data-i="${i}"]`);
+      if (el) el.value = v;
+    });
+  } catch {}
+}
+
+function resetProblem() {
+  if (!confirm('Clear Problem Lens?')) return;
+  document.querySelectorAll('.problem-field').forEach(t => t.value = '');
+  localStorage.removeItem(PROBLEM_KEY);
+  flashSaved();
+}
+
+function exportProblem() {
+  downloadJSON({
+    type: 'ProblemLens',
+    exportedAt: new Date().toISOString(),
+    fields: PROBLEM_FIELDS.map((f, i) => ({
+      label: f.label,
+      value: document.querySelector(`.problem-field[data-i="${i}"]`)?.value || ''
+    }))
+  }, 'problem-lens.json');
+}
+
+let problemDebounce;
+document.getElementById('panel-problem').addEventListener('input', e => {
+  if (!e.target.classList.contains('problem-field')) return;
+  clearTimeout(problemDebounce);
+  problemDebounce = setTimeout(saveProblem, 600);
+});
+
+// ── Decision Canvas ───────────────────────────────────────────────────────────
+
+const CANVAS_KEY = 'dw-canvas-v1';
+
+const CANVAS_FIELDS = [
+  { label: 'Decision Question',    placeholder: 'What decision are we making?' },
+  { label: 'Context / Constraints',placeholder: 'Project, timing, cost, site, rules…' },
+  { label: 'Options',              placeholder: 'Option A / B / C' },
+  { label: 'What We Know',         placeholder: 'Facts, data, assumptions' },
+  { label: 'Risks / Trade-offs',   placeholder: 'What could go wrong? What do we give up?' },
+  { label: 'Decision & Next Action',placeholder: 'Chosen option and immediate next step' },
+];
+
+(function buildCanvasGrid() {
+  const grid = document.getElementById('canvas-grid');
+  CANVAS_FIELDS.forEach((f, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-label">${f.label}</div>
+      <textarea class="canvas-field" data-i="${i}" placeholder="${f.placeholder}" rows="4"></textarea>
+    `;
+    grid.appendChild(card);
+  });
+  loadCanvas();
+})();
+
+function saveCanvas() {
+  const vals = [...document.querySelectorAll('.canvas-field')].map(t => t.value);
+  localStorage.setItem(CANVAS_KEY, JSON.stringify(vals));
+  flashSaved();
+}
+
+function loadCanvas() {
+  try {
+    const raw = localStorage.getItem(CANVAS_KEY);
+    if (!raw) return;
+    JSON.parse(raw).forEach((v, i) => {
+      const el = document.querySelector(`.canvas-field[data-i="${i}"]`);
+      if (el) el.value = v;
+    });
+  } catch {}
+}
+
+function resetCanvas() {
+  if (!confirm('Clear Decision Canvas?')) return;
+  document.querySelectorAll('.canvas-field').forEach(t => t.value = '');
+  localStorage.removeItem(CANVAS_KEY);
+  flashSaved();
+}
+
+function exportCanvas() {
+  downloadJSON({
+    type: 'DecisionCanvas',
+    exportedAt: new Date().toISOString(),
+    fields: CANVAS_FIELDS.map((f, i) => ({
+      label: f.label,
+      value: document.querySelector(`.canvas-field[data-i="${i}"]`)?.value || ''
+    }))
+  }, 'decision-canvas.json');
+}
+
+let canvasDebounce;
+document.getElementById('panel-canvas').addEventListener('input', e => {
+  if (!e.target.classList.contains('canvas-field')) return;
+  clearTimeout(canvasDebounce);
+  canvasDebounce = setTimeout(saveCanvas, 600);
+});
+
+// ── Option Map ────────────────────────────────────────────────────────────────
+
+const OPTIONS_KEY = 'dw-options-v1';
+let optionRows = [];
+
+function saveOptions() {
+  localStorage.setItem(OPTIONS_KEY, JSON.stringify(optionRows));
+}
+
+function loadOptions() {
+  try {
+    optionRows = JSON.parse(localStorage.getItem(OPTIONS_KEY)) || [];
+  } catch { optionRows = []; }
+}
+
+function renderOptions() {
+  const tbody = document.getElementById('option-tbody');
+  tbody.innerHTML = '';
+  optionRows.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.draggable = true;
+
+    tr.addEventListener('dragstart', e => {
+      tr.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(i));
+    });
+    tr.addEventListener('dragend', () => tr.classList.remove('dragging'));
+    tr.addEventListener('dragover', e => { e.preventDefault(); tr.classList.add('drag-over'); });
+    tr.addEventListener('dragleave', () => tr.classList.remove('drag-over'));
+    tr.addEventListener('drop', e => {
+      e.preventDefault();
+      tr.classList.remove('drag-over');
+      const from = parseInt(e.dataTransfer.getData('text/plain'));
+      if (from !== i) {
+        const [moved] = optionRows.splice(from, 1);
+        optionRows.splice(i, 0, moved);
+        saveOptions();
+        renderOptions();
+      }
+    });
+
+    const irrClass = row.irreversibility === 'Low' ? 'irreversibility-low'
+                   : row.irreversibility === 'High' ? 'irreversibility-high'
+                   : row.irreversibility === 'Medium' ? 'irreversibility-medium' : '';
+
+    tr.innerHTML = `
+      <td class="drag-handle" title="Drag to reorder">⠿</td>
+      <td><input value="${escHtml(row.option)}"    onchange="updateOption(${i},'option',this.value)"></td>
+      <td><input value="${escHtml(row.upside)}"    onchange="updateOption(${i},'upside',this.value)"></td>
+      <td><input value="${escHtml(row.downside)}"  onchange="updateOption(${i},'downside',this.value)"></td>
+      <td class="${irrClass}">
+        <select onchange="updateOption(${i},'irreversibility',this.value)">
+          <option value="">—</option>
+          <option value="Low"    ${row.irreversibility==='Low'    ? 'selected' : ''}>Low</option>
+          <option value="Medium" ${row.irreversibility==='Medium' ? 'selected' : ''}>Medium</option>
+          <option value="High"   ${row.irreversibility==='High'   ? 'selected' : ''}>High</option>
+        </select>
+      </td>
+      <td><input value="${escHtml(row.owner)}"     onchange="updateOption(${i},'owner',this.value)"></td>
+      <td><button class="btn-danger" onclick="deleteOptionRow(${i})" title="Delete">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateOption(i, key, val) {
+  optionRows[i][key] = val;
+  saveOptions();
+  // Re-render only if irreversibility changed (to update color class)
+  if (key === 'irreversibility') renderOptions();
+}
+
+function addOptionRow() {
+  optionRows.push({ option: '', upside: '', downside: '', irreversibility: '', owner: '' });
+  saveOptions();
+  renderOptions();
+  // Focus new row's first input
+  const rows = document.querySelectorAll('#option-tbody tr');
+  const lastRow = rows[rows.length - 1];
+  if (lastRow) lastRow.querySelector('input')?.focus();
+}
+
+function deleteOptionRow(i) {
+  if (!confirm('Delete this row?')) return;
+  optionRows.splice(i, 1);
+  saveOptions();
+  renderOptions();
+}
+
+function resetOptions() {
+  if (!confirm('Clear all options?')) return;
+  optionRows = [];
+  saveOptions();
+  renderOptions();
+}
+
+function exportOptionsJSON() {
+  downloadJSON({
+    type: 'OptionMap',
+    exportedAt: new Date().toISOString(),
+    rows: optionRows
+  }, 'option-map.json');
+}
+
+function copyOptionsMarkdown() {
+  let md = '| Option/Tool | Upside | Downside | Irreversibility | Risk Owner |\n|---|---|---|---|---|\n';
+  optionRows.forEach(r => {
+    md += `| ${r.option||''} | ${r.upside||''} | ${r.downside||''} | ${r.irreversibility||''} | ${r.owner||''} |\n`;
+  });
+  navigator.clipboard.writeText(md)
+    .then(() => showToast('Copied as Markdown'))
+    .catch(() => showToast('Clipboard unavailable'));
+}
+
+function importOptions() {
+  const fi = document.getElementById('import-file');
+  fi.value = '';
+  fi.click();
+}
+
+document.getElementById('import-file').addEventListener('change', async function () {
+  const file = this.files[0];
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    const arr = Array.isArray(parsed) ? parsed : parsed.rows;
+    if (!Array.isArray(arr)) throw new Error('bad format');
+    if (!confirm(`Import will replace ${optionRows.length} current rows. Continue?`)) return;
+    optionRows = arr;
+    saveOptions();
+    renderOptions();
+  } catch {
+    showToast('Invalid JSON or unrecognized format');
+  }
+});
+
+// ── Export All ────────────────────────────────────────────────────────────────
+
+function exportAll() {
+  downloadJSON({
+    type: 'DecisionWorkspace',
+    exportedAt: new Date().toISOString(),
+    title: document.getElementById('dw-title').value,
+    problemLens: PROBLEM_FIELDS.map((f, i) => ({
+      label: f.label,
+      value: document.querySelector(`.problem-field[data-i="${i}"]`)?.value || ''
+    })),
+    decisionCanvas: CANVAS_FIELDS.map((f, i) => ({
+      label: f.label,
+      value: document.querySelector(`.canvas-field[data-i="${i}"]`)?.value || ''
+    })),
+    optionMap: optionRows
+  }, 'decision-workspace.json');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+loadOptions();
+renderOptions();
+</script>
+</body>
+</html>
