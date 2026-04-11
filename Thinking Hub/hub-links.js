@@ -16,6 +16,7 @@ const HubLinks = (() => {
 
   const TOOL_NAMES = {
     'project-hub':        'Project Hub',
+    'schedule':           'Schedule',
     'decision-log':       'Decision Log',
     'idea-swiper':        'Idea Swiper',
     'kmqt-board':         'KMQT Board',
@@ -98,6 +99,17 @@ const HubLinks = (() => {
             label: (h.idea || '').slice(0, 60),
             subtitle: h.vote === 'super' ? '★ super' : '♥ like'
           }));
+      }
+
+      if (toolId === 'schedule') {
+        const raw = localStorage.getItem('schedule-v1');
+        if (!raw) return [];
+        const data = JSON.parse(raw);
+        return (data.items || []).map(i => ({
+          id: i.id,
+          label: i.title || '(untitled)',
+          subtitle: i.projectRef || i.type || 'item'
+        }));
       }
 
       if (toolId === 'kmqt-board') {
