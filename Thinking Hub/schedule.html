@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Schedule</title>
   <script src="hub-links.js"></script>
+  <script src="hub-data.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -756,8 +757,10 @@
       <div class="sch-color-row" id="color-swatches"></div>
     </div>
     <div class="sch-field">
-      <label class="sch-label">Project / Label</label>
-      <input class="sch-input" id="f-project" type="text" placeholder="e.g. Marketing, Q2 Sprint…" />
+      <label class="sch-label">Project</label>
+      <select class="sch-input" id="f-project">
+        <option value="">— none —</option>
+      </select>
     </div>
     <div class="sch-field">
       <label class="sch-label">Notes</label>
@@ -1315,7 +1318,7 @@ function openDrawer(id, prefillDate) {
   document.getElementById('f-type').value = item ? (item.type || 'task') : 'task';
   document.getElementById('f-start').value = item ? (item.start || defaultDate) : defaultDate;
   document.getElementById('f-end').value = item ? (item.end || defaultDate) : defaultDate;
-  document.getElementById('f-project').value = item ? (item.projectRef || '') : '';
+  document.getElementById('f-project').value = item ? (item.projectId || '') : '';
   document.getElementById('f-notes').value = item ? (item.notes || '') : '';
   document.getElementById('f-done').checked = item ? !!item.done : false;
 
@@ -1344,7 +1347,12 @@ function saveDrawer() {
     type:       document.getElementById('f-type').value,
     start, end,
     color:      _drawerColor,
-    projectRef: document.getElementById('f-project').value.trim() || null,
+    projectId:  document.getElementById('f-project').value || null,
+    projectRef: (() => {
+      const pid = document.getElementById('f-project').value;
+      const proj = pid ? HubData.getProject(pid) : null;
+      return proj ? proj.name : null;
+    })(),
     notes:      document.getElementById('f-notes').value.trim(),
     done:       document.getElementById('f-done').checked,
   };
@@ -1407,6 +1415,7 @@ function openImportModal() {
         id: uid(), title: task.title || '(untitled)',
         type: 'task', start: task.due, end: task.due,
         color: project.color || PALETTE[2],
+        projectId: project.id || null,
         projectRef: project.name || null,
         sourceId: task.id, sourceTool: 'project-hub',
         done: !!task.done, createdAt: new Date().toISOString(), _skip: skip,
@@ -1430,6 +1439,7 @@ function openImportModal() {
         id: uid(), title: ms.name || '(milestone)',
         type: 'milestone', start: ms.date, end: ms.date,
         color: ms.color || PALETTE[1],
+        projectId: project.id || null,
         projectRef: project.name || null,
         sourceId: ms.id, sourceTool: 'project-hub',
         done: false, createdAt: new Date().toISOString(), _skip: skip,
@@ -1527,10 +1537,32 @@ document.addEventListener('keydown', e => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// Project select helpers
+// ═══════════════════════════════════════════════════════════════
+function _populateProjectSelect() {
+  const sel = document.getElementById('f-project');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— none —</option>';
+  HubData.getProjects().forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  if (prev && sel.querySelector('option[value="' + CSS.escape(prev) + '"]')) sel.value = prev;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Init
 // ═══════════════════════════════════════════════════════════════
 state = loadState();
 try { HubLinks.init('schedule'); } catch {}
+try {
+  HubData.init('schedule');
+  _populateProjectSelect();
+  HubData.onChange(_populateProjectSelect);
+} catch {}
 render();
 setTimeout(scrollToToday, 160);
 </script>

@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Hub</title>
   <script src="hub-links.js"></script>
+  <script src="hub-data.js"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap"
     rel="stylesheet">
@@ -2419,7 +2420,7 @@
         const open = tasks.filter(t => !t.done);
         const done = tasks.filter(t => t.done);
 
-        if (!tasks.length) { body.innerHTML += `<div class="empty-state"><div class="e-icon">☐</div><div class="e-title">No tasks yet</div></div>`; return; }
+        if (!tasks.length) { body.insertAdjacentHTML('beforeend', `<div class="empty-state"><div class="e-icon">☐</div><div class="e-title">No tasks yet</div></div>`); return; }
         if (open.length) {
           const g = document.createElement('div'); g.className = 'task-group';
           g.innerHTML = `<div class="task-group-label">Open</div>`;
@@ -2442,7 +2443,7 @@
         addBtn.onclick = () => openMilestoneModal();
         body.appendChild(addBtn);
 
-        if (!proj.milestones.length) { body.innerHTML += `<div class="empty-state"><div class="e-icon">◎</div><div class="e-title">No milestones</div></div>`; }
+        if (!proj.milestones.length) { body.insertAdjacentHTML('beforeend', `<div class="empty-state"><div class="e-icon">◎</div><div class="e-title">No milestones</div></div>`); }
         proj.milestones.forEach(ms => {
           const msTasks = proj.tasks.filter(t => t.milestoneId === ms.id);
           const doneCount = msTasks.filter(t => t.done).length;
@@ -2472,7 +2473,7 @@
         addBtn.onclick = () => openGoalModal();
         body.appendChild(addBtn);
 
-        if (!proj.goals.length) { body.innerHTML += `<div class="empty-state"><div class="e-icon">◇</div><div class="e-title">No goals yet</div></div>`; }
+        if (!proj.goals.length) { body.insertAdjacentHTML('beforeend', `<div class="empty-state"><div class="e-icon">◇</div><div class="e-title">No goals yet</div></div>`); }
         proj.goals.forEach(g => {
           const el = document.createElement('div'); el.className = 'goal-item';
           el.innerHTML = `
@@ -2758,6 +2759,8 @@
     // ─── INIT ─────────────────────────────────────────────────────────────────────
     renderSidebarUsers();
     renderContent();
+    try { HubLinks.init('project-hub'); } catch {}
+    try { HubData.init('project-hub'); } catch {}
   </script>
 </body>
 

@@ -5,6 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Decision Log (Standalone)</title>
+  <script src="hub-links.js"></script>
+  <script src="hub-data.js"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
     rel="stylesheet">
@@ -618,6 +620,21 @@
           maxlength="2000"></textarea>
       </div>
 
+      <div class="row" style="gap:10px;align-items:flex-start">
+        <div style="flex:1">
+          <div class="label" style="margin-bottom:6px">Project context</div>
+          <select id="projectId" class="input">
+            <option value="">— none —</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <div class="label" style="margin-bottom:6px">Related task</div>
+          <select id="taskId" class="input">
+            <option value="">— none —</option>
+          </select>
+        </div>
+      </div>
+
       <div class="row">
         <button class="btn btn-primary" id="btnSave">Save Entry</button>
         <button class="btn btn-ghost btn-warn" id="btnClear">Clear</button>
@@ -690,6 +707,21 @@
         </div>
       </div>
 
+      <div class="row" style="gap:10px;align-items:flex-start">
+        <div style="flex:1">
+          <div class="label" style="margin-bottom:6px">Project context</div>
+          <select id="eProjectId" class="input">
+            <option value="">— none —</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <div class="label" style="margin-bottom:6px">Related task</div>
+          <select id="eTaskId" class="input">
+            <option value="">— none —</option>
+          </select>
+        </div>
+      </div>
+
       <div>
         <div class="label" style="margin-bottom:6px">Title</div>
         <input id="eTitle" class="input" maxlength="80" />
@@ -755,6 +787,8 @@
       tags: document.getElementById('tags'),
       links: document.getElementById('links'),
       linkTo: document.getElementById('linkTo'),
+      projectId: document.getElementById('projectId'),
+      taskId: document.getElementById('taskId'),
 
       btnSave: document.getElementById('btnSave'),
       btnClear: document.getElementById('btnClear'),
@@ -768,6 +802,8 @@
       eType: document.getElementById('eType'),
       eConf: document.getElementById('eConf'),
       eLinkTo: document.getElementById('eLinkTo'),
+      eProjectId: document.getElementById('eProjectId'),
+      eTaskId: document.getElementById('eTaskId'),
       eTitle: document.getElementById('eTitle'),
       eSummary: document.getElementById('eSummary'),
       eReason: document.getElementById('eReason'),
@@ -880,6 +916,14 @@
         const links = (entry.links || []).map(l => `<span class="linkpill">${esc(shortLink(l))}</span>`).join('');
         const conf = entry.confidence ? `· ${entry.confidence}` : '';
         const linkTo = entry.linkTo ? `· ${entry.linkTo}` : '';
+        const projName = entry.projectId
+          ? (HubData.getProject(entry.projectId)?.name || 'deleted project')
+          : '';
+        const taskName = (entry.taskId && entry.projectId)
+          ? (HubData.findTask(entry.taskId)?.task?.title || '')
+          : '';
+        const ctxStr = [projName, taskName].filter(Boolean).join(' › ');
+        const ctxBadge = ctxStr ? `<span class="tag" style="background:var(--accent1);color:#fff;opacity:.85">${esc(ctxStr)}</span>` : '';
 
         card.innerHTML = `
       <div class="card-top">
@@ -894,7 +938,7 @@
       </div>
       ${entry.summary ? `<div class="bodytext">${esc(entry.summary)}</div>` : ''}
       ${entry.reason ? `<div class="bodytext" style="color:var(--text3)"><b style="color:var(--text2)">Why:</b> ${esc(entry.reason)}</div>` : ''}
-      ${tags ? `<div class="tags">${tags}</div>` : ''}
+      ${ctxBadge || tags ? `<div class="tags">${ctxBadge}${tags}</div>` : ''}
       ${links ? `<div class="links">${links}</div>` : ''}
       <div class="actions">
         <button class="sbtn accent" data-act="edit">Edit</button>
@@ -947,6 +991,8 @@
       el.tags.value = '';
       el.links.value = '';
       el.linkTo.value = '';
+      el.projectId.value = '';
+      el.taskId.value = '';
       el.confidence.value = 'medium';
       setComposerType('decision');
     }
@@ -969,6 +1015,8 @@
         type: state.composerType,
         confidence: el.confidence.value || '',
         linkTo: el.linkTo.value || '',
+        projectId: el.projectId.value || null,
+        taskId: el.taskId.value || null,
         title,
         summary,
         reason,
@@ -1113,6 +1161,10 @@
       el.eType.value = e.type || 'note';
       el.eConf.value = e.confidence || '';
       el.eLinkTo.value = e.linkTo || '';
+      _populateProjectTask(el.eProjectId, el.eTaskId);
+      el.eProjectId.value = e.projectId || '';
+      _populateTaskSelect(el.eTaskId, el.eProjectId.value);
+      el.eTaskId.value = e.taskId || '';
       el.eTitle.value = e.title || '';
       el.eSummary.value = e.summary || '';
       el.eReason.value = e.reason || '';
@@ -1143,6 +1195,8 @@
       e.type = el.eType.value;
       e.confidence = el.eConf.value || '';
       e.linkTo = el.eLinkTo.value || '';
+      e.projectId = el.eProjectId.value || null;
+      e.taskId = el.eTaskId.value || null;
       e.title = title;
       e.summary = summary;
       e.reason = el.eReason.value.trim();
@@ -1215,10 +1269,52 @@
       }
     });
 
+    /* ---- HubData helpers ---- */
+    function _populateProjectTask(projSel, taskSel) {
+      const prevProj = projSel.value;
+      projSel.innerHTML = '<option value="">— none —</option>';
+      HubData.getProjects().forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id; opt.textContent = p.name;
+        projSel.appendChild(opt);
+      });
+      if (prevProj && projSel.querySelector('option[value="' + CSS.escape(prevProj) + '"]')) {
+        projSel.value = prevProj;
+      }
+      _populateTaskSelect(taskSel, projSel.value);
+    }
+
+    function _populateTaskSelect(taskSel, projectId) {
+      const prevTask = taskSel.value;
+      taskSel.innerHTML = '<option value="">— none —</option>';
+      if (!projectId) return;
+      HubData.getTasksForProject(projectId).forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id; opt.textContent = t.title;
+        taskSel.appendChild(opt);
+      });
+      if (prevTask && taskSel.querySelector('option[value="' + CSS.escape(prevTask) + '"]')) {
+        taskSel.value = prevTask;
+      }
+    }
+
+    el.projectId.addEventListener('change', () => _populateTaskSelect(el.taskId, el.projectId.value));
+    el.eProjectId.addEventListener('change', () => _populateTaskSelect(el.eTaskId, el.eProjectId.value));
+
     /* Init */
     load();
     render();
     clearComposer();
+    try {
+      HubLinks.init('decision-log');
+      HubData.init('decision-log');
+      _populateProjectTask(el.projectId, el.taskId);
+      HubData.onChange(() => {
+        _populateProjectTask(el.projectId, el.taskId);
+        _populateProjectTask(el.eProjectId, el.eTaskId);
+        render();
+      });
+    } catch {}
   </script>
 </body>
 
