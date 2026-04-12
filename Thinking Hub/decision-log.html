@@ -943,6 +943,7 @@
       <div class="actions">
         <button class="sbtn accent" data-act="edit">Edit</button>
         <button class="sbtn ok" data-act="copy">Copy MD</button>
+        ${entry.projectId ? `<button class="sbtn" data-act="goto" title="Open in Project Hub">${entry.taskId ? '→ Task' : '→ Project'}</button>` : ''}
         <button class="sbtn danger" data-act="del">Delete</button>
       </div>
     `;
@@ -953,6 +954,11 @@
           if (act === 'edit') { openEdit(entry.id); }
           else if (act === 'del') { removeEntry(entry.id); }
           else if (act === 'copy') { copyMarkdown(entry.id); }
+          else if (act === 'goto') {
+            const targetId = entry.taskId || entry.projectId;
+            try { HubLinks.navigateTo('project-hub', targetId); } catch {}
+            return; // don't re-render
+          }
           render();
         });
 

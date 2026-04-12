@@ -948,12 +948,15 @@ function renderSidebar() {
         ? fmtDate(it.start)
         : `${fmtDate(it.start)} → ${fmtDate(it.end)}`;
       const msClass = it.type === 'milestone' ? ' ms-shape' : '';
+      const projName = it.projectId
+        ? (HubData.getProject(it.projectId)?.name || it.projectRef || '')
+        : (it.projectRef || '');
       return `<div class="sch-list-row${isSelected ? ' selected' : ''}"
           data-id="${it.id}" onclick="selectItem('${it.id}')">
         <div class="sch-list-dot${msClass}" style="background:${it.color}"></div>
         <div class="sch-list-info">
           <div class="sch-list-title${it.done ? ' done' : ''}">${esc(it.title || '(untitled)')}</div>
-          <div class="sch-list-dates">${dateStr}</div>
+          <div class="sch-list-dates">${dateStr}${projName ? ` · ${esc(projName)}` : ''}</div>
         </div>
       </div>`;
     }).join('');
