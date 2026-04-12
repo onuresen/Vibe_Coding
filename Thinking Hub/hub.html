@@ -334,6 +334,128 @@
       line-height: 1.5;
     }
 
+    /* ── Status widgets ─────────────────────────────── */
+    #status-section { margin-bottom: 8px; }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      display: flex;
+      flex-direction: column;
+    }
+    .stat-card:hover {
+      border-color: rgba(184,240,51,0.35);
+      background: var(--accent-dim);
+    }
+
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .stat-card-icon { font-size: 14px; opacity: 0.7; width: 16px; text-align: center; flex-shrink: 0; }
+
+    .stat-card-title {
+      font-family: var(--font-d);
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.1px;
+      flex: 1;
+    }
+
+    .stat-count {
+      font-family: var(--font-m);
+      font-size: 10px;
+      color: var(--accent);
+      background: rgba(184,240,51,0.1);
+      border: 1px solid rgba(184,240,51,0.2);
+      border-radius: 999px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
+    .stat-card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-height: 68px;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.35;
+      overflow: hidden;
+    }
+
+    .stat-item-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .stat-item-text {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stat-item-meta {
+      font-family: var(--font-m);
+      font-size: 10px;
+      color: var(--text3);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .stat-badge {
+      font-family: var(--font-m);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 1px 5px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .stat-badge.decision { background: rgba(184,240,51,0.12); color: var(--accent); }
+    .stat-badge.risk     { background: rgba(255,80,80,0.12);  color: #ff9090; }
+    .stat-badge.note     { background: rgba(150,150,200,0.1); color: #9999cc; }
+    .stat-badge.open     { background: rgba(255,180,0,0.1);   color: #ffb833; }
+
+    .stat-card-footer {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-m);
+      font-size: 10px;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      letter-spacing: 0.3px;
+    }
+
     /* ── iframe ─────────────────────────────────────── */
     #app-frame {
       position: absolute;
@@ -379,6 +501,11 @@
       <div id="home-dashboard">
         <div class="home-greeting" id="greeting">Good morning.</div>
         <div class="home-sub">What are we working on?</div>
+
+        <div id="status-section" style="display:none">
+          <div class="home-section-label">Overview</div>
+          <div class="status-grid" id="status-grid"></div>
+        </div>
 
         <div class="home-section-label" id="recent-label" style="display:none">Recent</div>
         <div class="recent-strip" id="recent-strip"></div>
@@ -604,6 +731,7 @@ function goHome() {
   setActiveNav(null);
   document.getElementById('breadcrumb').textContent = '';
   refreshRecentStrip();
+  buildStatusWidgets();
   activeAppId = null;
 }
 
@@ -649,11 +777,140 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ── Status widgets ────────────────────────────────────────────────────────────
+
+function _esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function buildStatusWidgets() {
+  const grid    = document.getElementById('status-grid');
+  const section = document.getElementById('status-section');
+  if (!grid || !section) return;
+
+  const widgets = [];
+
+  // ── Projects (project-hub-v1) ──────────────────────────────────────────────
+  try {
+    const ph = JSON.parse(localStorage.getItem('project-hub-v1') || '{}');
+    const projects = ph.projects || [];
+    if (projects.length) {
+      const shown = projects.slice(0, 3);
+      const rows = shown.map(p => {
+        const open = (p.tasks || []).filter(t => !t.done).length;
+        const all  = (p.tasks || []).length;
+        return `<div class="stat-item">
+          <div class="stat-item-dot" style="background:${p.color || 'var(--text3)'}"></div>
+          <div class="stat-item-text">${_esc(p.name)}</div>
+          <div class="stat-item-meta">${open} / ${all} open</div>
+        </div>`;
+      }).join('');
+      widgets.push({
+        id: 'project-hub', icon: '◈', title: 'Project Hub',
+        count: `${projects.length} project${projects.length !== 1 ? 's' : ''}`,
+        body: rows,
+        more: projects.length > 3 ? `+${projects.length - 3} more` : ''
+      });
+    }
+  } catch {}
+
+  // ── Schedule this week (schedule-v1) ──────────────────────────────────────
+  try {
+    const sc = JSON.parse(localStorage.getItem('schedule-v1') || '{}');
+    const today   = new Date(); today.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+    const upcoming = (sc.items || [])
+      .filter(it => { const d = new Date(it.start); return !it.done && d >= today && d <= weekEnd; })
+      .sort((a, b) => a.start.localeCompare(b.start));
+    if (upcoming.length) {
+      const shown = upcoming.slice(0, 3);
+      const rows = shown.map(it => {
+        const label = new Date(it.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `<div class="stat-item">
+          <div class="stat-item-dot" style="background:${it.color || 'var(--text3)'}"></div>
+          <div class="stat-item-text">${_esc(it.title)}</div>
+          <div class="stat-item-meta">${label}</div>
+        </div>`;
+      }).join('');
+      widgets.push({
+        id: 'schedule', icon: '▦', title: 'Schedule',
+        count: `${upcoming.length} this week`,
+        body: rows,
+        more: upcoming.length > 3 ? `+${upcoming.length - 3} more` : ''
+      });
+    }
+  } catch {}
+
+  // ── Decision Log (decision-log-v1) ────────────────────────────────────────
+  try {
+    const dl = JSON.parse(localStorage.getItem('decision-log-v1') || '{}');
+    const entries = dl.entries || [];
+    if (entries.length) {
+      const shown = entries.slice(0, 3);
+      const rows = shown.map(e => `<div class="stat-item">
+        <span class="stat-badge ${_esc(e.type || 'note')}">${_esc(e.type || 'note')}</span>
+        <div class="stat-item-text">${_esc(e.title || '(untitled)')}</div>
+      </div>`).join('');
+      widgets.push({
+        id: 'decision-log', icon: '◎', title: 'Decision Log',
+        count: `${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'}`,
+        body: rows,
+        more: entries.length > 3 ? `+${entries.length - 3} more` : ''
+      });
+    }
+  } catch {}
+
+  // ── Open Questions (kmqt_current_v2) ──────────────────────────────────────
+  try {
+    const km = JSON.parse(localStorage.getItem('kmqt_current_v2') || '{}');
+    const questions = (km.columns && km.columns.Q) || [];
+    if (questions.length) {
+      const qLabel = (km.labels && km.labels.Q) || 'Question';
+      const shown = questions.slice(0, 3);
+      const rows = shown.map(q => `<div class="stat-item">
+        <div class="stat-item-dot" style="background:var(--accent);opacity:.45"></div>
+        <div class="stat-item-text">${_esc(q.text || '')}</div>
+      </div>`).join('');
+      widgets.push({
+        id: 'kmqt-board', icon: '⊞', title: `${_esc(qLabel)}s`,
+        count: `${questions.length} open`,
+        body: rows,
+        more: questions.length > 3 ? `+${questions.length - 3} more` : ''
+      });
+    }
+  } catch {}
+
+  if (!widgets.length) { section.style.display = 'none'; return; }
+
+  section.style.display = '';
+  grid.innerHTML = '';
+  widgets.forEach(w => {
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+    card.innerHTML = `
+      <div class="stat-card-header">
+        <span class="stat-card-icon">${w.icon}</span>
+        <span class="stat-card-title">${w.title}</span>
+        <span class="stat-count">${w.count}</span>
+      </div>
+      <div class="stat-card-body">${w.body}</div>
+      <div class="stat-card-footer">
+        <span>${w.more}</span>
+        <span>Open →</span>
+      </div>`;
+    card.addEventListener('click', () => openApp(w.id));
+    grid.appendChild(card);
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 initSession();
 buildSidebar();
 buildHomeDashboard();
+buildStatusWidgets();
 refreshRecentStrip();
 setGreeting();
 </script>

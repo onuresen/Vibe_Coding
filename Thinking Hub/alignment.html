@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>DecisionJam // Tri-Party Alignment (Standalone)</title>
+  <script src="hub-data.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -205,6 +206,8 @@
       <option value="designer" selected>Designer</option>
       <option value="gc">General Contractor</option>
     </select>
+    <span class="mono" id="member-label" style="font-size:11px;color:var(--muted2);display:none">Member</span>
+    <select id="member-picker" style="display:none"></select>
     <span class="mono" style="font-size:11px;color:var(--muted2)">Name</span>
     <input id="name" placeholder="Your name…" maxlength="24" style="width:140px"/>
   </div>
@@ -884,11 +887,67 @@ function setupResize(handleId, panelId, side){
 setupResize("rh-left","panel-left","left");
 setupResize("rh-right","panel-right","right");
 
+/* ── Project Hub member picker ───────────────────────────────────────────── */
+
+function _guessAlignmentRole(phRole) {
+  const r = (phRole || '').toLowerCase();
+  if (/client|owner|stakeholder|sponsor/.test(r))          return 'client';
+  if (/design|architect|ux|ui|creative/.test(r))           return 'designer';
+  if (/gc|contractor|construct|build|engineer|site/.test(r)) return 'gc';
+  return null;
+}
+
+function _populateMemberPicker() {
+  const picker = document.getElementById('member-picker');
+  const label  = document.getElementById('member-label');
+  if (!picker || !label) return;
+
+  const members = (typeof HubData !== 'undefined') ? HubData.getMembers() : [];
+
+  if (!members.length) {
+    picker.style.display = 'none';
+    label.style.display  = 'none';
+    return;
+  }
+
+  const prev = picker.value;
+  picker.innerHTML = '<option value="">— type name —</option>';
+  members.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value       = m.id;
+    opt.textContent = m.name + (m.role ? ` (${m.role})` : '');
+    opt.dataset.name = m.name;
+    opt.dataset.role = m.role || '';
+    picker.appendChild(opt);
+  });
+
+  // Restore previous selection if still valid
+  if (prev && picker.querySelector(`option[value="${CSS.escape(prev)}"]`)) {
+    picker.value = prev;
+  }
+
+  picker.style.display = '';
+  label.style.display  = '';
+}
+
+document.getElementById('member-picker').addEventListener('change', function () {
+  const opt = this.options[this.selectedIndex];
+  if (!opt || !opt.dataset.name) return; // "— type name —" selected
+  document.getElementById('name').value = opt.dataset.name;
+  const guessed = _guessAlignmentRole(opt.dataset.role);
+  if (guessed) document.getElementById('role').value = guessed;
+});
+
 /* boot */
 loadPersisted();
 loadSizes();
 renderRight();
 showCard();
+try {
+  HubData.init('alignment');
+  _populateMemberPicker();
+  HubData.onChange(_populateMemberPicker);
+} catch {}
 
 // redraw map on resize if consensus tab open
 window.addEventListener('resize', ()=>{
