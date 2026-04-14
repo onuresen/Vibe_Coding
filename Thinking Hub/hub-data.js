@@ -4,25 +4,39 @@
  * Provides all tools with canonical access to project/task/member data
  * from project-hub-v1 (the single source of truth).
  *
+ * Requires hub-storage.js to be loaded first. Falls back gracefully if missing.
+ *
  * Usage:
+ *   <script src="hub-storage.js"></script>
  *   <script src="hub-data.js"></script>
  *   HubData.init('my-tool');
  *   const projects = HubData.getProjects();
  *   HubData.onChange(() => repopulateDropdowns());
  */
+
+// Fallback shim: if hub-storage.js failed to load, keep things working via
+// direct localStorage so no tool crashes.
+if (typeof window.HubStorage === 'undefined') {
+  console.warn('[HubData] hub-storage.js not loaded — falling back to direct localStorage');
+  window.HubStorage = {
+    get:       k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set:       (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    subscribe: () => (() => {}),
+  };
+}
+
 window.HubData = (() => {
   const PH_KEY = 'project-hub-v1';
   let _listeners = [];
   let _initialized = false;
 
   // ── Core read ────────────────────────────────────────────────────────────────
-  // Always a fresh parse — localStorage reads are cheap (~10µs).
+  // Always a fresh read via HubStorage (synchronous localStorage cache).
   // Returns { members: [], projects: [] } on missing or malformed data.
   function getData() {
     try {
-      const raw = localStorage.getItem(PH_KEY);
-      if (!raw) return { members: [], projects: [] };
-      const data = JSON.parse(raw);
+      const data = HubStorage.get(PH_KEY);
+      if (!data) return { members: [], projects: [] };
       return {
         members:  Array.isArray(data.members)  ? data.members  : [],
         projects: Array.isArray(data.projects) ? data.projects : [],
@@ -108,12 +122,17 @@ window.HubData = (() => {
   }
 
   // ── Init ─────────────────────────────────────────────────────────────────────
-  // Attach the storage event listener (idempotent).
+  // Subscribe to storage changes (idempotent).
   // Immediately notifies registered onChange callbacks so tools can
   // populate their dropdowns on load without needing a separate call.
   function init(toolId) {
     if (!_initialized) {
       _initialized = true;
+      // HubStorage.subscribe handles BOTH same-tab and cross-tab changes,
+      // as well as real-time Supabase updates when cloud mode is active.
+      HubStorage.subscribe(PH_KEY, () => _notifyListeners());
+      // Keep the native storage event as a belt-and-suspenders fallback for
+      // any direct localStorage writes that bypass HubStorage.
       window.addEventListener('storage', e => {
         if (e.key === PH_KEY) _notifyListeners();
       });

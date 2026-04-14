@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DecisionJam // internal project decisions</title>
+  <script src="hub-storage.js"></script>
   <script src="hub-data.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -702,14 +703,14 @@ Ground source heat | Efficient but excavation-heavy | MEP"></textarea>
     function safeParseJSON(s) { try { return JSON.parse(s); } catch { return null; } }
 
     function loadPersisted() {
-      const saved = safeParseJSON(localStorage.getItem(STORAGE_KEY) || "null");
+      const saved = HubStorage.get(STORAGE_KEY);
       if (saved && typeof saved === "object") myVotes = saved;
-      const imp = safeParseJSON(localStorage.getItem(IMPORT_KEY) || "null");
+      const imp = HubStorage.get(IMPORT_KEY);
       if (Array.isArray(imp)) imported = imp;
     }
     function persist() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(myVotes)); } catch (e) { }
-      try { localStorage.setItem(IMPORT_KEY, JSON.stringify(imported)); } catch (e) { }
+      HubStorage.set(STORAGE_KEY, myVotes);
+      HubStorage.set(IMPORT_KEY, imported);
     }
 
     function parseLines(raw) {
