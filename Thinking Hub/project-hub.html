@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Hub</title>
+  <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
   <link
@@ -1757,9 +1758,8 @@
 
     function loadState() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const saved = JSON.parse(raw);
+        const saved = HubStorage.get(STORAGE_KEY);
+        if (saved) {
           saved.projects?.forEach(p => p.tasks?.forEach(t => {
             if (!t.status) t.status = t.done ? 'done' : 'todo';
           }));
@@ -1770,9 +1770,7 @@
     }
 
     function saveState() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ members: state.members, projects: state.projects }));
-      } catch (e) { console.warn('Could not save state:', e); }
+      HubStorage.set(STORAGE_KEY, { members: state.members, projects: state.projects });
     }
 
     // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -1920,11 +1918,7 @@
       );
       if (!ok) return;
 
-      try {
-        localStorage.removeItem(STORAGE_KEY);
-      } catch (e) {
-        console.warn('Could not clear storage:', e);
-      }
+      HubStorage.set(STORAGE_KEY, null);
 
       // Deep-clone defaults so mutations don't affect DEFAULT_STATE
       const fresh = JSON.parse(JSON.stringify(DEFAULT_STATE));

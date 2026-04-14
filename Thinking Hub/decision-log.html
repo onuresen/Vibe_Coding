@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Decision Log (Standalone)</title>
+  <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
   <link
@@ -828,16 +829,14 @@
 
     function load() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        const data = JSON.parse(raw);
+        const data = HubStorage.get(STORAGE_KEY);
         if (!data || !Array.isArray(data.entries)) return;
         state.entries = data.entries;
       } catch (e) { }
     }
     function save() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, entries: state.entries }));
+        HubStorage.set(STORAGE_KEY, { v: 1, entries: state.entries });
         el.statSaved.textContent = 'autosaved';
         el.statSaved.style.color = 'var(--text3)';
       } catch (e) {

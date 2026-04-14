@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Schedule</title>
+  <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
   <link
@@ -1453,14 +1454,14 @@
     // ═══════════════════════════════════════════════════════════════
     function loadState() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return JSON.parse(raw);
+        const saved = HubStorage.get(STORAGE_KEY);
+        if (saved) return saved;
       } catch { }
       return { items: [], settings: { defaultZoom: 'month', defaultView: 'timeline' } };
     }
 
     function saveState() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { }
+      HubStorage.set(STORAGE_KEY, state);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1958,7 +1959,7 @@
     // Import from Project Hub
     // ═══════════════════════════════════════════════════════════════
     function openImportModal() {
-      const raw = localStorage.getItem('project-hub-v1');
+      const raw = HubStorage.get('project-hub-v1');
       if (!raw) {
         showToast('No Project Hub data found. Create some tasks there first.');
         return;

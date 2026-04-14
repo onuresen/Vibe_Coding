@@ -2,6 +2,7 @@
  * hub-links.js — Cross-tool linking for Thinking Hub
  *
  * Exposes a global `HubLinks` singleton. Load this file in any tool via:
+ *   <script src="hub-storage.js"></script>
  *   <script src="hub-links.js"></script>
  * Then call:
  *   HubLinks.init('tool-id')
@@ -9,6 +10,15 @@
  * Storage key: hub-links-v1
  * Link shape: { id, a: {tool, itemId, label}, b: {tool, itemId, label}, createdAt }
  */
+
+// Fallback shim: keep working if hub-storage.js failed to load.
+if (typeof window.HubStorage === 'undefined') {
+  window.HubStorage = {
+    get:       k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set:       (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    subscribe: () => (() => {}),
+  };
+}
 
 const HubLinks = (() => {
 
@@ -29,11 +39,11 @@ const HubLinks = (() => {
   // ── Storage ────────────────────────────────────────────────────────────────
 
   function getAll() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+    return HubStorage.get(STORAGE_KEY) || [];
   }
 
   function _saveAll(links) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(links)); } catch {}
+    HubStorage.set(STORAGE_KEY, links);
   }
 
   function getLinksFor(toolId, itemId) {
@@ -65,9 +75,8 @@ const HubLinks = (() => {
   function resolveItems(toolId) {
     try {
       if (toolId === 'project-hub') {
-        const raw = localStorage.getItem('project-hub-v1');
-        if (!raw) return [];
-        const data = JSON.parse(raw);
+        const data = HubStorage.get('project-hub-v1');
+        if (!data) return [];
         const items = [];
         for (const p of (data.projects || [])) {
           for (const t of (p.tasks || [])) {
@@ -78,9 +87,8 @@ const HubLinks = (() => {
       }
 
       if (toolId === 'decision-log') {
-        const raw = localStorage.getItem('decision-log-v1');
-        if (!raw) return [];
-        const data = JSON.parse(raw);
+        const data = HubStorage.get('decision-log-v1');
+        if (!data) return [];
         return (data.entries || []).map(e => ({
           id: e.id,
           label: e.title || '(untitled)',
@@ -89,9 +97,8 @@ const HubLinks = (() => {
       }
 
       if (toolId === 'idea-swiper') {
-        const raw = localStorage.getItem('ideaswipe_history_v6');
-        if (!raw) return [];
-        const history = JSON.parse(raw);
+        const history = HubStorage.get('ideaswipe_history_v6');
+        if (!history) return [];
         return history
           .filter(h => h.vote === 'like' || h.vote === 'super')
           .map(h => ({
@@ -102,9 +109,8 @@ const HubLinks = (() => {
       }
 
       if (toolId === 'schedule') {
-        const raw = localStorage.getItem('schedule-v1');
-        if (!raw) return [];
-        const data = JSON.parse(raw);
+        const data = HubStorage.get('schedule-v1');
+        if (!data) return [];
         return (data.items || []).map(i => ({
           id: i.id,
           label: i.title || '(untitled)',
@@ -113,9 +119,8 @@ const HubLinks = (() => {
       }
 
       if (toolId === 'kmqt-board') {
-        const raw = localStorage.getItem('kmqt_current_v2');
-        if (!raw) return [];
-        const data = JSON.parse(raw);
+        const data = HubStorage.get('kmqt_current_v2');
+        if (!data) return [];
         const items = [];
         for (const col of ['K', 'M', 'Q', 'T']) {
           for (const it of (data.columns?.[col] || [])) {

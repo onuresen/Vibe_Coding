@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Decision Workspace</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="hub-storage.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -463,11 +464,11 @@ document.querySelectorAll('.tab').forEach(btn =>
 const TITLE_KEY = 'dw-title-v1';
 
 (function loadTitle() {
-  document.getElementById('dw-title').value = localStorage.getItem(TITLE_KEY) || '';
+  document.getElementById('dw-title').value = HubStorage.get(TITLE_KEY) || '';
 })();
 
 document.getElementById('dw-title').addEventListener('input', function () {
-  localStorage.setItem(TITLE_KEY, this.value);
+  HubStorage.set(TITLE_KEY, this.value);
 });
 
 // ── Problem Lens ──────────────────────────────────────────────────────────────
@@ -499,15 +500,15 @@ const PROBLEM_FIELDS = [
 
 function saveProblem() {
   const vals = [...document.querySelectorAll('.problem-field')].map(t => t.value);
-  localStorage.setItem(PROBLEM_KEY, JSON.stringify(vals));
+  HubStorage.set(PROBLEM_KEY, vals);
   flashSaved();
 }
 
 function loadProblem() {
   try {
-    const raw = localStorage.getItem(PROBLEM_KEY);
-    if (!raw) return;
-    JSON.parse(raw).forEach((v, i) => {
+    const vals = HubStorage.get(PROBLEM_KEY);
+    if (!vals) return;
+    vals.forEach((v, i) => {
       const el = document.querySelector(`.problem-field[data-i="${i}"]`);
       if (el) el.value = v;
     });
@@ -517,7 +518,7 @@ function loadProblem() {
 function resetProblem() {
   if (!confirm('Clear Problem Lens?')) return;
   document.querySelectorAll('.problem-field').forEach(t => t.value = '');
-  localStorage.removeItem(PROBLEM_KEY);
+  HubStorage.set(PROBLEM_KEY, null);
   flashSaved();
 }
 
@@ -568,15 +569,15 @@ const CANVAS_FIELDS = [
 
 function saveCanvas() {
   const vals = [...document.querySelectorAll('.canvas-field')].map(t => t.value);
-  localStorage.setItem(CANVAS_KEY, JSON.stringify(vals));
+  HubStorage.set(CANVAS_KEY, vals);
   flashSaved();
 }
 
 function loadCanvas() {
   try {
-    const raw = localStorage.getItem(CANVAS_KEY);
-    if (!raw) return;
-    JSON.parse(raw).forEach((v, i) => {
+    const vals = HubStorage.get(CANVAS_KEY);
+    if (!vals) return;
+    vals.forEach((v, i) => {
       const el = document.querySelector(`.canvas-field[data-i="${i}"]`);
       if (el) el.value = v;
     });
@@ -586,7 +587,7 @@ function loadCanvas() {
 function resetCanvas() {
   if (!confirm('Clear Decision Canvas?')) return;
   document.querySelectorAll('.canvas-field').forEach(t => t.value = '');
-  localStorage.removeItem(CANVAS_KEY);
+  HubStorage.set(CANVAS_KEY, null);
   flashSaved();
 }
 
@@ -614,12 +615,12 @@ const OPTIONS_KEY = 'dw-options-v1';
 let optionRows = [];
 
 function saveOptions() {
-  localStorage.setItem(OPTIONS_KEY, JSON.stringify(optionRows));
+  HubStorage.set(OPTIONS_KEY, optionRows);
 }
 
 function loadOptions() {
   try {
-    optionRows = JSON.parse(localStorage.getItem(OPTIONS_KEY)) || [];
+    optionRows = HubStorage.get(OPTIONS_KEY) || [];
   } catch { optionRows = []; }
 }
 

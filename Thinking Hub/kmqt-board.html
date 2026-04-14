@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KMQT Board (Standalone)</title>
+  <script src="hub-storage.js"></script>
   <script src="hub-data.js"></script>
 
   <!-- Fonts (IdeaSwipe-like) -->
@@ -1066,9 +1067,9 @@
     }
 
     function autosave() {
+      const payload = { v: 1, labels: state.labels, columns: state.columns, links: state.links };
       try {
-        const payload = { v: 1, labels: state.labels, columns: state.columns, links: state.links };
-        localStorage.setItem(STORAGE_CURRENT, JSON.stringify(payload));
+        HubStorage.set(STORAGE_CURRENT, payload);
         el.statSaved.textContent = 'autosaved';
         el.statSaved.style.color = 'var(--text3)';
       } catch (e) {
@@ -1079,9 +1080,7 @@
 
     function loadCurrent() {
       try {
-        const raw = localStorage.getItem(STORAGE_CURRENT);
-        if (!raw) return;
-        const data = JSON.parse(raw);
+        const data = HubStorage.get(STORAGE_CURRENT);
         if (!data || data.v !== 1) return;
         state.labels = data.labels || state.labels;
         state.columns = data.columns || state.columns;

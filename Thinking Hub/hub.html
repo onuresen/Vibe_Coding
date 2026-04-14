@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Thinking Hub</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="hub-storage.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -137,7 +138,7 @@
     .nav-item:hover .nav-icon { opacity: 1; }
 
     .sidebar-footer {
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-top: 1px solid var(--border);
       font-family: var(--font-m);
       font-size: 10px;
@@ -145,6 +146,83 @@
       line-height: 1.6;
       flex-shrink: 0;
     }
+
+    /* ── Cloud connection panel ─────────────────────────────────────── */
+    .cloud-status-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .cloud-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .cloud-status-dot.local   { background: var(--text3); }
+    .cloud-status-dot.syncing { background: #f0b040; animation: cloud-pulse 1.2s infinite; }
+    .cloud-status-dot.cloud   { background: var(--accent); }
+    .cloud-status-dot.error   { background: #e8455a; }
+    @keyframes cloud-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+    .cloud-status-text {
+      flex: 1;
+      font-size: 10px;
+      color: var(--text3);
+    }
+    .cloud-connect-btn {
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 5px;
+      color: var(--text2);
+      font-size: 10px;
+      padding: 2px 8px;
+      cursor: pointer;
+      font-family: var(--font-m);
+      white-space: nowrap;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .cloud-connect-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+    .cloud-workspace-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 7px;
+    }
+    .cloud-ws-label {
+      font-size: 9px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      flex-shrink: 0;
+    }
+    .cloud-ws-code {
+      font-family: var(--font-m);
+      font-size: 9px;
+      background: var(--surface2);
+      padding: 1px 5px;
+      border-radius: 4px;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text2);
+    }
+    .cloud-copy-btn {
+      background: transparent;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 13px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      line-height: 1;
+      transition: color 0.1s, background 0.1s;
+      flex-shrink: 0;
+    }
+    .cloud-copy-btn:hover { color: var(--accent); background: rgba(184,240,51,0.08); }
 
     /* ── Main area ──────────────────────────────────── */
     .main-area {
@@ -478,8 +556,17 @@
 
     <div class="sidebar-nav" id="sidebar-nav"></div>
 
-    <div class="sidebar-footer">
-      Local &middot; Offline<br>Files stay yours
+    <div class="sidebar-footer" id="cloud-footer">
+      <div class="cloud-status-row">
+        <span id="cloud-dot" class="cloud-status-dot local"></span>
+        <span id="cloud-text" class="cloud-status-text">Local only</span>
+        <button id="cloud-btn" class="cloud-connect-btn">Connect</button>
+      </div>
+      <div id="cloud-ws-row" class="cloud-workspace-row" style="display:none">
+        <span class="cloud-ws-label">WS</span>
+        <code id="cloud-ws-id" class="cloud-ws-code"></code>
+        <button id="cloud-copy-btn" class="cloud-copy-btn" title="Copy invite link">⧉</button>
+      </div>
     </div>
   </nav>
 
@@ -905,6 +992,143 @@ function buildStatusWidgets() {
   });
 }
 
+// ── Cloud panel ───────────────────────────────────────────────────────────────
+
+// Collaboration keys: shared work content that should sync across collaborators.
+// UI state keys (hub-session-v1, panel sizes, etc.) are intentionally excluded.
+const COLLABORATION_KEYS = [
+  'project-hub-v1',
+  'hub-links-v1',
+  'decision-log-v1',
+  'ideaswipe_history_v6',
+  'schedule-v1',
+  'kmqt_current_v2',
+  'dw-title-v1',
+  'dw-problem-v1',
+  'dw-canvas-v1',
+  'dw-options-v1',
+  'decisionjam_myVotes_v1',
+  'decisionjam_imports_v1',
+];
+
+function initCloudPanel() {
+  HubStorage.onStatusChange(updateCloudUI);
+  document.getElementById('cloud-copy-btn').addEventListener('click', copyWorkspaceLink);
+  updateCloudUI(HubStorage.getStatus());
+  _checkHashForWorkspace();
+
+  // Live-refresh dashboard widgets when remote changes arrive
+  HubStorage.subscribe('project-hub-v1', () => { buildStatusWidgets(); refreshRecentStrip(); });
+  HubStorage.subscribe('kmqt_current_v2', buildStatusWidgets);
+  HubStorage.subscribe('decision-log-v1', buildStatusWidgets);
+  HubStorage.subscribe('schedule-v1',     buildStatusWidgets);
+}
+
+function updateCloudUI(status) {
+  const dot    = document.getElementById('cloud-dot');
+  const text   = document.getElementById('cloud-text');
+  const btn    = document.getElementById('cloud-btn');
+  const wsRow  = document.getElementById('cloud-ws-row');
+  const wsCode = document.getElementById('cloud-ws-id');
+
+  if (status.mode === 'cloud') {
+    dot.className    = 'cloud-status-dot cloud';
+    text.textContent = 'Cloud sync';
+    btn.textContent  = 'Disconnect';
+    btn.onclick      = () => { HubStorage.disconnect(); };
+    wsRow.style.display = 'flex';
+    wsCode.textContent  = status.workspaceId || '';
+  } else {
+    dot.className    = 'cloud-status-dot local';
+    text.textContent = 'Local only';
+    btn.textContent  = 'Connect';
+    btn.onclick      = promptConnect;
+    wsRow.style.display = 'none';
+  }
+}
+
+function promptConnect() {
+  const url = prompt('Supabase Project URL:\n(e.g. https://xxxx.supabase.co)');
+  if (!url || !url.trim()) return;
+  const key = prompt('Supabase Anon Key:');
+  if (!key || !key.trim()) return;
+  const wsInput = prompt('Workspace ID (leave blank to create a new workspace):');
+
+  const dot = document.getElementById('cloud-dot');
+  dot.className = 'cloud-status-dot syncing';
+
+  HubStorage.useSupabase(url.trim(), key.trim(), wsInput ? wsInput.trim() : null)
+    .then(() => {
+      return HubStorage.migrateToCloud(COLLABORATION_KEYS);
+    })
+    .then(() => {
+      updateCloudUI(HubStorage.getStatus());
+    })
+    .catch(err => {
+      dot.className = 'cloud-status-dot error';
+      alert('Connection failed: ' + (err.message || err));
+      setTimeout(() => updateCloudUI(HubStorage.getStatus()), 2500);
+    });
+}
+
+function copyWorkspaceLink() {
+  const status = HubStorage.getStatus();
+  if (!status.workspaceId) return;
+  try {
+    const cfg = JSON.parse(localStorage.getItem('hub-cloud-config-v1') || '{}');
+    const params = new URLSearchParams({
+      ws:  status.workspaceId,
+      url: cfg.url  || '',
+      key: cfg.key  || ''
+    });
+    const shareUrl = location.href.split('#')[0] + '#' + params.toString();
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      const btn = document.getElementById('cloud-copy-btn');
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = '⧉'; }, 1800);
+    });
+  } catch (e) {
+    alert('Could not copy link: ' + e.message);
+  }
+}
+
+function _checkHashForWorkspace() {
+  if (!location.hash || location.hash.length < 5) return;
+  try {
+    const params = new URLSearchParams(location.hash.slice(1));
+    const ws  = params.get('ws');
+    const url = params.get('url');
+    const key = params.get('key');
+    if (!ws || !url || !key) return;
+
+    const ok = confirm(
+      'Join shared workspace?\n\nWorkspace: ' + ws +
+      '\nServer: ' + url +
+      '\n\nThis will replace your local data with the shared workspace data.'
+    );
+    if (!ok) return;
+
+    // Clear hash to avoid re-triggering on refresh
+    history.replaceState(null, '', location.pathname);
+
+    const dot = document.getElementById('cloud-dot');
+    dot.className = 'cloud-status-dot syncing';
+
+    HubStorage.useSupabase(url, key, ws)
+      .then(() => HubStorage.pullFromCloud())
+      .then(() => {
+        updateCloudUI(HubStorage.getStatus());
+        buildStatusWidgets();
+        refreshRecentStrip();
+      })
+      .catch(err => {
+        dot.className = 'cloud-status-dot error';
+        alert('Failed to join workspace: ' + (err.message || err));
+        setTimeout(() => updateCloudUI(HubStorage.getStatus()), 2500);
+      });
+  } catch {}
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 initSession();
@@ -913,6 +1137,7 @@ buildHomeDashboard();
 buildStatusWidgets();
 refreshRecentStrip();
 setGreeting();
+initCloudPanel();
 </script>
 </body>
 </html>
