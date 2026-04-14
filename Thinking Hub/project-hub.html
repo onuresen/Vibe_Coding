@@ -518,6 +518,18 @@
       box-shadow: 0 0 0 1px var(--accent-border);
     }
 
+    .project-card.drag-src {
+      opacity: 0.4;
+      transform: scale(0.97);
+      box-shadow: none;
+    }
+
+    .project-card.drag-over {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-border), 0 12px 32px rgba(0,0,0,0.4);
+      transform: translateY(-2px);
+    }
+
     .project-card-stripe {
       position: absolute;
       top: 0;
@@ -2074,7 +2086,40 @@
       visible.forEach(proj => {
         const card = document.createElement('div');
         card.className = 'project-card' + (state.selectedProject === proj.id ? ' selected' : '');
-        card.onclick = () => openProject(proj.id);
+        card.draggable = true;
+
+        card.addEventListener('dragstart', e => {
+          projDragSrc = proj.id;
+          card.classList.add('drag-src');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        card.addEventListener('dragend', () => {
+          card.classList.remove('drag-src');
+          projDragSrc = null;
+          document.querySelectorAll('.project-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+        });
+        card.addEventListener('dragover', e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (projDragSrc && projDragSrc !== proj.id) card.classList.add('drag-over');
+        });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', e => {
+          e.preventDefault();
+          card.classList.remove('drag-over');
+          if (!projDragSrc || projDragSrc === proj.id) return;
+          const fromIdx = state.projects.findIndex(p => p.id === projDragSrc);
+          const toIdx = state.projects.findIndex(p => p.id === proj.id);
+          if (fromIdx === -1 || toIdx === -1) return;
+          const [moved] = state.projects.splice(fromIdx, 1);
+          state.projects.splice(toIdx, 0, moved);
+          projDragSrc = null;
+          saveState();
+          renderContent();
+          showToast('Project order updated');
+        });
+
+        card.onclick = () => { if (!projDragSrc) openProject(proj.id); };
         const prog = projectProgress(proj);
         const avatars = proj.members.map(mid => {
           const m = getMember(mid); if (!m) return '';
@@ -2137,6 +2182,7 @@
       { id: 'done', label: 'Done', color: '#b8f033' },
     ];
     let dragSrc = null;
+    let projDragSrc = null;
 
     function renderKanban(container) {
       let allTasks = state.projects.flatMap(p => p.tasks.map(t => ({ ...t, projectId: p.id, projectName: p.name, projectColor: p.color })));
