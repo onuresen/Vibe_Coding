@@ -8,31 +8,18 @@
   <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap"
-    rel="stylesheet">
+  <link rel="stylesheet" href="theme.css">
+  <script src="hub-storage.js"></script>
   <style>
-    :root {
-      --bg: #0b0b0d;
-      --surface: #131316;
-      --surface2: #1c1c21;
-      --surface3: #242429;
-      --border: #272730;
-      --border2: #32323e;
-      --accent: #b8f033;
-      --accent-dim: rgba(184, 240, 51, 0.08);
-      --accent-border: rgba(184, 240, 51, 0.22);
-      --accent2: #38c8eb;
-      --accent3: #f0436b;
-      --amber: #f0b040;
-      --text: #eeeef5;
-      --text2: #b6b6c8;
-      --text3: #8f8fa8;
-      --radius: 10px;
-      --font-ui: 'DM Sans', sans-serif;
-      --font-mono: 'DM Mono', monospace;
+    /* ONLY styles unique to this tool go here */
+    .special-button {
+      background: var(--surface2);
+      /* Uses global variable */
+      border-radius: var(--r);
+      /* Uses global variable */
     }
-
+  </style>
+  <style>
     * {
       box-sizing: border-box;
       margin: 0;
@@ -40,9 +27,6 @@
     }
 
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-ui);
       height: 100vh;
       display: flex;
       overflow: hidden;
@@ -527,7 +511,7 @@
 
     .project-card.drag-over {
       border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent-border), 0 12px 32px rgba(0,0,0,0.4);
+      box-shadow: 0 0 0 2px var(--accent-border), 0 12px 32px rgba(0, 0, 0, 0.4);
       transform: translateY(-2px);
     }
 
@@ -2834,8 +2818,8 @@
     // ─── INIT ─────────────────────────────────────────────────────────────────────
     renderSidebarUsers();
     renderContent();
-    try { HubLinks.init('project-hub'); } catch {}
-    try { HubData.init('project-hub'); } catch {}
+    try { HubLinks.init('project-hub'); } catch { }
+    try { HubData.init('project-hub'); } catch { }
   </script>
 </body>
 

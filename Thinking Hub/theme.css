@@ -1,0 +1,49 @@
+/* theme.css */
+:root {
+    /* Backgrounds & Surfaces */
+    --bg: #0b0b0d;
+    --surface: #16161a;
+    --surface2: #212126;
+    --surface3: #2d2d35;
+
+    /* Borders */
+    --border: rgba(255, 255, 255, 0.08);
+    --border2: rgba(255, 255, 255, 0.15);
+
+    /* Typography - Optimized for Readability */
+    --text: #f0f0f5;
+    /* Crisp off-white */
+    --text2: #a1a1aa;
+    /* Secondary text (Better contrast than your current #555) */
+    --text3: #71717a;
+    /* Muted labels */
+
+    /* Brand & Accents */
+    --accent: #b8f033;
+    --accent-dim: rgba(184, 240, 51, 0.1);
+    --r: 12px;
+    /* Global border radius for consistency */
+
+    /* Fonts */
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Base resets to apply the theme globally */
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    /* Prevents text from looking "stretched" or fuzzy */
+    line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+.logo {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    /* Tightens display text without stretching */
+}

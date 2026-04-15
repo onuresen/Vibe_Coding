@@ -1,42 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Thinking Hub</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    /* Tool-specific CSS goes here. 
+     Always use the variables from theme.css! */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+    }
+  </style>
+
   <script src="hub-storage.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:         #0f0f11;
-      --surface:    #1a1a1f;
-      --surface2:   #222228;
-      --surface3:   #2a2a35;
-      --border:     rgba(255,255,255,0.08);
-      --border2:    rgba(255,255,255,0.14);
-      --text:       #f0efe8;
-      --text2:      #9998a0;
-      --text3:      #55545c;
-      --accent:     #b8f033;
-      --accent-dim: rgba(184,240,51,0.07);
-      --font-d:     'Syne', sans-serif;
-      --font-b:     'DM Sans', sans-serif;
-      --font-m:     'JetBrains Mono', monospace;
-      --r:          14px;
-      --r-sm:       8px;
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    html, body {
+    html,
+    body {
       height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-b);
+
       overflow: hidden;
     }
 
-    body { display: flex; }
+    body {
+      display: flex;
+    }
 
     /* ── Sidebar ────────────────────────────────────── */
     .sidebar {
@@ -90,7 +92,9 @@
       padding: 10px 8px;
     }
 
-    .nav-group { margin-bottom: 6px; }
+    .nav-group {
+      margin-bottom: 6px;
+    }
 
     .nav-group-label {
       font-family: var(--font-m);
@@ -120,12 +124,20 @@
       transition: background 0.1s, color 0.1s;
       line-height: 1;
     }
-    .nav-item:hover { background: var(--surface2); color: var(--text); }
+
+    .nav-item:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
     .nav-item.active {
       background: var(--accent-dim);
       color: var(--accent);
     }
-    .nav-item.active .nav-icon { opacity: 1; }
+
+    .nav-item.active .nav-icon {
+      opacity: 1;
+    }
 
     .nav-icon {
       font-size: 14px;
@@ -134,8 +146,11 @@
       width: 16px;
       text-align: center;
     }
+
     .nav-item.active .nav-icon,
-    .nav-item:hover .nav-icon { opacity: 1; }
+    .nav-item:hover .nav-icon {
+      opacity: 1;
+    }
 
     .sidebar-footer {
       padding: 10px 14px;
@@ -153,6 +168,7 @@
       align-items: center;
       gap: 7px;
     }
+
     .cloud-status-dot {
       width: 7px;
       height: 7px;
@@ -160,17 +176,42 @@
       flex-shrink: 0;
       transition: background 0.3s;
     }
-    .cloud-status-dot.local   { background: var(--text3); }
-    .cloud-status-dot.syncing { background: #f0b040; animation: cloud-pulse 1.2s infinite; }
-    .cloud-status-dot.cloud   { background: var(--accent); }
-    .cloud-status-dot.error   { background: #e8455a; }
-    @keyframes cloud-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+    .cloud-status-dot.local {
+      background: var(--text3);
+    }
+
+    .cloud-status-dot.syncing {
+      background: #f0b040;
+      animation: cloud-pulse 1.2s infinite;
+    }
+
+    .cloud-status-dot.cloud {
+      background: var(--accent);
+    }
+
+    .cloud-status-dot.error {
+      background: #e8455a;
+    }
+
+    @keyframes cloud-pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.35
+      }
+    }
 
     .cloud-status-text {
       flex: 1;
       font-size: 10px;
       color: var(--text3);
     }
+
     .cloud-connect-btn {
       background: transparent;
       border: 1px solid var(--border2);
@@ -183,7 +224,11 @@
       white-space: nowrap;
       transition: color 0.1s, border-color 0.1s;
     }
-    .cloud-connect-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+    .cloud-connect-btn:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
 
     .cloud-workspace-row {
       display: flex;
@@ -191,6 +236,7 @@
       gap: 5px;
       margin-top: 7px;
     }
+
     .cloud-ws-label {
       font-size: 9px;
       color: var(--text3);
@@ -198,6 +244,7 @@
       letter-spacing: 0.8px;
       flex-shrink: 0;
     }
+
     .cloud-ws-code {
       font-family: var(--font-m);
       font-size: 9px;
@@ -210,6 +257,7 @@
       white-space: nowrap;
       color: var(--text2);
     }
+
     .cloud-copy-btn {
       background: transparent;
       border: none;
@@ -222,7 +270,11 @@
       transition: color 0.1s, background 0.1s;
       flex-shrink: 0;
     }
-    .cloud-copy-btn:hover { color: var(--accent); background: rgba(184,240,51,0.08); }
+
+    .cloud-copy-btn:hover {
+      color: var(--accent);
+      background: rgba(184, 240, 51, 0.08);
+    }
 
     /* ── Main area ──────────────────────────────────── */
     .main-area {
@@ -268,10 +320,18 @@
       padding: 2px 0;
       transition: border-color 0.15s;
     }
-    #session-name::placeholder { color: var(--text3); }
-    #session-name:focus { border-bottom-color: var(--accent); }
 
-    .session-spacer { flex: 1; }
+    #session-name::placeholder {
+      color: var(--text3);
+    }
+
+    #session-name:focus {
+      border-bottom-color: var(--accent);
+    }
+
+    .session-spacer {
+      flex: 1;
+    }
 
     #breadcrumb {
       font-family: var(--font-m);
@@ -338,6 +398,7 @@
       font-family: var(--font-b);
       transition: color 0.1s, border-color 0.1s, background 0.1s;
     }
+
     .recent-pill:hover {
       color: var(--accent);
       border-color: var(--accent);
@@ -361,8 +422,9 @@
       flex-direction: column;
       gap: 6px;
     }
+
     .app-card:hover {
-      border-color: rgba(184,240,51,0.35);
+      border-color: rgba(184, 240, 51, 0.35);
       background: var(--accent-dim);
     }
 
@@ -385,9 +447,10 @@
       flex-shrink: 0;
       border: 1px solid var(--border);
     }
+
     .app-card:hover .app-card-icon {
-      background: rgba(184,240,51,0.12);
-      border-color: rgba(184,240,51,0.3);
+      background: rgba(184, 240, 51, 0.12);
+      border-color: rgba(184, 240, 51, 0.3);
     }
 
     .app-card-group {
@@ -413,7 +476,9 @@
     }
 
     /* ── Status widgets ─────────────────────────────── */
-    #status-section { margin-bottom: 8px; }
+    #status-section {
+      margin-bottom: 8px;
+    }
 
     .status-grid {
       display: grid;
@@ -432,8 +497,9 @@
       display: flex;
       flex-direction: column;
     }
+
     .stat-card:hover {
-      border-color: rgba(184,240,51,0.35);
+      border-color: rgba(184, 240, 51, 0.35);
       background: var(--accent-dim);
     }
 
@@ -444,7 +510,13 @@
       margin-bottom: 12px;
     }
 
-    .stat-card-icon { font-size: 14px; opacity: 0.7; width: 16px; text-align: center; flex-shrink: 0; }
+    .stat-card-icon {
+      font-size: 14px;
+      opacity: 0.7;
+      width: 16px;
+      text-align: center;
+      flex-shrink: 0;
+    }
 
     .stat-card-title {
       font-family: var(--font-d);
@@ -459,8 +531,8 @@
       font-family: var(--font-m);
       font-size: 10px;
       color: var(--accent);
-      background: rgba(184,240,51,0.1);
-      border: 1px solid rgba(184,240,51,0.2);
+      background: rgba(184, 240, 51, 0.1);
+      border: 1px solid rgba(184, 240, 51, 0.2);
       border-radius: 999px;
       padding: 2px 8px;
       white-space: nowrap;
@@ -516,10 +588,26 @@
       border-radius: 4px;
       flex-shrink: 0;
     }
-    .stat-badge.decision { background: rgba(184,240,51,0.12); color: var(--accent); }
-    .stat-badge.risk     { background: rgba(255,80,80,0.12);  color: #ff9090; }
-    .stat-badge.note     { background: rgba(150,150,200,0.1); color: #9999cc; }
-    .stat-badge.open     { background: rgba(255,180,0,0.1);   color: #ffb833; }
+
+    .stat-badge.decision {
+      background: rgba(184, 240, 51, 0.12);
+      color: var(--accent);
+    }
+
+    .stat-badge.risk {
+      background: rgba(255, 80, 80, 0.12);
+      color: #ff9090;
+    }
+
+    .stat-badge.note {
+      background: rgba(150, 150, 200, 0.1);
+      color: #9999cc;
+    }
+
+    .stat-badge.open {
+      background: rgba(255, 180, 0, 0.1);
+      color: #ffb833;
+    }
 
     .stat-card-footer {
       margin-top: 12px;
@@ -545,6 +633,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <!-- Sidebar -->
@@ -606,135 +695,135 @@
     </div>
   </div>
 
-<script>
-// ── App registry ──────────────────────────────────────────────────────────────
+  <script>
+    // ── App registry ──────────────────────────────────────────────────────────────
 
-const APPS = [
-  {
-    id:    'project-hub',
-    label: 'Project Hub',
-    group: 'PLAN',
-    icon:  '◈',
-    file:  'project-hub.html',
-    desc:  'Track milestones, tasks and workstreams across a project'
-  },
-  {
-    id:    'task-explorer',
-    label: 'Task Explorer',
-    group: 'PLAN',
-    icon:  '≋',
-    file:  'task-explorer.html',
-    desc:  'Import and explore work items across streams'
-  },
-  {
-    id:    'schedule',
-    label: 'Schedule',
-    group: 'PLAN',
-    icon:  '▦',
-    file:  'schedule.html',
-    desc:  'Timeline and calendar views for tasks, milestones and events'
-  },
-  {
-    id:    'idea-swiper',
-    label: 'Idea Swiper',
-    group: 'THINK',
-    icon:  '⟳',
-    file:  'idea-swiper.html',
-    desc:  'Rapid triage — keep, park, or discard ideas'
-  },
-  {
-    id:    'kmqt-board',
-    label: 'KMQT Board',
-    group: 'THINK',
-    icon:  '⊞',
-    file:  'kmqt-board.html',
-    desc:  'Known / Messy / Questions / Thinking structured board'
-  },
-  {
-    id:    'decision-log',
-    label: 'Decision Log',
-    group: 'DECIDE',
-    icon:  '◎',
-    file:  'decision-log.html',
-    desc:  'Persistent log of decisions, rationale and outcomes'
-  },
-  {
-    id:    'decision-workspace',
-    label: 'Decision Workspace',
-    group: 'DECIDE',
-    icon:  '⊡',
-    file:  'decision-workspace.html',
-    desc:  'Problem framing, decision canvas and option mapping'
-  },
-  {
-    id:    'alignment',
-    label: 'Alignment',
-    group: 'DECIDE',
-    icon:  '◉',
-    file:  'alignment.html',
-    desc:  'Three-party stakeholder consensus voting and analysis'
-  }
-];
+    const APPS = [
+      {
+        id: 'project-hub',
+        label: 'Project Hub',
+        group: 'PLAN',
+        icon: '◈',
+        file: 'project-hub.html',
+        desc: 'Track milestones, tasks and workstreams across a project'
+      },
+      {
+        id: 'task-explorer',
+        label: 'Task Explorer',
+        group: 'PLAN',
+        icon: '≋',
+        file: 'task-explorer.html',
+        desc: 'Import and explore work items across streams'
+      },
+      {
+        id: 'schedule',
+        label: 'Schedule',
+        group: 'PLAN',
+        icon: '▦',
+        file: 'schedule.html',
+        desc: 'Timeline and calendar views for tasks, milestones and events'
+      },
+      {
+        id: 'idea-swiper',
+        label: 'Idea Swiper',
+        group: 'THINK',
+        icon: '⟳',
+        file: 'idea-swiper.html',
+        desc: 'Rapid triage — keep, park, or discard ideas'
+      },
+      {
+        id: 'kmqt-board',
+        label: 'KMQT Board',
+        group: 'THINK',
+        icon: '⊞',
+        file: 'kmqt-board.html',
+        desc: 'Known / Messy / Questions / Thinking structured board'
+      },
+      {
+        id: 'decision-log',
+        label: 'Decision Log',
+        group: 'DECIDE',
+        icon: '◎',
+        file: 'decision-log.html',
+        desc: 'Persistent log of decisions, rationale and outcomes'
+      },
+      {
+        id: 'decision-workspace',
+        label: 'Decision Workspace',
+        group: 'DECIDE',
+        icon: '⊡',
+        file: 'decision-workspace.html',
+        desc: 'Problem framing, decision canvas and option mapping'
+      },
+      {
+        id: 'alignment',
+        label: 'Alignment',
+        group: 'DECIDE',
+        icon: '◉',
+        file: 'alignment.html',
+        desc: 'Three-party stakeholder consensus voting and analysis'
+      }
+    ];
 
-// ── Session state ─────────────────────────────────────────────────────────────
+    // ── Session state ─────────────────────────────────────────────────────────────
 
-const SESSION_KEY = 'hub-session-v1';
+    const SESSION_KEY = 'hub-session-v1';
 
-function loadSession() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY)) || { sessionName: '', recentApps: [] };
-  } catch {
-    return { sessionName: '', recentApps: [] };
-  }
-}
+    function loadSession() {
+      try {
+        return JSON.parse(localStorage.getItem(SESSION_KEY)) || { sessionName: '', recentApps: [] };
+      } catch {
+        return { sessionName: '', recentApps: [] };
+      }
+    }
 
-function saveSession(patch) {
-  const s = loadSession();
-  Object.assign(s, patch);
-  localStorage.setItem(SESSION_KEY, JSON.stringify(s));
-}
+    function saveSession(patch) {
+      const s = loadSession();
+      Object.assign(s, patch);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    }
 
-// ── Sidebar ───────────────────────────────────────────────────────────────────
+    // ── Sidebar ───────────────────────────────────────────────────────────────────
 
-function buildSidebar() {
-  const nav = document.getElementById('sidebar-nav');
-  nav.innerHTML = '';
+    function buildSidebar() {
+      const nav = document.getElementById('sidebar-nav');
+      nav.innerHTML = '';
 
-  const groups = [...new Set(APPS.map(a => a.group))];
-  groups.forEach(group => {
-    const appsInGroup = APPS.filter(a => a.group === group);
-    const groupEl = document.createElement('div');
-    groupEl.className = 'nav-group';
-    groupEl.innerHTML = `<div class="nav-group-label">${group}</div>`;
+      const groups = [...new Set(APPS.map(a => a.group))];
+      groups.forEach(group => {
+        const appsInGroup = APPS.filter(a => a.group === group);
+        const groupEl = document.createElement('div');
+        groupEl.className = 'nav-group';
+        groupEl.innerHTML = `<div class="nav-group-label">${group}</div>`;
 
-    appsInGroup.forEach(app => {
-      const btn = document.createElement('button');
-      btn.className = 'nav-item';
-      btn.dataset.app = app.id;
-      btn.innerHTML = `<span class="nav-icon">${app.icon}</span>${app.label}`;
-      btn.addEventListener('click', () => openApp(app.id));
-      groupEl.appendChild(btn);
-    });
+        appsInGroup.forEach(app => {
+          const btn = document.createElement('button');
+          btn.className = 'nav-item';
+          btn.dataset.app = app.id;
+          btn.innerHTML = `<span class="nav-icon">${app.icon}</span>${app.label}`;
+          btn.addEventListener('click', () => openApp(app.id));
+          groupEl.appendChild(btn);
+        });
 
-    nav.appendChild(groupEl);
-  });
-}
+        nav.appendChild(groupEl);
+      });
+    }
 
-function setActiveNav(id) {
-  document.querySelectorAll('.nav-item').forEach(el =>
-    el.classList.toggle('active', el.dataset.app === id));
-}
+    function setActiveNav(id) {
+      document.querySelectorAll('.nav-item').forEach(el =>
+        el.classList.toggle('active', el.dataset.app === id));
+    }
 
-// ── Home dashboard ────────────────────────────────────────────────────────────
+    // ── Home dashboard ────────────────────────────────────────────────────────────
 
-function buildHomeDashboard() {
-  const grid = document.getElementById('app-grid');
-  grid.innerHTML = '';
-  APPS.forEach(app => {
-    const card = document.createElement('div');
-    card.className = 'app-card';
-    card.dataset.app = app.id;
-    card.innerHTML = `
+    function buildHomeDashboard() {
+      const grid = document.getElementById('app-grid');
+      grid.innerHTML = '';
+      APPS.forEach(app => {
+        const card = document.createElement('div');
+        card.className = 'app-card';
+        card.dataset.app = app.id;
+        card.innerHTML = `
       <div class="app-card-top">
         <div class="app-card-icon">${app.icon}</div>
         <div>
@@ -744,239 +833,239 @@ function buildHomeDashboard() {
       </div>
       <div class="app-card-desc">${app.desc}</div>
     `;
-    card.addEventListener('click', () => openApp(app.id));
-    grid.appendChild(card);
-  });
-}
-
-function refreshRecentStrip() {
-  const { recentApps } = loadSession();
-  const strip = document.getElementById('recent-strip');
-  const label = document.getElementById('recent-label');
-  strip.innerHTML = '';
-
-  if (!recentApps.length) {
-    label.style.display = 'none';
-    return;
-  }
-  label.style.display = '';
-
-  recentApps.forEach(id => {
-    const app = APPS.find(a => a.id === id);
-    if (!app) return;
-    const btn = document.createElement('button');
-    btn.className = 'recent-pill';
-    btn.innerHTML = `${app.icon} ${app.label}`;
-    btn.addEventListener('click', () => openApp(id));
-    strip.appendChild(btn);
-  });
-}
-
-// ── App loading ───────────────────────────────────────────────────────────────
-
-let activeAppId = null;
-
-function openApp(id) {
-  const app = APPS.find(a => a.id === id);
-  if (!app) return;
-
-  // Update recent apps
-  const s = loadSession();
-  s.recentApps = [id, ...s.recentApps.filter(r => r !== id)].slice(0, 5);
-  saveSession(s);
-
-  // Load iframe
-  const frame = document.getElementById('app-frame');
-  frame.src = app.file;
-  frame.style.display = 'block';
-
-  // Send highlight once the tool finishes loading
-  frame.onload = () => {
-    if (_pendingHighlight) {
-      frame.contentWindow.postMessage({ type: 'hub-highlight', itemId: _pendingHighlight }, '*');
-      _pendingHighlight = null;
+        card.addEventListener('click', () => openApp(app.id));
+        grid.appendChild(card);
+      });
     }
-  };
 
-  // Hide dashboard
-  document.getElementById('home-dashboard').style.display = 'none';
+    function refreshRecentStrip() {
+      const { recentApps } = loadSession();
+      const strip = document.getElementById('recent-strip');
+      const label = document.getElementById('recent-label');
+      strip.innerHTML = '';
 
-  // Update nav + breadcrumb
-  setActiveNav(id);
-  document.getElementById('breadcrumb').textContent = app.label;
+      if (!recentApps.length) {
+        label.style.display = 'none';
+        return;
+      }
+      label.style.display = '';
 
-  activeAppId = id;
-}
+      recentApps.forEach(id => {
+        const app = APPS.find(a => a.id === id);
+        if (!app) return;
+        const btn = document.createElement('button');
+        btn.className = 'recent-pill';
+        btn.innerHTML = `${app.icon} ${app.label}`;
+        btn.addEventListener('click', () => openApp(id));
+        strip.appendChild(btn);
+      });
+    }
 
-function goHome() {
-  const frame = document.getElementById('app-frame');
-  frame.style.display = 'none';
-  // Delay clearing src to avoid flash
-  setTimeout(() => { if (frame.style.display === 'none') frame.src = 'about:blank'; }, 300);
+    // ── App loading ───────────────────────────────────────────────────────────────
 
-  document.getElementById('home-dashboard').style.display = '';
-  setActiveNav(null);
-  document.getElementById('breadcrumb').textContent = '';
-  refreshRecentStrip();
-  buildStatusWidgets();
-  activeAppId = null;
-}
+    let activeAppId = null;
 
-// ── Greeting ──────────────────────────────────────────────────────────────────
+    function openApp(id) {
+      const app = APPS.find(a => a.id === id);
+      if (!app) return;
 
-function setGreeting() {
-  const h = new Date().getHours();
-  const s = loadSession();
-  const time = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-  const name = s.sessionName ? ` — ${s.sessionName}` : '.';
-  document.getElementById('greeting').textContent = time + (s.sessionName ? name : '.');
-}
+      // Update recent apps
+      const s = loadSession();
+      s.recentApps = [id, ...s.recentApps.filter(r => r !== id)].slice(0, 5);
+      saveSession(s);
 
-// ── Session name ──────────────────────────────────────────────────────────────
+      // Load iframe
+      const frame = document.getElementById('app-frame');
+      frame.src = app.file;
+      frame.style.display = 'block';
 
-function initSession() {
-  const s = loadSession();
-  document.getElementById('session-name').value = s.sessionName || '';
-}
+      // Send highlight once the tool finishes loading
+      frame.onload = () => {
+        if (_pendingHighlight) {
+          frame.contentWindow.postMessage({ type: 'hub-highlight', itemId: _pendingHighlight }, '*');
+          _pendingHighlight = null;
+        }
+      };
 
-document.getElementById('session-name').addEventListener('input', function () {
-  saveSession({ sessionName: this.value });
-  setGreeting();
-});
+      // Hide dashboard
+      document.getElementById('home-dashboard').style.display = 'none';
 
-// ── Cross-tool navigation (postMessage from tools) ────────────────────────────
+      // Update nav + breadcrumb
+      setActiveNav(id);
+      document.getElementById('breadcrumb').textContent = app.label;
 
-let _pendingHighlight = null;
+      activeAppId = id;
+    }
 
-window.addEventListener('message', e => {
-  if (!e.data || e.data.type !== 'hub-navigate') return;
-  const { tool, itemId } = e.data;
-  if (!tool) return;
-  _pendingHighlight = itemId || null;
-  openApp(tool);
-});
+    function goHome() {
+      const frame = document.getElementById('app-frame');
+      frame.style.display = 'none';
+      // Delay clearing src to avoid flash
+      setTimeout(() => { if (frame.style.display === 'none') frame.src = 'about:blank'; }, 300);
 
-// ── Keyboard shortcut (Escape → home) ────────────────────────────────────────
+      document.getElementById('home-dashboard').style.display = '';
+      setActiveNav(null);
+      document.getElementById('breadcrumb').textContent = '';
+      refreshRecentStrip();
+      buildStatusWidgets();
+      activeAppId = null;
+    }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && activeAppId && document.activeElement.tagName !== 'INPUT') {
-    goHome();
-  }
-});
+    // ── Greeting ──────────────────────────────────────────────────────────────────
 
-// ── Status widgets ────────────────────────────────────────────────────────────
+    function setGreeting() {
+      const h = new Date().getHours();
+      const s = loadSession();
+      const time = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+      const name = s.sessionName ? ` — ${s.sessionName}` : '.';
+      document.getElementById('greeting').textContent = time + (s.sessionName ? name : '.');
+    }
 
-function _esc(s) {
-  return String(s || '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+    // ── Session name ──────────────────────────────────────────────────────────────
 
-function buildStatusWidgets() {
-  const grid    = document.getElementById('status-grid');
-  const section = document.getElementById('status-section');
-  if (!grid || !section) return;
+    function initSession() {
+      const s = loadSession();
+      document.getElementById('session-name').value = s.sessionName || '';
+    }
 
-  const widgets = [];
+    document.getElementById('session-name').addEventListener('input', function () {
+      saveSession({ sessionName: this.value });
+      setGreeting();
+    });
 
-  // ── Projects (project-hub-v1) ──────────────────────────────────────────────
-  try {
-    const ph = JSON.parse(localStorage.getItem('project-hub-v1') || '{}');
-    const projects = ph.projects || [];
-    if (projects.length) {
-      const shown = projects.slice(0, 3);
-      const rows = shown.map(p => {
-        const open = (p.tasks || []).filter(t => !t.done).length;
-        const all  = (p.tasks || []).length;
-        return `<div class="stat-item">
+    // ── Cross-tool navigation (postMessage from tools) ────────────────────────────
+
+    let _pendingHighlight = null;
+
+    window.addEventListener('message', e => {
+      if (!e.data || e.data.type !== 'hub-navigate') return;
+      const { tool, itemId } = e.data;
+      if (!tool) return;
+      _pendingHighlight = itemId || null;
+      openApp(tool);
+    });
+
+    // ── Keyboard shortcut (Escape → home) ────────────────────────────────────────
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && activeAppId && document.activeElement.tagName !== 'INPUT') {
+        goHome();
+      }
+    });
+
+    // ── Status widgets ────────────────────────────────────────────────────────────
+
+    function _esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function buildStatusWidgets() {
+      const grid = document.getElementById('status-grid');
+      const section = document.getElementById('status-section');
+      if (!grid || !section) return;
+
+      const widgets = [];
+
+      // ── Projects (project-hub-v1) ──────────────────────────────────────────────
+      try {
+        const ph = JSON.parse(localStorage.getItem('project-hub-v1') || '{}');
+        const projects = ph.projects || [];
+        if (projects.length) {
+          const shown = projects.slice(0, 3);
+          const rows = shown.map(p => {
+            const open = (p.tasks || []).filter(t => !t.done).length;
+            const all = (p.tasks || []).length;
+            return `<div class="stat-item">
           <div class="stat-item-dot" style="background:${p.color || 'var(--text3)'}"></div>
           <div class="stat-item-text">${_esc(p.name)}</div>
           <div class="stat-item-meta">${open} / ${all} open</div>
         </div>`;
-      }).join('');
-      widgets.push({
-        id: 'project-hub', icon: '◈', title: 'Project Hub',
-        count: `${projects.length} project${projects.length !== 1 ? 's' : ''}`,
-        body: rows,
-        more: projects.length > 3 ? `+${projects.length - 3} more` : ''
-      });
-    }
-  } catch {}
+          }).join('');
+          widgets.push({
+            id: 'project-hub', icon: '◈', title: 'Project Hub',
+            count: `${projects.length} project${projects.length !== 1 ? 's' : ''}`,
+            body: rows,
+            more: projects.length > 3 ? `+${projects.length - 3} more` : ''
+          });
+        }
+      } catch { }
 
-  // ── Schedule this week (schedule-v1) ──────────────────────────────────────
-  try {
-    const sc = JSON.parse(localStorage.getItem('schedule-v1') || '{}');
-    const today   = new Date(); today.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
-    const upcoming = (sc.items || [])
-      .filter(it => { const d = new Date(it.start); return !it.done && d >= today && d <= weekEnd; })
-      .sort((a, b) => a.start.localeCompare(b.start));
-    if (upcoming.length) {
-      const shown = upcoming.slice(0, 3);
-      const rows = shown.map(it => {
-        const label = new Date(it.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        return `<div class="stat-item">
+      // ── Schedule this week (schedule-v1) ──────────────────────────────────────
+      try {
+        const sc = JSON.parse(localStorage.getItem('schedule-v1') || '{}');
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+        const upcoming = (sc.items || [])
+          .filter(it => { const d = new Date(it.start); return !it.done && d >= today && d <= weekEnd; })
+          .sort((a, b) => a.start.localeCompare(b.start));
+        if (upcoming.length) {
+          const shown = upcoming.slice(0, 3);
+          const rows = shown.map(it => {
+            const label = new Date(it.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return `<div class="stat-item">
           <div class="stat-item-dot" style="background:${it.color || 'var(--text3)'}"></div>
           <div class="stat-item-text">${_esc(it.title)}</div>
           <div class="stat-item-meta">${label}</div>
         </div>`;
-      }).join('');
-      widgets.push({
-        id: 'schedule', icon: '▦', title: 'Schedule',
-        count: `${upcoming.length} this week`,
-        body: rows,
-        more: upcoming.length > 3 ? `+${upcoming.length - 3} more` : ''
-      });
-    }
-  } catch {}
+          }).join('');
+          widgets.push({
+            id: 'schedule', icon: '▦', title: 'Schedule',
+            count: `${upcoming.length} this week`,
+            body: rows,
+            more: upcoming.length > 3 ? `+${upcoming.length - 3} more` : ''
+          });
+        }
+      } catch { }
 
-  // ── Decision Log (decision-log-v1) ────────────────────────────────────────
-  try {
-    const dl = JSON.parse(localStorage.getItem('decision-log-v1') || '{}');
-    const entries = dl.entries || [];
-    if (entries.length) {
-      const shown = entries.slice(0, 3);
-      const rows = shown.map(e => `<div class="stat-item">
+      // ── Decision Log (decision-log-v1) ────────────────────────────────────────
+      try {
+        const dl = JSON.parse(localStorage.getItem('decision-log-v1') || '{}');
+        const entries = dl.entries || [];
+        if (entries.length) {
+          const shown = entries.slice(0, 3);
+          const rows = shown.map(e => `<div class="stat-item">
         <span class="stat-badge ${_esc(e.type || 'note')}">${_esc(e.type || 'note')}</span>
         <div class="stat-item-text">${_esc(e.title || '(untitled)')}</div>
       </div>`).join('');
-      widgets.push({
-        id: 'decision-log', icon: '◎', title: 'Decision Log',
-        count: `${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'}`,
-        body: rows,
-        more: entries.length > 3 ? `+${entries.length - 3} more` : ''
-      });
-    }
-  } catch {}
+          widgets.push({
+            id: 'decision-log', icon: '◎', title: 'Decision Log',
+            count: `${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'}`,
+            body: rows,
+            more: entries.length > 3 ? `+${entries.length - 3} more` : ''
+          });
+        }
+      } catch { }
 
-  // ── Open Questions (kmqt_current_v2) ──────────────────────────────────────
-  try {
-    const km = JSON.parse(localStorage.getItem('kmqt_current_v2') || '{}');
-    const questions = (km.columns && km.columns.Q) || [];
-    if (questions.length) {
-      const qLabel = (km.labels && km.labels.Q) || 'Question';
-      const shown = questions.slice(0, 3);
-      const rows = shown.map(q => `<div class="stat-item">
+      // ── Open Questions (kmqt_current_v2) ──────────────────────────────────────
+      try {
+        const km = JSON.parse(localStorage.getItem('kmqt_current_v2') || '{}');
+        const questions = (km.columns && km.columns.Q) || [];
+        if (questions.length) {
+          const qLabel = (km.labels && km.labels.Q) || 'Question';
+          const shown = questions.slice(0, 3);
+          const rows = shown.map(q => `<div class="stat-item">
         <div class="stat-item-dot" style="background:var(--accent);opacity:.45"></div>
         <div class="stat-item-text">${_esc(q.text || '')}</div>
       </div>`).join('');
-      widgets.push({
-        id: 'kmqt-board', icon: '⊞', title: `${_esc(qLabel)}s`,
-        count: `${questions.length} open`,
-        body: rows,
-        more: questions.length > 3 ? `+${questions.length - 3} more` : ''
-      });
-    }
-  } catch {}
+          widgets.push({
+            id: 'kmqt-board', icon: '⊞', title: `${_esc(qLabel)}s`,
+            count: `${questions.length} open`,
+            body: rows,
+            more: questions.length > 3 ? `+${questions.length - 3} more` : ''
+          });
+        }
+      } catch { }
 
-  if (!widgets.length) { section.style.display = 'none'; return; }
+      if (!widgets.length) { section.style.display = 'none'; return; }
 
-  section.style.display = '';
-  grid.innerHTML = '';
-  widgets.forEach(w => {
-    const card = document.createElement('div');
-    card.className = 'stat-card';
-    card.innerHTML = `
+      section.style.display = '';
+      grid.innerHTML = '';
+      widgets.forEach(w => {
+        const card = document.createElement('div');
+        card.className = 'stat-card';
+        card.innerHTML = `
       <div class="stat-card-header">
         <span class="stat-card-icon">${w.icon}</span>
         <span class="stat-card-title">${w.title}</span>
@@ -987,157 +1076,158 @@ function buildStatusWidgets() {
         <span>${w.more}</span>
         <span>Open →</span>
       </div>`;
-    card.addEventListener('click', () => openApp(w.id));
-    grid.appendChild(card);
-  });
-}
-
-// ── Cloud panel ───────────────────────────────────────────────────────────────
-
-// Collaboration keys: shared work content that should sync across collaborators.
-// UI state keys (hub-session-v1, panel sizes, etc.) are intentionally excluded.
-const COLLABORATION_KEYS = [
-  'project-hub-v1',
-  'hub-links-v1',
-  'decision-log-v1',
-  'ideaswipe_history_v6',
-  'schedule-v1',
-  'kmqt_current_v2',
-  'dw-title-v1',
-  'dw-problem-v1',
-  'dw-canvas-v1',
-  'dw-options-v1',
-  'decisionjam_myVotes_v1',
-  'decisionjam_imports_v1',
-];
-
-function initCloudPanel() {
-  HubStorage.onStatusChange(updateCloudUI);
-  document.getElementById('cloud-copy-btn').addEventListener('click', copyWorkspaceLink);
-  updateCloudUI(HubStorage.getStatus());
-  _checkHashForWorkspace();
-
-  // Live-refresh dashboard widgets when remote changes arrive
-  HubStorage.subscribe('project-hub-v1', () => { buildStatusWidgets(); refreshRecentStrip(); });
-  HubStorage.subscribe('kmqt_current_v2', buildStatusWidgets);
-  HubStorage.subscribe('decision-log-v1', buildStatusWidgets);
-  HubStorage.subscribe('schedule-v1',     buildStatusWidgets);
-}
-
-function updateCloudUI(status) {
-  const dot    = document.getElementById('cloud-dot');
-  const text   = document.getElementById('cloud-text');
-  const btn    = document.getElementById('cloud-btn');
-  const wsRow  = document.getElementById('cloud-ws-row');
-  const wsCode = document.getElementById('cloud-ws-id');
-
-  if (status.mode === 'cloud') {
-    dot.className    = 'cloud-status-dot cloud';
-    text.textContent = 'Cloud sync';
-    btn.textContent  = 'Disconnect';
-    btn.onclick      = () => { HubStorage.disconnect(); };
-    wsRow.style.display = 'flex';
-    wsCode.textContent  = status.workspaceId || '';
-  } else {
-    dot.className    = 'cloud-status-dot local';
-    text.textContent = 'Local only';
-    btn.textContent  = 'Connect';
-    btn.onclick      = promptConnect;
-    wsRow.style.display = 'none';
-  }
-}
-
-function promptConnect() {
-  const url = prompt('Supabase Project URL:\n(e.g. https://xxxx.supabase.co)');
-  if (!url || !url.trim()) return;
-  const key = prompt('Supabase Anon Key:');
-  if (!key || !key.trim()) return;
-  const wsInput = prompt('Workspace ID (leave blank to create a new workspace):');
-
-  const dot = document.getElementById('cloud-dot');
-  dot.className = 'cloud-status-dot syncing';
-
-  HubStorage.useSupabase(url.trim(), key.trim(), wsInput ? wsInput.trim() : null)
-    .then(() => {
-      return HubStorage.migrateToCloud(COLLABORATION_KEYS);
-    })
-    .then(() => {
-      updateCloudUI(HubStorage.getStatus());
-    })
-    .catch(err => {
-      dot.className = 'cloud-status-dot error';
-      alert('Connection failed: ' + (err.message || err));
-      setTimeout(() => updateCloudUI(HubStorage.getStatus()), 2500);
-    });
-}
-
-function copyWorkspaceLink() {
-  const status = HubStorage.getStatus();
-  if (!status.workspaceId) return;
-  try {
-    const cfg = JSON.parse(localStorage.getItem('hub-cloud-config-v1') || '{}');
-    const params = new URLSearchParams({
-      ws:  status.workspaceId,
-      url: cfg.url  || '',
-      key: cfg.key  || ''
-    });
-    const shareUrl = location.href.split('#')[0] + '#' + params.toString();
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      const btn = document.getElementById('cloud-copy-btn');
-      btn.textContent = '✓';
-      setTimeout(() => { btn.textContent = '⧉'; }, 1800);
-    });
-  } catch (e) {
-    alert('Could not copy link: ' + e.message);
-  }
-}
-
-function _checkHashForWorkspace() {
-  if (!location.hash || location.hash.length < 5) return;
-  try {
-    const params = new URLSearchParams(location.hash.slice(1));
-    const ws  = params.get('ws');
-    const url = params.get('url');
-    const key = params.get('key');
-    if (!ws || !url || !key) return;
-
-    const ok = confirm(
-      'Join shared workspace?\n\nWorkspace: ' + ws +
-      '\nServer: ' + url +
-      '\n\nThis will replace your local data with the shared workspace data.'
-    );
-    if (!ok) return;
-
-    // Clear hash to avoid re-triggering on refresh
-    history.replaceState(null, '', location.pathname);
-
-    const dot = document.getElementById('cloud-dot');
-    dot.className = 'cloud-status-dot syncing';
-
-    HubStorage.useSupabase(url, key, ws)
-      .then(() => HubStorage.pullFromCloud())
-      .then(() => {
-        updateCloudUI(HubStorage.getStatus());
-        buildStatusWidgets();
-        refreshRecentStrip();
-      })
-      .catch(err => {
-        dot.className = 'cloud-status-dot error';
-        alert('Failed to join workspace: ' + (err.message || err));
-        setTimeout(() => updateCloudUI(HubStorage.getStatus()), 2500);
+        card.addEventListener('click', () => openApp(w.id));
+        grid.appendChild(card);
       });
-  } catch {}
-}
+    }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+    // ── Cloud panel ───────────────────────────────────────────────────────────────
 
-initSession();
-buildSidebar();
-buildHomeDashboard();
-buildStatusWidgets();
-refreshRecentStrip();
-setGreeting();
-initCloudPanel();
-</script>
+    // Collaboration keys: shared work content that should sync across collaborators.
+    // UI state keys (hub-session-v1, panel sizes, etc.) are intentionally excluded.
+    const COLLABORATION_KEYS = [
+      'project-hub-v1',
+      'hub-links-v1',
+      'decision-log-v1',
+      'ideaswipe_history_v6',
+      'schedule-v1',
+      'kmqt_current_v2',
+      'dw-title-v1',
+      'dw-problem-v1',
+      'dw-canvas-v1',
+      'dw-options-v1',
+      'decisionjam_myVotes_v1',
+      'decisionjam_imports_v1',
+    ];
+
+    function initCloudPanel() {
+      HubStorage.onStatusChange(updateCloudUI);
+      document.getElementById('cloud-copy-btn').addEventListener('click', copyWorkspaceLink);
+      updateCloudUI(HubStorage.getStatus());
+      _checkHashForWorkspace();
+
+      // Live-refresh dashboard widgets when remote changes arrive
+      HubStorage.subscribe('project-hub-v1', () => { buildStatusWidgets(); refreshRecentStrip(); });
+      HubStorage.subscribe('kmqt_current_v2', buildStatusWidgets);
+      HubStorage.subscribe('decision-log-v1', buildStatusWidgets);
+      HubStorage.subscribe('schedule-v1', buildStatusWidgets);
+    }
+
+    function updateCloudUI(status) {
+      const dot = document.getElementById('cloud-dot');
+      const text = document.getElementById('cloud-text');
+      const btn = document.getElementById('cloud-btn');
+      const wsRow = document.getElementById('cloud-ws-row');
+      const wsCode = document.getElementById('cloud-ws-id');
+
+      if (status.mode === 'cloud') {
+        dot.className = 'cloud-status-dot cloud';
+        text.textContent = 'Cloud sync';
+        btn.textContent = 'Disconnect';
+        btn.onclick = () => { HubStorage.disconnect(); };
+        wsRow.style.display = 'flex';
+        wsCode.textContent = status.workspaceId || '';
+      } else {
+        dot.className = 'cloud-status-dot local';
+        text.textContent = 'Local only';
+        btn.textContent = 'Connect';
+        btn.onclick = promptConnect;
+        wsRow.style.display = 'none';
+      }
+    }
+
+    function promptConnect() {
+      const url = prompt('Supabase Project URL:\n(e.g. https://xxxx.supabase.co)');
+      if (!url || !url.trim()) return;
+      const key = prompt('Supabase Anon Key:');
+      if (!key || !key.trim()) return;
+      const wsInput = prompt('Workspace ID (leave blank to create a new workspace):');
+
+      const dot = document.getElementById('cloud-dot');
+      dot.className = 'cloud-status-dot syncing';
+
+      HubStorage.useSupabase(url.trim(), key.trim(), wsInput ? wsInput.trim() : null)
+        .then(() => {
+          return HubStorage.migrateToCloud(COLLABORATION_KEYS);
+        })
+        .then(() => {
+          updateCloudUI(HubStorage.getStatus());
+        })
+        .catch(err => {
+          dot.className = 'cloud-status-dot error';
+          alert('Connection failed: ' + (err.message || err));
+          setTimeout(() => updateCloudUI(HubStorage.getStatus()), 2500);
+        });
+    }
+
+    function copyWorkspaceLink() {
+      const status = HubStorage.getStatus();
+      if (!status.workspaceId) return;
+      try {
+        const cfg = JSON.parse(localStorage.getItem('hub-cloud-config-v1') || '{}');
+        const params = new URLSearchParams({
+          ws: status.workspaceId,
+          url: cfg.url || '',
+          key: cfg.key || ''
+        });
+        const shareUrl = location.href.split('#')[0] + '#' + params.toString();
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          const btn = document.getElementById('cloud-copy-btn');
+          btn.textContent = '✓';
+          setTimeout(() => { btn.textContent = '⧉'; }, 1800);
+        });
+      } catch (e) {
+        alert('Could not copy link: ' + e.message);
+      }
+    }
+
+    function _checkHashForWorkspace() {
+      if (!location.hash || location.hash.length < 5) return;
+      try {
+        const params = new URLSearchParams(location.hash.slice(1));
+        const ws = params.get('ws');
+        const url = params.get('url');
+        const key = params.get('key');
+        if (!ws || !url || !key) return;
+
+        const ok = confirm(
+          'Join shared workspace?\n\nWorkspace: ' + ws +
+          '\nServer: ' + url +
+          '\n\nThis will replace your local data with the shared workspace data.'
+        );
+        if (!ok) return;
+
+        // Clear hash to avoid re-triggering on refresh
+        history.replaceState(null, '', location.pathname);
+
+        const dot = document.getElementById('cloud-dot');
+        dot.className = 'cloud-status-dot syncing';
+
+        HubStorage.useSupabase(url, key, ws)
+          .then(() => HubStorage.pullFromCloud())
+          .then(() => {
+            updateCloudUI(HubStorage.getStatus());
+            buildStatusWidgets();
+            refreshRecentStrip();
+          })
+          .catch(err => {
+            dot.className = 'cloud-status-dot error';
+            alert('Failed to join workspace: ' + (err.message || err));
+            setTimeout(() => updateCloudUI(HubStorage.getStatus()), 2500);
+          });
+      } catch { }
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────────
+
+    initSession();
+    buildSidebar();
+    buildHomeDashboard();
+    buildStatusWidgets();
+    refreshRecentStrip();
+    setGreeting();
+    initCloudPanel();
+  </script>
 </body>
+
 </html>

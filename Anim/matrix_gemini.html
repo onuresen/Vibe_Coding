@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Digital Rain</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            /* Prevent scrollbars */
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="matrixCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas to full screen
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Characters: Katakana, Alpha, and Numeric
+        const chars = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ1234567890ABCDEF";
+        const charArray = chars.split("");
+
+        const fontSize = 16;
+        // Calculate columns based on width and font size
+        let columns = Math.floor(canvas.width / fontSize);
+
+        // An array to track the y-coordinate of each column
+        const drops = [];
+        for (let i = 0; i < columns; i++) {
+            // Randomize starting Y position so they don't all fall at once
+            drops[i] = Math.random() * -100;
+        }
+
+        function draw() {
+            // 1. Semi-transparent black rectangle to create the fade effect
+            // Adjust the alpha (0.05) to change the trail length
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Set text style
+            ctx.fillStyle = "#0F0"; // Classic Matrix Green
+            ctx.font = fontSize + "px monospace";
+
+            // 3. Loop through columns
+            for (let i = 0; i < drops.length; i++) {
+                // Pick a random character
+                const text = charArray[Math.floor(Math.random() * charArray.length)];
+
+                // Draw the character
+                // x = i * fontSize, y = drops[i] * fontSize
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                // 4. Reset drop to top randomly after it hits the bottom
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+
+                // Increment Y coordinate
+                drops[i]++;
+            }
+        }
+
+        // Use setInterval or requestAnimationFrame for the loop
+        // Matrix looks better at a slightly lower frame rate (around 30fps) 
+        // to maintain the "retro" computer feel.
+        setInterval(draw, 33);
+    </script>
+</body>
+
+</html>

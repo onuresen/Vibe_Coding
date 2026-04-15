@@ -7,34 +7,20 @@
   <title>DecisionJam // internal project decisions</title>
   <script src="hub-storage.js"></script>
   <script src="hub-data.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap"
-    rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
+  <link rel="stylesheet" href="theme.css">
   <style>
-    :root {
-      --bg: #0f0f11;
-      --surface: #17171c;
-      --surface2: #1f1f26;
-      --border: rgba(255, 255, 255, 0.08);
-      --border2: rgba(255, 255, 255, 0.14);
-      --text: #f0efe8;
-      --muted: #9a99a3;
-      --muted2: #5b5a64;
-      --lead: #38bdf8;
-      --tech: #a78bfa;
-      --dx: #22c55e;
-      --site: #f59e0b;
-      --strategy: #ef4444;
-      --ok: #2ecc7a;
-      --warn: #f5a623;
-      --bad: #e8455a;
-      --r: 16px;
-      --rsm: 10px;
-      --left-w: 300px;
-      --right-w: 340px;
+    /* Tool-specific CSS goes here. 
+     Always use the variables from theme.css! */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
     }
-
+  </style>
+  <style>
     * {
       box-sizing: border-box;
       margin: 0;
@@ -42,9 +28,6 @@
     }
 
     body {
-      font-family: "DM Sans", system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
       height: 100vh;
       overflow: hidden;
       user-select: none;

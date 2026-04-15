@@ -7,12 +7,19 @@
   <title>KMQT Board (Standalone)</title>
   <script src="hub-storage.js"></script>
   <script src="hub-data.js"></script>
-
-  <!-- Fonts (IdeaSwipe-like) -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
-    rel="stylesheet">
-
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    /* Tool-specific CSS goes here. 
+     Always use the variables from theme.css! */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+    }
+  </style>
   <style>
     *,
     *::before,
@@ -22,35 +29,7 @@
       padding: 0;
     }
 
-    :root {
-      --bg: #0f0f11;
-      --surface: #1a1a1f;
-      --surface2: #222228;
-      --surface3: #2a2a32;
-      --border: rgba(255, 255, 255, 0.08);
-      --border2: rgba(255, 255, 255, 0.14);
-      --text: #f0efe8;
-      --text2: #9998a0;
-      --text3: #55545c;
-      --accent: #7c6af5;
-      --accent-bg: rgba(124, 106, 245, 0.12);
-      --like: #2ecc7a;
-      --like-bg: rgba(46, 204, 122, 0.12);
-      --nope: #e8455a;
-      --nope-bg: rgba(232, 69, 90, 0.12);
-      --super: #f5a623;
-      --super-bg: rgba(245, 166, 35, 0.12);
-
-      --r: 16px;
-      --r-sm: 10px;
-      --left-w: 240px;
-      --right-w: 280px;
-    }
-
     body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text);
       height: 100vh;
       display: flex;
       flex-direction: column;
@@ -318,7 +297,7 @@
       z-index: 3;
       display: grid;
       grid-template-columns: repeat(4, minmax(240px, 300px));
- justify-content: center;
+      justify-content: center;
       gap: 12px;
       min-width: 920px;
       align-items: start;
@@ -743,8 +722,16 @@
       user-select: text;
     }
 
-    .ph-task-row:hover { background: var(--surface3); border-radius: 8px; }
-    .ph-import-empty { font-size: 12px; color: var(--text3); padding: 8px 2px; }
+    .ph-task-row:hover {
+      background: var(--surface3);
+      border-radius: 8px;
+    }
+
+    .ph-import-empty {
+      font-size: 12px;
+      color: var(--text3);
+      padding: 8px 2px;
+    }
 
     .kbd {
       font-size: 10px;
@@ -810,7 +797,8 @@
         <button class="btn btn-primary" id="btn-add-quick">Add →</button>
         <button class="btn btn-ghost" id="btn-connect">Connect: OFF</button>
       </div>
-      <button class="btn btn-ghost" id="btn-ph-import" style="width:100%;justify-content:center;font-size:12px">↓ Import Hub Tasks</button>
+      <button class="btn btn-ghost" id="btn-ph-import" style="width:100%;justify-content:center;font-size:12px">↓ Import
+        Hub Tasks</button>
 
       <div class="hint">
         <b>Connect mode:</b> click an item, then click another item in a <b>different</b> column to draw a link.
@@ -962,11 +950,15 @@
       </div>
       <div class="row" style="gap:8px;align-items:flex-end">
         <div style="flex:1">
-          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'Syne',sans-serif;margin-bottom:6px">Project</div>
+          <div
+            style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'Syne',sans-serif;margin-bottom:6px">
+            Project</div>
           <select class="select" id="ph-proj-picker" style="width:100%"></select>
         </div>
         <div style="width:140px">
-          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'Syne',sans-serif;margin-bottom:6px">Add to column</div>
+          <div
+            style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'Syne',sans-serif;margin-bottom:6px">
+            Add to column</div>
           <select class="select" id="ph-col-picker" style="width:100%">
             <option value="K">K — Keep</option>
             <option value="M">M — MoyaMoya</option>
@@ -975,7 +967,8 @@
           </select>
         </div>
       </div>
-      <div id="ph-task-list" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:2px 0"></div>
+      <div id="ph-task-list"
+        style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:2px 0"></div>
       <div class="row" style="justify-content:space-between;align-items:center">
         <span id="ph-import-count" style="font-size:11px;color:var(--text3)"></span>
         <div class="row" style="gap:6px">
@@ -1085,13 +1078,13 @@
         state.labels = data.labels || state.labels;
         state.columns = data.columns || state.columns;
         state.links = (data.links || []).filter(l => l && l.from && l.to && l.id);
-    // v2 migration: normalize KMQT labels if old defaults were saved
-    const oldMap = { K: ['Known'], M: ['Missing'], Q: ['Questions'], T: ['Trials'] };
-    const desired = { K:'Keep', M:'MoyaMoya', Q:'Question', T:'Try' };
-    for (const k of ['K','M','Q','T']) {
-      const cur = (state.labels && state.labels[k]) ? String(state.labels[k]).trim() : '';
-      if (oldMap[k].includes(cur) || cur==='') state.labels[k] = desired[k];
-    }
+        // v2 migration: normalize KMQT labels if old defaults were saved
+        const oldMap = { K: ['Known'], M: ['Missing'], Q: ['Questions'], T: ['Trials'] };
+        const desired = { K: 'Keep', M: 'MoyaMoya', Q: 'Question', T: 'Try' };
+        for (const k of ['K', 'M', 'Q', 'T']) {
+          const cur = (state.labels && state.labels[k]) ? String(state.labels[k]).trim() : '';
+          if (oldMap[k].includes(cur) || cur === '') state.labels[k] = desired[k];
+        }
 
       } catch (e) { }
     }
@@ -1814,14 +1807,14 @@
       updateConnectUI(false);
       renderAll();
       document.getElementById('btn-ph-import').addEventListener('click', showPhImport);
-      try { HubData.init('kmqt-board'); } catch {}
+      try { HubData.init('kmqt-board'); } catch { }
     }
     init();
 
     // ── Project Hub import ────────────────────────────────────────────────────
     function showPhImport() {
-      const modal    = document.getElementById('ph-import-modal');
-      const picker   = document.getElementById('ph-proj-picker');
+      const modal = document.getElementById('ph-import-modal');
+      const picker = document.getElementById('ph-proj-picker');
       const projects = (typeof HubData !== 'undefined') ? HubData.getProjects() : [];
 
       if (!projects.length) {
@@ -1843,9 +1836,9 @@
 
     function _refreshPhTaskList() {
       const projId = document.getElementById('ph-proj-picker').value;
-      const tasks  = (typeof HubData !== 'undefined') ? HubData.getTasksForProject(projId) : [];
-      const list   = document.getElementById('ph-task-list');
-      const btn    = document.getElementById('ph-import-btn');
+      const tasks = (typeof HubData !== 'undefined') ? HubData.getTasksForProject(projId) : [];
+      const list = document.getElementById('ph-task-list');
+      const btn = document.getElementById('ph-import-btn');
 
       if (!tasks.length) {
         list.innerHTML = '<div class="ph-import-empty">No tasks in this project.</div>';
@@ -1868,9 +1861,9 @@
     }
 
     function _updatePhImportCount() {
-      const n   = document.querySelectorAll('#ph-task-list input[type=checkbox]:checked').length;
+      const n = document.querySelectorAll('#ph-task-list input[type=checkbox]:checked').length;
       const btn = document.getElementById('ph-import-btn');
-      btn.disabled    = n === 0;
+      btn.disabled = n === 0;
       btn.textContent = n ? `Import ${n} task${n !== 1 ? 's' : ''} →` : 'Import';
       document.getElementById('ph-import-count').textContent = n ? `${n} selected` : '';
     }
@@ -1880,8 +1873,8 @@
     }
 
     function executePhImport() {
-      const col       = document.getElementById('ph-col-picker').value;
-      const checked   = document.querySelectorAll('#ph-task-list input[type=checkbox]:checked');
+      const col = document.getElementById('ph-col-picker').value;
+      const checked = document.querySelectorAll('#ph-task-list input[type=checkbox]:checked');
       checked.forEach(cb => {
         const found = (typeof HubData !== 'undefined') ? HubData.findTask(cb.dataset.taskId) : null;
         if (found) addItem(col, found.task.title);

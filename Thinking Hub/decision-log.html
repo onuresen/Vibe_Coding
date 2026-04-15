@@ -8,9 +8,20 @@
   <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
-    rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    /* Tool-specific CSS goes here. 
+     Always use the variables from theme.css! */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+    }
+  </style>
+
   <style>
     *,
     *::before,
@@ -20,33 +31,7 @@
       padding: 0
     }
 
-    :root {
-      --bg: #0f0f11;
-      --surface: #1a1a1f;
-      --surface2: #222228;
-      --surface3: #2a2a32;
-      --border: rgba(255, 255, 255, 0.08);
-      --border2: rgba(255, 255, 255, 0.14);
-      --text: #f0efe8;
-      --text2: #b7b6c3;
-      --text3: #6d6c78;
-      --accent: #7c6af5;
-      --accent-bg: rgba(124, 106, 245, 0.12);
-      --ok: #2ecc7a;
-      --ok-bg: rgba(46, 204, 122, 0.12);
-      --warn: #f5a623;
-      --warn-bg: rgba(245, 166, 35, 0.12);
-      --bad: #e8455a;
-      --bad-bg: rgba(232, 69, 90, 0.12);
-      --r: 16px;
-      --r-sm: 10px;
-      --left: 360px;
-    }
-
     body {
-      font-family: 'DM Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
       height: 100vh;
       display: flex;
       flex-direction: column;
@@ -955,7 +940,7 @@
           else if (act === 'copy') { copyMarkdown(entry.id); }
           else if (act === 'goto') {
             const targetId = entry.taskId || entry.projectId;
-            try { HubLinks.navigateTo('project-hub', targetId); } catch {}
+            try { HubLinks.navigateTo('project-hub', targetId); } catch { }
             return; // don't re-render
           }
           render();
@@ -1319,7 +1304,7 @@
         _populateProjectTask(el.eProjectId, el.eTaskId);
         render();
       });
-    } catch {}
+    } catch { }
   </script>
 </body>
 
