@@ -1471,7 +1471,7 @@
     <div class="sidebar-team">
       <div class="sidebar-team-header">
         <span class="sidebar-team-label">Team</span>
-        <div class="sidebar-team-add" onclick="openModal('modal-member')" title="Add member">+</div>
+        <div class="sidebar-team-add" onclick="openMemberModal()" title="Add member">+</div>
       </div>
       <div id="sidebar-users"></div>
     </div>
@@ -1942,15 +1942,21 @@
         const selected = state.selectedMemberFilter === m.id;
         const div = document.createElement('div');
         div.className = 'user-pill' + (selected ? ' selected' : '');
-        div.onclick = () => toggleMemberFilter(m.id);
+        div.style.position = 'relative';
         div.innerHTML = `
-      <div class="avatar" style="background:${bg};color:${fg}">${initials(m.name)}</div>
-      <div class="user-pill-info">
+      <div class="avatar" style="background:${bg};color:${fg};cursor:pointer" onclick="toggleMemberFilter('${m.id}')">${initials(m.name)}</div>
+      <div class="user-pill-info" style="cursor:pointer;flex:1" onclick="toggleMemberFilter('${m.id}')">
         <div class="user-pill-name">${m.name}</div>
         <div class="user-pill-role">${m.role}</div>
       </div>
       ${selected ? `<div class="filter-active-dot" style="background:${bg}"></div>` : ''}
+      <div class="user-pill-actions" style="display:flex;gap:2px;opacity:0;transition:opacity 0.15s">
+        <button class="task-action-btn edit" title="Edit member" onclick="openEditMember('${m.id}')">✎</button>
+        <button class="task-action-btn del" title="Delete member" onclick="deleteMember('${m.id}')">✕</button>
+      </div>
     `;
+        div.addEventListener('mouseenter', () => div.querySelector('.user-pill-actions').style.opacity = '1');
+        div.addEventListener('mouseleave', () => div.querySelector('.user-pill-actions').style.opacity = '0');
         container.appendChild(div);
       });
     }
@@ -2474,7 +2480,13 @@
           const pct = msTasks.length ? Math.round((doneCount / msTasks.length) * 100) : 0;
           const el = document.createElement('div'); el.className = 'milestone-item';
           el.innerHTML = `
-        <div class="milestone-header"><div class="milestone-dot" style="background:${ms.color}"></div><div class="milestone-name">${ms.name}</div><div class="milestone-date">${formatDate(ms.date)}</div></div>
+        <div class="milestone-header" style="display:flex;align-items:center;gap:6px">
+          <div class="milestone-dot" style="background:${ms.color}"></div>
+          <div class="milestone-name" style="flex:1">${ms.name}</div>
+          <div class="milestone-date">${formatDate(ms.date)}</div>
+          <button class="task-action-btn edit" title="Edit milestone" style="margin-left:4px" onclick="openEditMilestone('${ms.id}','${projId}')">✎</button>
+          <button class="task-action-btn del" title="Delete milestone" onclick="deleteMilestone('${ms.id}','${projId}')">✕</button>
+        </div>
         <div class="milestone-progress"><div class="milestone-progress-fill" style="width:${pct}%;background:${ms.color}"></div></div>
         <div class="milestone-stats"><span class="milestone-stat">${doneCount}/${msTasks.length} tasks · ${pct}%</span>${isOverdue(ms.date) && pct < 100 ? '<span class="milestone-stat" style="color:var(--accent3)">⚠ overdue</span>' : ''}</div>
         ${msTasks.map(t => taskHTML({ ...t, projectId: projId })).join('')}
@@ -2501,7 +2513,12 @@
         proj.goals.forEach(g => {
           const el = document.createElement('div'); el.className = 'goal-item';
           el.innerHTML = `
-        <div class="goal-header"><div class="goal-name">${g.name}</div><span style="font-size:11px;font-family:var(--font-mono);color:var(--accent)">${g.progress}%</span></div>
+        <div class="goal-header" style="display:flex;align-items:center;gap:6px">
+          <div class="goal-name" style="flex:1">${g.name}</div>
+          <span style="font-size:11px;font-family:var(--font-mono);color:var(--accent)">${g.progress}%</span>
+          <button class="task-action-btn edit" title="Edit goal" onclick="openEditGoal('${g.id}','${projId}')">✎</button>
+          <button class="task-action-btn del" title="Delete goal" onclick="deleteGoal('${g.id}','${projId}')">✕</button>
+        </div>
         <div class="goal-desc">${g.desc}</div>
         <div class="goal-progress-label"><span>Progress</span><span>${g.progress}%</span></div>
         <div class="goal-bar"><div class="goal-fill" style="width:${g.progress}%"></div></div>
@@ -2702,41 +2719,153 @@
       if (state.selectedProject === projId) renderPanel(projId);
     }
 
+    // ─── EDIT STATE ──────────────────────────────────────────────────────────────
+    let _editingMsId = null, _editingMsProjId = null;
+    let _editingGoalId = null, _editingGoalProjId = null;
+    let _editingMemberId = null;
+
     function openMilestoneModal() {
+      _editingMsId = null; _editingMsProjId = null;
       document.getElementById('ms-name').value = '';
       document.getElementById('ms-date').value = '';
+      document.getElementById('ms-color').value = '#c8f03e';
+      document.querySelector('#modal-milestone .modal-title').textContent = 'New Milestone';
+      document.querySelector('#modal-milestone .modal-sub').textContent = 'Define a key milestone for this project';
+      document.querySelector('#modal-milestone .btn-primary').textContent = 'Add Milestone';
+      openModal('modal-milestone');
+    }
+
+    function openEditMilestone(msId, projId) {
+      const proj = getProject(projId); if (!proj) return;
+      const ms = proj.milestones.find(m => m.id === msId); if (!ms) return;
+      _editingMsId = msId; _editingMsProjId = projId;
+      document.getElementById('ms-name').value = ms.name;
+      document.getElementById('ms-date').value = ms.date;
+      document.getElementById('ms-color').value = ms.color;
+      document.querySelector('#modal-milestone .modal-title').textContent = 'Edit Milestone';
+      document.querySelector('#modal-milestone .modal-sub').textContent = 'Update this milestone';
+      document.querySelector('#modal-milestone .btn-primary').textContent = 'Save Changes';
       openModal('modal-milestone');
     }
 
     function saveMilestone() {
       const name = document.getElementById('ms-name').value.trim(); if (!name) return;
-      const projId = state.selectedProject || state.projects[0]?.id;
+      const projId = _editingMsProjId || state.selectedProject || state.projects[0]?.id;
       const proj = getProject(projId); if (!proj) return;
-      proj.milestones.push({ id: uid(), name, date: document.getElementById('ms-date').value, color: document.getElementById('ms-color').value });
-      saveState(); closeModal('modal-milestone'); showToast('Milestone added');
+      if (_editingMsId) {
+        const ms = proj.milestones.find(m => m.id === _editingMsId);
+        if (ms) { ms.name = name; ms.date = document.getElementById('ms-date').value; ms.color = document.getElementById('ms-color').value; }
+        _editingMsId = null; _editingMsProjId = null;
+        saveState(); closeModal('modal-milestone'); showToast('Milestone updated');
+      } else {
+        proj.milestones.push({ id: uid(), name, date: document.getElementById('ms-date').value, color: document.getElementById('ms-color').value });
+        saveState(); closeModal('modal-milestone'); showToast('Milestone added');
+      }
       renderContent(); if (state.selectedProject) renderPanel(projId);
     }
 
+    function deleteMilestone(msId, projId) {
+      if (!confirm('Delete this milestone? Tasks linked to it will become unassigned.')) return;
+      const proj = getProject(projId); if (!proj) return;
+      proj.milestones = proj.milestones.filter(m => m.id !== msId);
+      proj.tasks.forEach(t => { if (t.milestoneId === msId) t.milestoneId = null; });
+      saveState(); renderContent(); if (state.selectedProject) renderPanel(projId); showToast('Milestone deleted');
+    }
+
     function openGoalModal() {
+      _editingGoalId = null; _editingGoalProjId = null;
       document.getElementById('goal-name').value = '';
       document.getElementById('goal-desc').value = '';
+      document.querySelector('#modal-goal .modal-title').textContent = 'New Goal';
+      document.querySelector('#modal-goal .modal-sub').textContent = 'Define a high-level goal for this project';
+      document.querySelector('#modal-goal .btn-primary').textContent = 'Add Goal';
+      openModal('modal-goal');
+    }
+
+    function openEditGoal(goalId, projId) {
+      const proj = getProject(projId); if (!proj) return;
+      const g = proj.goals.find(x => x.id === goalId); if (!g) return;
+      _editingGoalId = goalId; _editingGoalProjId = projId;
+      document.getElementById('goal-name').value = g.name;
+      document.getElementById('goal-desc').value = g.desc || '';
+      document.querySelector('#modal-goal .modal-title').textContent = 'Edit Goal';
+      document.querySelector('#modal-goal .modal-sub').textContent = 'Update this goal';
+      document.querySelector('#modal-goal .btn-primary').textContent = 'Save Changes';
       openModal('modal-goal');
     }
 
     function saveGoal() {
       const name = document.getElementById('goal-name').value.trim(); if (!name) return;
-      const projId = state.selectedProject || state.projects[0]?.id;
+      const projId = _editingGoalProjId || state.selectedProject || state.projects[0]?.id;
       const proj = getProject(projId); if (!proj) return;
-      proj.goals.push({ id: uid(), name, desc: document.getElementById('goal-desc').value.trim(), progress: 0 });
-      saveState(); closeModal('modal-goal'); showToast('Goal added');
+      if (_editingGoalId) {
+        const g = proj.goals.find(x => x.id === _editingGoalId);
+        if (g) { g.name = name; g.desc = document.getElementById('goal-desc').value.trim(); }
+        _editingGoalId = null; _editingGoalProjId = null;
+        saveState(); closeModal('modal-goal'); showToast('Goal updated');
+      } else {
+        proj.goals.push({ id: uid(), name, desc: document.getElementById('goal-desc').value.trim(), progress: 0 });
+        saveState(); closeModal('modal-goal'); showToast('Goal added');
+      }
       renderContent(); if (state.selectedProject) renderPanel(projId);
+    }
+
+    function deleteGoal(goalId, projId) {
+      if (!confirm('Delete this goal?')) return;
+      const proj = getProject(projId); if (!proj) return;
+      proj.goals = proj.goals.filter(g => g.id !== goalId);
+      saveState(); renderContent(); if (state.selectedProject) renderPanel(projId); showToast('Goal deleted');
+    }
+
+    function openMemberModal() {
+      _editingMemberId = null;
+      document.getElementById('member-name').value = '';
+      document.getElementById('member-role').value = '';
+      document.getElementById('member-color').value = '#c8f03e,#111';
+      document.querySelector('#modal-member .modal-title').textContent = 'Add Team Member';
+      document.querySelector('#modal-member .modal-sub').textContent = 'Add someone to the workspace';
+      document.querySelector('#modal-member .btn-primary').textContent = 'Add Member';
+      openModal('modal-member');
+    }
+
+    function openEditMember(memberId) {
+      const m = getMember(memberId); if (!m) return;
+      _editingMemberId = memberId;
+      document.getElementById('member-name').value = m.name;
+      document.getElementById('member-role').value = m.role;
+      document.getElementById('member-color').value = m.color;
+      document.querySelector('#modal-member .modal-title').textContent = 'Edit Member';
+      document.querySelector('#modal-member .modal-sub').textContent = 'Update this team member';
+      document.querySelector('#modal-member .btn-primary').textContent = 'Save Changes';
+      openModal('modal-member');
     }
 
     function saveMember() {
       const name = document.getElementById('member-name').value.trim(); if (!name) return;
-      state.members.push({ id: uid(), name, role: document.getElementById('member-role').value.trim() || 'Team', color: document.getElementById('member-color').value });
-      saveState(); closeModal('modal-member'); showToast('Member added');
+      if (_editingMemberId) {
+        const m = getMember(_editingMemberId);
+        if (m) { m.name = name; m.role = document.getElementById('member-role').value.trim() || 'Team'; m.color = document.getElementById('member-color').value; }
+        _editingMemberId = null;
+        saveState(); closeModal('modal-member'); showToast('Member updated');
+      } else {
+        state.members.push({ id: uid(), name, role: document.getElementById('member-role').value.trim() || 'Team', color: document.getElementById('member-color').value });
+        saveState(); closeModal('modal-member'); showToast('Member added');
+      }
       renderSidebarUsers(); renderContent();
+    }
+
+    function deleteMember(memberId) {
+      const m = getMember(memberId); if (!m) return;
+      if (!confirm(`Delete member "${m.name}"? They will be unassigned from all tasks.`)) return;
+      state.members = state.members.filter(x => x.id !== memberId);
+      state.projects.forEach(p => {
+        p.members = p.members.filter(id => id !== memberId);
+        p.tasks.forEach(t => { if (t.assigneeId === memberId) t.assigneeId = ''; });
+      });
+      if (state.selectedMemberFilter === memberId) state.selectedMemberFilter = null;
+      saveState(); renderSidebarUsers(); renderContent();
+      if (state.selectedProject) renderPanel(state.selectedProject);
+      showToast('Member deleted');
     }
 
     function saveProjectSettings(projId) {

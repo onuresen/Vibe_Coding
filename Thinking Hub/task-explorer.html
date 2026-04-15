@@ -2,413 +2,718 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Work Stream Explorer — v4</title>
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
-    <link rel="stylesheet" href="theme.css">
-    <style>
-        /* Tool-specific CSS goes here. 
-     Always use the variables from theme.css! */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--r);
-            padding: 20px;
-        }
-    </style>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Task Explorer</title>
+  <script src="hub-storage.js"></script>
+  <script src="hub-data.js"></script>
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; }
 
-        html,
-        body {
-            height: 100%;
-        }
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13px;
+    }
 
-        body {
-            display: grid;
-            grid-template-rows: auto 1fr;
-            overflow: hidden;
-        }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+      flex-wrap: wrap;
+    }
 
-        header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 14px;
-            border-bottom: 1px solid var(--line);
-            background: rgba(2, 6, 23, .92);
-        }
+    .logo {
+      font-size: 13px;
+      font-weight: 750;
+      letter-spacing: .2px;
+      white-space: nowrap;
+    }
+    .logo span { color: var(--muted); font-weight: 400; }
 
-        header h1 {
-            margin: 0;
-            font-size: 14px;
-            letter-spacing: .2px;
-            font-weight: 750;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
 
-        .dot {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent), #22d3ee);
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, .15);
-        }
+    .filter-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
 
-        .spacer {
-            flex: 1;
-        }
+    select.filter-select {
+      background: var(--surface2);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      max-width: 160px;
+    }
 
-        input[type="file"] {
-            display: none;
-        }
+    select.filter-select:focus { outline: none; border-color: var(--accent); }
 
-        .btn {
-            appearance: none;
-            background: rgba(15, 23, 42, .55);
-            border: 1px solid var(--line);
-            color: var(--text);
-            border-radius: 10px;
-            padding: 7px 10px;
-            cursor: pointer;
-            font-size: 12px;
-        }
+    .spacer { flex: 1; }
 
-        .btn:hover {
-            border-color: rgba(56, 189, 248, .75);
-        }
+    .task-count {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 4px 10px;
+    }
 
-        .layout {
-            display: grid;
-            grid-template-columns: 1fr 420px;
-            height: 100%;
-            min-height: 0;
-        }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      height: 100%;
+      min-height: 0;
+    }
 
-        main {
-            padding: 14px;
-            overflow: auto;
-            min-height: 0;
-        }
+    main {
+      padding: 14px;
+      overflow: auto;
+      min-height: 0;
+    }
 
-        .board {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(220px, 1fr));
-            gap: 12px;
-            align-items: start;
-        }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(200px, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
 
-        .column {
-            border: 1px dashed var(--line);
-            border-radius: 16px;
-            background: rgba(15, 23, 42, .30);
-            padding: 10px;
-            min-height: 150px;
-            transition: border-color .12s ease, box-shadow .12s ease, background .12s ease;
-        }
+    .column {
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      background: rgba(15,23,42,.25);
+      padding: 10px;
+      min-height: 120px;
+      transition: border-color .12s, box-shadow .12s, background .12s;
+    }
 
-        .column.dragover {
-            border-color: rgba(56, 189, 248, .95);
-            background: rgba(56, 189, 248, .06);
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, .10) inset;
-        }
+    .column.dragover {
+      border-color: var(--accent);
+      background: rgba(56,189,248,.05);
+      box-shadow: 0 0 0 3px rgba(56,189,248,.10) inset;
+    }
 
-        .colhead {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 2px 4px 10px;
-            gap: 10px;
-        }
+    .colhead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 4px 10px;
+    }
 
-        .colhead h2 {
-            margin: 0;
-            font-size: 12px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: .12em;
-            font-weight: 750;
-        }
+    .colhead h2 {
+      margin: 0;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-weight: 750;
+    }
 
-        .empty {
-            color: var(--muted);
-            font-size: 12px;
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 10px;
-            background: rgba(2, 6, 23, .25);
-        }
+    .col-count {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 1px 7px;
+    }
 
-        .card {
-            background: var(--card);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 10px;
-            margin: 0 0 9px;
-            cursor: grab;
-            user-select: none;
-            transition: border-color .12s ease, transform .08s ease, box-shadow .12s ease;
-        }
+    .empty-col {
+      color: var(--muted);
+      font-size: 11px;
+      padding: 8px 4px;
+      text-align: center;
+    }
 
-        .card:hover {
-            border-color: rgba(56, 189, 248, .75);
-            box-shadow: 0 10px 26px rgba(0, 0, 0, .25);
-            transform: translateY(-1px);
-        }
+    .task-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      margin: 0 0 8px;
+      cursor: grab;
+      user-select: none;
+      transition: border-color .12s, transform .08s, box-shadow .12s;
+    }
+    .task-card:active { cursor: grabbing; }
+    .task-card:hover {
+      border-color: rgba(56,189,248,.6);
+      box-shadow: 0 6px 18px rgba(0,0,0,.2);
+      transform: translateY(-1px);
+    }
+    .task-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(56,189,248,.15) inset;
+    }
+    .task-card.ghost { opacity: .45; }
+    .task-card.done-card { opacity: .65; }
 
-        .card.selected {
-            border-color: rgba(56, 189, 248, .95);
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, .12) inset, 0 10px 26px rgba(0, 0, 0, .22);
-        }
+    .task-title {
+      font-size: 12.5px;
+      font-weight: 600;
+      margin: 0 0 7px;
+      line-height: 1.3;
+    }
+    .task-card.done-card .task-title { text-decoration: line-through; color: var(--muted); }
 
-        .card.ghost {
-            opacity: .55;
-        }
+    .task-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+    }
 
-        .title {
-            font-size: 13px;
-            font-weight: 780;
-            margin: 0 0 6px;
-            line-height: 1.25;
-        }
+    .badge {
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
 
-        .meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            color: var(--muted);
-            font-size: 11px;
-            align-items: center;
-        }
+    .badge-project {
+      border: 1px solid var(--line);
+      background: var(--surface2);
+      color: var(--text2);
+    }
 
-        .pill {
-            border: 1px solid var(--line);
-            border-radius: 999px;
-            padding: 2px 8px;
-            background: rgba(2, 6, 23, .22);
-        }
+    .badge-priority-high   { background: rgba(240,62,110,.18); color: #f03e6e; border: 1px solid rgba(240,62,110,.3); }
+    .badge-priority-medium { background: rgba(240,180,62,.18); color: #f0b43e; border: 1px solid rgba(240,180,62,.3); }
+    .badge-priority-low    { background: rgba(100,100,140,.18); color: var(--muted); border: 1px solid var(--line); }
 
-        aside.viewer {
-            border-left: 1px solid var(--line);
-            background: var(--viewer);
-            padding: 14px;
-            min-height: 0;
-            overflow: auto;
-        }
+    .assignee-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
 
-        .viewer-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
+    .milestone-badge {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      background: var(--surface2);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 1px 6px;
+    }
 
-        .viewer-head .label {
-            margin: 0;
-            font-size: 12px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: .12em;
-            font-weight: 750;
-        }
+    /* ── Detail panel ──────────────────────────────────────────────────────── */
+    aside.detail {
+      border-left: 1px solid var(--line);
+      background: var(--surface);
+      padding: 16px;
+      overflow: auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
 
-        pre {
-            margin: 0;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 12px;
-            line-height: 1.55;
-            color: var(--text);
-        }
+    .detail-empty {
+      color: var(--muted);
+      font-size: 12px;
+      margin: auto;
+      text-align: center;
+      line-height: 1.6;
+    }
 
-        .hint {
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.5;
-        }
+    .detail-title {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text);
+    }
 
-        @media (max-width: 980px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
+    .detail-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
 
-            aside.viewer {
-                display: none;
-            }
-        }
-    </style>
+    .detail-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-family: var(--font-mono);
+    }
+
+    .detail-value {
+      font-size: 12px;
+      color: var(--text2);
+    }
+
+    .detail-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .open-hub-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      margin-top: auto;
+    }
+    .open-hub-btn:hover { opacity: .85; }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 40px 20px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .empty-state .e-icon { font-size: 28px; }
+    .empty-state .e-title { font-size: 14px; font-weight: 600; color: var(--text2); }
+    .empty-state .e-sub { font-size: 12px; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      aside.detail { display: none; }
+    }
+  </style>
 </head>
 
 <body>
-    <header>
-        <h1><span class="dot"></span>Work Stream Explorer <span style="color:var(--muted);font-weight:750">v4</span>
-        </h1>
-        <span class="spacer"></span>
-        <label for="fileInput" class="btn" title="Import Markdown files">Import .md</label>
-        <input id="fileInput" type="file" accept=".md,text/markdown" multiple />
-    </header>
+  <header>
+    <div class="logo">Task Explorer <span>// project-hub live view</span></div>
 
-    <div class="layout">
-        <main>
-            <div class="board" aria-label="Kanban board">
-                <section class="column" data-status="todo" aria-label="Todo column">
-                    <div class="colhead">
-                        <h2>Todo</h2>
-                    </div>
-                    <div class="empty" data-empty="todo">No tasks yet. Import Markdown files.</div>
-                </section>
+    <div class="filters">
+      <span class="filter-label">Project</span>
+      <select class="filter-select" id="filter-project">
+        <option value="">All projects</option>
+      </select>
 
-                <section class="column" data-status="doing" aria-label="Doing column">
-                    <div class="colhead">
-                        <h2>Doing</h2>
-                    </div>
-                    <div class="empty" data-empty="doing">Drag a card here to mark it as doing.</div>
-                </section>
+      <span class="filter-label">Assignee</span>
+      <select class="filter-select" id="filter-member">
+        <option value="">All members</option>
+      </select>
 
-                <section class="column" data-status="done" aria-label="Done column">
-                    <div class="colhead">
-                        <h2>Done</h2>
-                    </div>
-                    <div class="empty" data-empty="done">Drag a card here to mark it as done.</div>
-                </section>
-            </div>
-        </main>
-
-        <aside class="viewer" aria-label="Markdown viewer">
-            <div class="viewer-head">
-                <p class="label">Markdown Viewer</p>
-                <span class="pill" id="viewerMeta">—</span>
-            </div>
-            <pre id="viewer" class="hint">Select a task to view raw Markdown.</pre>
-        </aside>
+      <span class="filter-label">Milestone</span>
+      <select class="filter-select" id="filter-milestone">
+        <option value="">All milestones</option>
+      </select>
     </div>
 
-    <script>
-        // =========================
-        // State (in-memory only)
-        // =========================
-        /** @type {Array<{id:string,type:string,status:'todo'|'doing'|'done',tags:string[],title:string,md:string}>} */
-        let tasks = [];
-        let selectedId = null;
+    <span class="spacer"></span>
+    <span class="task-count" id="task-count">0 tasks</span>
+  </header>
 
-        const fileInput = document.getElementById('fileInput');
-        const columns = Array.from(document.querySelectorAll('.column'));
-        const viewerEl = document.getElementById('viewer');
-        const viewerMetaEl = document.getElementById('viewerMeta');
+  <div class="layout">
+    <main>
+      <div class="board" id="board">
+        <section class="column" data-status="todo">
+          <div class="colhead">
+            <h2>Todo</h2>
+            <span class="col-count" id="count-todo">0</span>
+          </div>
+          <div id="col-todo"></div>
+        </section>
 
-        // =========================
-        // Parsing (safe frontmatter)
-        // =========================
-        /**
-         * Parse YAML frontmatter safely.
-         * If missing/malformed => meta {}, body = original md.
-         * @param {string} md
-         * @returns {{meta:Record<string,any>, body:string}}
-         */
-        function parseFrontmatter(md) {
-            try {
-                if (!md || !md.startsWith('---')) return { meta: {}, body: md };
+        <section class="column" data-status="inprogress">
+          <div class="colhead">
+            <h2>In Progress</h2>
+            <span class="col-count" id="count-inprogress">0</span>
+          </div>
+          <div id="col-inprogress"></div>
+        </section>
 
-                const lines = md.split(/\r?\n/);
-                if ((lines[0] || '').trim() !== '---') return { meta: {}, body: md };
+        <section class="column" data-status="done">
+          <div class="colhead">
+            <h2>Done</h2>
+            <span class="col-count" id="count-done">0</span>
+          </div>
+          <div id="col-done"></div>
+        </section>
+      </div>
+    </main>
 
-                let end = -1;
-                for (let i = 1; i < lines.length; i++) {
-                    if ((lines[i] || '').trim() === '---') { end = i; break; }
-                }
-                if (end === -1) return { meta: {}, body: md };
+    <aside class="detail" id="detail-panel">
+      <div class="detail-empty">Select a task<br>to view details</div>
+    </aside>
+  </div>
 
-                const yamlLines = lines.slice(1, end);
-                const body = lines.slice(end + 1).join('\n'); // no trim; preserve body
-                const meta = parseMiniYaml(yamlLines);
-                return { meta: meta || {}, body };
-            } catch (_) {
-                return { meta: {}, body: md };
-            }
+  <script>
+    const PH_KEY = 'project-hub-v1';
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    let selectedTaskId = null;
+    let dragTaskId = null;
+    let filterProject = '';
+    let filterMember = '';
+    let filterMilestone = '';
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function initials(name) {
+      if (!name) return '?';
+      return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    }
+
+    function avatarColors(colorStr) {
+      if (!colorStr) return { bg: '#444', fg: '#fff' };
+      const [bg, fg] = colorStr.split(',');
+      return { bg: bg || '#444', fg: fg || '#fff' };
+    }
+
+    function formatDate(d) {
+      if (!d) return '—';
+      try { return new Date(d + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+      catch { return d; }
+    }
+
+    function isOverdue(d) {
+      if (!d) return false;
+      return new Date(d + 'T00:00:00') < new Date(new Date().toDateString());
+    }
+
+    // ── Filters ────────────────────────────────────────────────────────────────
+    function populateFilters() {
+      const data = HubData.getData();
+      const projects = data.projects || [];
+      const members = data.members || [];
+
+      // Projects
+      const projSel = document.getElementById('filter-project');
+      const prevProj = projSel.value;
+      projSel.innerHTML = '<option value="">All projects</option>';
+      projects.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id; o.textContent = p.name;
+        projSel.appendChild(o);
+      });
+      if (prevProj) projSel.value = prevProj;
+      filterProject = projSel.value;
+
+      // Members
+      const memSel = document.getElementById('filter-member');
+      const prevMem = memSel.value;
+      memSel.innerHTML = '<option value="">All members</option>';
+      members.forEach(m => {
+        const o = document.createElement('option');
+        o.value = m.id; o.textContent = m.name;
+        memSel.appendChild(o);
+      });
+      if (prevMem) memSel.value = prevMem;
+      filterMember = memSel.value;
+
+      populateMilestoneFilter();
+    }
+
+    function populateMilestoneFilter() {
+      const data = HubData.getData();
+      const projects = data.projects || [];
+      const msSel = document.getElementById('filter-milestone');
+      const prev = msSel.value;
+      msSel.innerHTML = '<option value="">All milestones</option>';
+
+      const relevant = filterProject
+        ? projects.filter(p => p.id === filterProject)
+        : projects;
+
+      relevant.forEach(p => {
+        (p.milestones || []).forEach(ms => {
+          const o = document.createElement('option');
+          o.value = ms.id;
+          o.textContent = (filterProject ? '' : p.name + ' / ') + ms.name;
+          msSel.appendChild(o);
+        });
+      });
+
+      if (prev && msSel.querySelector(`option[value="${prev}"]`)) msSel.value = prev;
+      else filterMilestone = '';
+    }
+
+    // ── Render board ───────────────────────────────────────────────────────────
+    function render() {
+      const data = HubData.getData();
+      const projects = data.projects || [];
+      const members = data.members || [];
+
+      // Flatten tasks with project/milestone info
+      let tasks = projects.flatMap(p =>
+        (p.tasks || []).map(t => ({
+          ...t,
+          _projectId: p.id,
+          _projectName: p.name,
+          _projectColor: p.color,
+          _milestone: (p.milestones || []).find(ms => ms.id === t.milestoneId) || null,
+          _member: members.find(m => m.id === t.assigneeId) || null,
+        }))
+      );
+
+      // Apply filters
+      if (filterProject)   tasks = tasks.filter(t => t._projectId === filterProject);
+      if (filterMember)    tasks = tasks.filter(t => t.assigneeId === filterMember);
+      if (filterMilestone) tasks = tasks.filter(t => t.milestoneId === filterMilestone);
+
+      const byStatus = { todo: [], inprogress: [], done: [] };
+      tasks.forEach(t => {
+        const s = t.status || (t.done ? 'done' : 'todo');
+        if (byStatus[s]) byStatus[s].push(t);
+        else byStatus.todo.push(t);
+      });
+
+      ['todo', 'inprogress', 'done'].forEach(status => {
+        const col = document.getElementById('col-' + status);
+        document.getElementById('count-' + status).textContent = byStatus[status].length;
+        col.innerHTML = '';
+        if (!byStatus[status].length) {
+          col.innerHTML = `<div class="empty-col">No tasks</div>`;
+          return;
         }
+        byStatus[status].forEach(t => col.appendChild(buildCard(t)));
+      });
 
-        /**
-         * Minimal YAML subset parser (just what v1 needs):
-         * id, type, status, tags
-         * tags supports: [A, B] or multiline list.
-         * @param {string[]} yamlLines
-         * @returns {Record<string,any>}
-         */
-        function parseMiniYaml(yamlLines) {
-            const meta = {};
-            try {
-                for (let i = 0; i < yamlLines.length; i++) {
-                    const line = yamlLines[i];
-                    if (!line) continue;
-                    if (/^\s*#/.test(line)) continue;
+      document.getElementById('task-count').textContent = tasks.length + ' task' + (tasks.length !== 1 ? 's' : '');
 
-                    // multiline tags:
-                    if (/^\s*tags\s*:\s*$/i.test(line)) {
-                        const tags = [];
-                        for (let j = i + 1; j < yamlLines.length; j++) {
-                            const m = (yamlLines[j] || '').match(/^\s*-\s*(.+)\s*$/);
-                            if (!m) break;
-                            const v = cleanScalar(m[1]);
-                            if (v) tags.push(v);
-                            i = j;
-                        }
-                        meta.tags = tags;
-                        continue;
-                    }
+      // Reselect card if still visible
+      if (selectedTaskId) {
+        const el = document.querySelector(`[data-task-id="${selectedTaskId}"]`);
+        if (el) el.classList.add('selected');
+        else { selectedTaskId = null; renderDetail(null); }
+      }
+    }
 
-                    const kv = (line || '').match(/^\s*([A-Za-z0-9_-]+)\s*:\s*(.*)\s*$/);
-                    if (!kv) continue;
+    function buildCard(t) {
+      const div = document.createElement('div');
+      div.className = 'task-card' + (t.done ? ' done-card' : '') + (t.id === selectedTaskId ? ' selected' : '');
+      div.dataset.taskId = t.id;
+      div.dataset.projectId = t._projectId;
+      div.setAttribute('draggable', 'true');
 
-                    const key = kv[1].toLowerCase();
-                    const rawVal = kv[2];
+      const priorityClass = t.priority ? 'badge-priority-' + t.priority : '';
+      const priorityLabel = t.priority ? t.priority.charAt(0).toUpperCase() + t.priority.slice(1) : null;
 
-                    if (key === 'id' || key === 'type' || key === 'status') {
-                        meta[key] = cleanScalar(rawVal);
-                    } else if (key === 'tags') {
-                        meta.tags = parseInlineArray(rawVal);
-                    }
-                }
-            } catch (_) {
-                return {};
-            }
-            return meta;
-        }
+      let metaHTML = '';
 
-        function cleanScalar(v) {
-            const s = String(v ?? '').trim();
-            // strip surrounding quotes if present
-            const m = s.match(/^["'](.*)["']$/);
-            return (m ? m[1] : s).trim();
-        }
+      // Project badge
+      const projColor = t._projectColor || '#888';
+      metaHTML += `<span class="badge badge-project" style="border-color:${projColor}33;color:${projColor}">${t._projectName}</span>`;
 
-        function parseInlineArray(raw) {
-            try {
-                const s = String(raw ?? '').trim();
-                const m = s.match(/^\[(.*)\]$/);
-                if (!m) return [];
-                const inner = m[1].trim();
-                if (!inner) return [];
-                return inner.split(',').map(x => cleanScalar(x)).map(x => x.trim()).filter(Boolean);
-            } catch (_) {
-                return [];
-            }
-        }
+      // Priority
+      if (priorityLabel && t.priority !== 'low') {
+        metaHTML += `<span class="badge ${priorityClass}">${priorityLabel}</span>`;
+      }
 
-        function extractTitleFromBody(body, fallback) {
-            try {
-                const lines = String(body ?? '').split(/\r?\n/);
-                for (const line of lines) {
-                    const m = line.match(/^#\s+(.+)\s*$/);
-                    if (m) return m[1].trim();
-                }
-            } catch (_) { }
-            return fallback;
-        }
+      // Milestone
+      if (t._milestone) {
+        metaHTML += `<span class="milestone-badge" style="color:${t._milestone.color}">◎ ${t._milestone.name}</span>`;
+      }
+
+      // Due date
+      if (t.due) {
+        const over = isOverdue(t.due) && !t.done;
+        metaHTML += `<span class="badge" style="${over ? 'color:#f03e6e;border-color:rgba(240,62,110,.3);background:rgba(240,62,110,.1)' : 'color:var(--muted);border-color:var(--line);background:var(--surface2)'}">${over ? '⚠ ' : ''}${formatDate(t.due)}</span>`;
+      }
+
+      // Assignee avatar
+      if (t._member) {
+        const { bg, fg } = avatarColors(t._member.color);
+        metaHTML += `<span class="assignee-dot" style="background:${bg};color:${fg}" title="${t._member.name}">${initials(t._member.name)}</span>`;
+      }
+
+      div.innerHTML = `
+        <div class="task-title">${t.title}</div>
+        <div class="task-meta">${metaHTML}</div>
+      `;
+
+      div.addEventListener('click', () => selectTask(t.id));
+      div.addEventListener('dragstart', e => {
+        dragTaskId = t.id;
+        setTimeout(() => div.classList.add('ghost'), 0);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      div.addEventListener('dragend', () => div.classList.remove('ghost'));
+
+      return div;
+    }
+
+    // ── Detail panel ───────────────────────────────────────────────────────────
+    function selectTask(taskId) {
+      selectedTaskId = taskId;
+      document.querySelectorAll('.task-card').forEach(el => {
+        el.classList.toggle('selected', el.dataset.taskId === taskId);
+      });
+      renderDetail(taskId);
+    }
+
+    function renderDetail(taskId) {
+      const panel = document.getElementById('detail-panel');
+      if (!taskId) {
+        panel.innerHTML = `<div class="detail-empty">Select a task<br>to view details</div>`;
+        return;
+      }
+
+      const data = HubData.getData();
+      const projects = data.projects || [];
+      const members = data.members || [];
+
+      let task = null, project = null;
+      for (const p of projects) {
+        const t = (p.tasks || []).find(t => t.id === taskId);
+        if (t) { task = t; project = p; break; }
+      }
+
+      if (!task) {
+        panel.innerHTML = `<div class="detail-empty">Task not found</div>`;
+        return;
+      }
+
+      const member = members.find(m => m.id === task.assigneeId);
+      const milestone = (project.milestones || []).find(ms => ms.id === task.milestoneId);
+      const statusLabel = { todo: 'Todo', inprogress: 'In Progress', done: 'Done' }[task.status] || task.status || '—';
+      const priorityLabel = task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : '—';
+
+      let memberHTML = '—';
+      if (member) {
+        const { bg, fg } = avatarColors(member.color);
+        memberHTML = `<span style="display:inline-flex;align-items:center;gap:6px">
+          <span class="assignee-dot" style="background:${bg};color:${fg};width:22px;height:22px;font-size:9px">${initials(member.name)}</span>
+          ${member.name} <span style="color:var(--muted);font-size:11px">(${member.role})</span>
+        </span>`;
+      }
+
+      panel.innerHTML = `
+        <div class="detail-title">${task.title}</div>
+
+        <div class="detail-row">
+          <div class="detail-section">
+            <div class="detail-label">Status</div>
+            <div class="detail-value">${statusLabel}</div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-label">Priority</div>
+            <div class="detail-value">${priorityLabel}</div>
+          </div>
+          ${task.due ? `<div class="detail-section">
+            <div class="detail-label">Due</div>
+            <div class="detail-value" style="${isOverdue(task.due) && !task.done ? 'color:#f03e6e' : ''}">${formatDate(task.due)}</div>
+          </div>` : ''}
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-label">Project</div>
+          <div class="detail-value" style="color:${project.color}">${project.name}</div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-label">Assignee</div>
+          <div class="detail-value">${memberHTML}</div>
+        </div>
+
+        ${milestone ? `<div class="detail-section">
+          <div class="detail-label">Milestone</div>
+          <div class="detail-value"><span style="color:${milestone.color}">◎</span> ${milestone.name} — ${formatDate(milestone.date)}</div>
+        </div>` : ''}
+
+        <a class="open-hub-btn" href="project-hub.html" target="_blank">
+          Open in Project Hub ↗
+        </a>
+      `;
+    }
+
+    // ── Drag & drop ────────────────────────────────────────────────────────────
+    document.querySelectorAll('.column').forEach(col => {
+      col.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        col.classList.add('dragover');
+      });
+      col.addEventListener('dragleave', () => col.classList.remove('dragover'));
+      col.addEventListener('drop', e => {
+        e.preventDefault();
+        col.classList.remove('dragover');
+        if (!dragTaskId) return;
+        const newStatus = col.dataset.status;
+        updateTaskStatus(dragTaskId, newStatus);
+        dragTaskId = null;
+      });
+    });
+
+    function updateTaskStatus(taskId, newStatus) {
+      const raw = HubStorage.get(PH_KEY);
+      if (!raw) return;
+      const data = { members: raw.members || [], projects: raw.projects || [] };
+      let changed = false;
+      data.projects.forEach(p => {
+        (p.tasks || []).forEach(t => {
+          if (t.id === taskId) {
+            t.status = newStatus;
+            t.done = newStatus === 'done';
+            changed = true;
+          }
+        });
+      });
+      if (changed) {
+        HubStorage.set(PH_KEY, data);
+        render();
+        if (selectedTaskId === taskId) renderDetail(taskId);
+      }
+    }
+
+    // ── Filter event listeners ─────────────────────────────────────────────────
+    document.getElementById('filter-project').addEventListener('change', function () {
+      filterProject = this.value;
+      filterMilestone = '';
+      populateMilestoneFilter();
+      render();
+    });
+
+    document.getElementById('filter-member').addEventListener('change', function () {
+      filterMember = this.value;
+      render();
+    });
+
+    document.getElementById('filter-milestone').addEventListener('change', function () {
+      filterMilestone = this.value;
+      render();
+    });
+
+    // ── Boot ───────────────────────────────────────────────────────────────────
+    HubData.init('task-explorer');
+    populateFilters();
+    render();
+    HubData.onChange(() => { populateFilters(); render(); });
+  </script>
+</body>
+</html>
