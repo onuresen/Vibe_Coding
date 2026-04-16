@@ -548,6 +548,12 @@
     <div class="logo">Alignment <span>// internal project decisions</span></div>
 
     <div class="role-pill" title="Each participant exports their own file. Host imports all files to see consensus.">
+      <span class="mono" style="font-size:11px;color:var(--muted2)">Member</span>
+      <select id="member-picker">
+        <option value="">— type name below —</option>
+      </select>
+      <span class="mono" style="font-size:11px;color:var(--muted2)">Name</span>
+      <input id="name" placeholder="Your name…" maxlength="24" style="width:130px" />
       <span class="mono" style="font-size:11px;color:var(--muted2)">Role</span>
       <select id="role">
         <option value="lead">Project Lead</option>
@@ -556,20 +562,17 @@
         <option value="site">Site / Execution</option>
         <option value="strategy">Strategy</option>
       </select>
-      <span class="mono" id="member-label" style="font-size:11px;color:var(--muted2);display:none">Member</span>
-      <select id="member-picker" style="display:none"></select>
-      <span class="mono" style="font-size:11px;color:var(--muted2)">Name</span>
-      <input id="name" placeholder="Your name…" maxlength="24" style="width:140px" />
+      <span class="mono" style="font-size:11px;color:var(--muted2)">Project</span>
+      <select id="project-picker" style="max-width:160px">
+        <option value="">— Select project —</option>
+      </select>
     </div>
 
-    <span class="mono" style="font-size:11px;color:var(--muted2)">Project
-
-      <div class="header-stats">
-        <div class="stat"><span class="dot" style="background:var(--ok)"></span><span id="s-ok">0 approve</span></div>
-        <div class="stat"><span class="dot" style="background:var(--warn)"></span><span id="s-warn">0 concern</span>
-        </div>
-        <div class="stat"><span class="dot" style="background:var(--bad)"></span><span id="s-bad">0 block</span></div>
-      </div>
+    <div class="header-stats">
+      <div class="stat"><span class="dot" style="background:var(--ok)"></span><span id="s-ok">0 approve</span></div>
+      <div class="stat"><span class="dot" style="background:var(--warn)"></span><span id="s-warn">0 concern</span></div>
+      <div class="stat"><span class="dot" style="background:var(--bad)"></span><span id="s-bad">0 block</span></div>
+    </div>
   </header>
 
   <div class="main">
@@ -1261,35 +1264,40 @@ Ground source heat | Efficient but excavation-heavy | MEP"></textarea>
 
     function _populateMemberPicker() {
       const picker = document.getElementById('member-picker');
-      const label = document.getElementById('member-label');
-      if (!picker || !label) return;
+      if (!picker) return;
 
       const members = (typeof HubData !== 'undefined') ? HubData.getMembers() : [];
-
-      if (!members.length) {
-        picker.style.display = 'none';
-        label.style.display = 'none';
-        return;
-      }
-
       const prev = picker.value;
-      picker.innerHTML = '<option value="">— type name —</option>';
-      members.forEach(m => {
+
+      picker.innerHTML = '';
+      if (!members.length) {
         const opt = document.createElement('option');
-        opt.value = m.id;
-        opt.textContent = m.name + (m.role ? ` (${m.role})` : '');
-        opt.dataset.name = m.name;
-        opt.dataset.role = m.role || '';
+        opt.value = '';
+        opt.textContent = '— no members in Project Hub —';
         picker.appendChild(opt);
-      });
-
-      // Restore previous selection if still valid
-      if (prev && picker.querySelector(`option[value="${CSS.escape(prev)}"]`)) {
-        picker.value = prev;
+        picker.disabled = true;
+      } else {
+        picker.disabled = false;
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = '— pick or type name —';
+        picker.appendChild(blank);
+        members.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = m.name + (m.role ? ` (${m.role})` : '');
+          opt.dataset.name = m.name;
+          opt.dataset.role = m.role || '';
+          picker.appendChild(opt);
+        });
+        // Restore previous selection if still valid
+        if (prev && picker.querySelector(`option[value="${CSS.escape(prev)}"]`)) {
+          picker.value = prev;
+          // Re-fill name from restored selection
+          const opt = picker.options[picker.selectedIndex];
+          if (opt && opt.dataset.name) document.getElementById('name').value = opt.dataset.name;
+        }
       }
-
-      picker.style.display = '';
-      label.style.display = '';
     }
 
     const PROJECT_KEY = "alignment_project_id_v1";
@@ -1320,7 +1328,7 @@ Ground source heat | Efficient but excavation-heavy | MEP"></textarea>
 
     document.getElementById('member-picker').addEventListener('change', function () {
       const opt = this.options[this.selectedIndex];
-      if (!opt || !opt.dataset.name) return; // "— type name —" selected
+      if (!opt || !opt.dataset.name) return; // blank option selected
       document.getElementById('name').value = opt.dataset.name;
       const guessed = _guessAlignmentRole(opt.dataset.role);
       if (guessed) document.getElementById('role').value = guessed;
@@ -1328,16 +1336,17 @@ Ground source heat | Efficient but excavation-heavy | MEP"></textarea>
 
     /* boot */
     loadPersisted();
-    HubData.init("alignment");
-    populateProjects();
     loadSizes();
     renderRight();
     showCard();
     try {
       HubData.init('alignment');
       _populateMemberPicker();
-      HubData.onChange(_populateMemberPicker);
-    } catch { }
+      populateProjects();
+      HubData.onChange(() => { _populateMemberPicker(); populateProjects(); });
+    } catch (e) {
+      console.warn('HubData unavailable:', e);
+    }
 
     // redraw map on resize if consensus tab open
     window.addEventListener('resize', () => {

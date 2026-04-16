@@ -619,6 +619,12 @@
             <option value="">— none —</option>
           </select>
         </div>
+        <div style="flex:1">
+          <div class="label" style="margin-bottom:6px">Decided by</div>
+          <select id="memberId" class="input">
+            <option value="">— unassigned —</option>
+          </select>
+        </div>
       </div>
 
       <div class="row">
@@ -706,6 +712,12 @@
             <option value="">— none —</option>
           </select>
         </div>
+        <div style="flex:1">
+          <div class="label" style="margin-bottom:6px">Decided by</div>
+          <select id="eMemberId" class="input">
+            <option value="">— unassigned —</option>
+          </select>
+        </div>
       </div>
 
       <div>
@@ -775,6 +787,7 @@
       linkTo: document.getElementById('linkTo'),
       projectId: document.getElementById('projectId'),
       taskId: document.getElementById('taskId'),
+      memberId: document.getElementById('memberId'),
 
       btnSave: document.getElementById('btnSave'),
       btnClear: document.getElementById('btnClear'),
@@ -790,6 +803,7 @@
       eLinkTo: document.getElementById('eLinkTo'),
       eProjectId: document.getElementById('eProjectId'),
       eTaskId: document.getElementById('eTaskId'),
+      eMemberId: document.getElementById('eMemberId'),
       eTitle: document.getElementById('eTitle'),
       eSummary: document.getElementById('eSummary'),
       eReason: document.getElementById('eReason'),
@@ -908,6 +922,8 @@
           : '';
         const ctxStr = [projName, taskName].filter(Boolean).join(' › ');
         const ctxBadge = ctxStr ? `<span class="tag" style="background:var(--accent1);color:#fff;opacity:.85">${esc(ctxStr)}</span>` : '';
+        const memberName = entry.memberId ? (HubData.getMember(entry.memberId)?.name || '') : '';
+        const memberBadge = memberName ? `<span class="tag" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2)">👤 ${esc(memberName)}</span>` : '';
 
         card.innerHTML = `
       <div class="card-top">
@@ -922,7 +938,7 @@
       </div>
       ${entry.summary ? `<div class="bodytext">${esc(entry.summary)}</div>` : ''}
       ${entry.reason ? `<div class="bodytext" style="color:var(--text3)"><b style="color:var(--text2)">Why:</b> ${esc(entry.reason)}</div>` : ''}
-      ${ctxBadge || tags ? `<div class="tags">${ctxBadge}${tags}</div>` : ''}
+      ${ctxBadge || tags || memberBadge ? `<div class="tags">${ctxBadge}${memberBadge}${tags}</div>` : ''}
       ${links ? `<div class="links">${links}</div>` : ''}
       <div class="actions">
         <button class="sbtn accent" data-act="edit">Edit</button>
@@ -1007,6 +1023,7 @@
         linkTo: el.linkTo.value || '',
         projectId: el.projectId.value || null,
         taskId: el.taskId.value || null,
+        memberId: el.memberId.value || null,
         title,
         summary,
         reason,
@@ -1155,6 +1172,7 @@
       el.eProjectId.value = e.projectId || '';
       _populateTaskSelect(el.eTaskId, el.eProjectId.value);
       el.eTaskId.value = e.taskId || '';
+      _populateMemberSelect(el.eMemberId, e.memberId || '');
       el.eTitle.value = e.title || '';
       el.eSummary.value = e.summary || '';
       el.eReason.value = e.reason || '';
@@ -1187,6 +1205,7 @@
       e.linkTo = el.eLinkTo.value || '';
       e.projectId = el.eProjectId.value || null;
       e.taskId = el.eTaskId.value || null;
+      e.memberId = el.eMemberId.value || null;
       e.title = title;
       e.summary = summary;
       e.reason = el.eReason.value.trim();
@@ -1288,6 +1307,18 @@
       }
     }
 
+    function _populateMemberSelect(sel, selectedId) {
+      const prev = selectedId !== undefined ? selectedId : sel.value;
+      sel.innerHTML = '<option value="">— unassigned —</option>';
+      HubData.getMembers().forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name + (m.role ? ` (${m.role})` : '');
+        sel.appendChild(opt);
+      });
+      if (prev && sel.querySelector('option[value="' + CSS.escape(prev) + '"]')) sel.value = prev;
+    }
+
     el.projectId.addEventListener('change', () => _populateTaskSelect(el.taskId, el.projectId.value));
     el.eProjectId.addEventListener('change', () => _populateTaskSelect(el.eTaskId, el.eProjectId.value));
 
@@ -1299,9 +1330,12 @@
       HubLinks.init('decision-log');
       HubData.init('decision-log');
       _populateProjectTask(el.projectId, el.taskId);
+      _populateMemberSelect(el.memberId);
       HubData.onChange(() => {
         _populateProjectTask(el.projectId, el.taskId);
         _populateProjectTask(el.eProjectId, el.eTaskId);
+        _populateMemberSelect(el.memberId);
+        _populateMemberSelect(el.eMemberId);
         render();
       });
     } catch { }

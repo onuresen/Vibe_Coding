@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Decision Workspace</title>
   <script src="hub-storage.js"></script>
+  <script src="hub-data.js"></script>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
   <link rel="stylesheet" href="theme.css">
@@ -399,6 +400,11 @@
     <div class="dw-logo-sep"></div>
     <input id="dw-title" type="text" placeholder="Name this workspace…" autocomplete="off" spellcheck="false">
     <span id="save-indicator">saved</span>
+    <div class="dw-logo-sep"></div>
+    <span style="font-size:11px;color:var(--text3);font-family:var(--font-mono);white-space:nowrap">Project</span>
+    <select id="dw-project" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);border-radius:var(--r-sm);padding:5px 8px;font-size:12px;max-width:180px;cursor:pointer">
+      <option value="">— none —</option>
+    </select>
     <div class="dw-header-actions">
       <button class="btn-ghost" onclick="exportAll()">Export All</button>
     </div>
@@ -528,6 +534,43 @@
     document.getElementById('dw-title').addEventListener('input', function () {
       HubStorage.set(TITLE_KEY, this.value);
     });
+
+    // ── Project + Member integration ──────────────────────────────────────────
+    const DW_PROJECT_KEY = 'dw-project-v1';
+
+    function populateDwProject() {
+      const sel = document.getElementById('dw-project');
+      const prev = sel.value || HubStorage.get(DW_PROJECT_KEY) || '';
+      sel.innerHTML = '<option value="">— none —</option>';
+      HubData.getProjects().forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id; o.textContent = p.name;
+        sel.appendChild(o);
+      });
+      if (prev && sel.querySelector(`option[value="${prev}"]`)) sel.value = prev;
+      renderOptions(); // rebuild owner dropdowns
+    }
+
+    function getDwMembers() {
+      const projId = document.getElementById('dw-project').value;
+      if (!projId) return HubData.getMembers();
+      const proj = HubData.getProject(projId);
+      if (!proj) return HubData.getMembers();
+      const all = HubData.getMembers();
+      const inProj = all.filter(m => (proj.members || []).includes(m.id));
+      return inProj.length ? inProj : all;
+    }
+
+    document.getElementById('dw-project').addEventListener('change', function () {
+      HubStorage.set(DW_PROJECT_KEY, this.value);
+      renderOptions();
+    });
+
+    try {
+      HubData.init('decision-workspace');
+      populateDwProject();
+      HubData.onChange(populateDwProject);
+    } catch (e) { console.warn('HubData unavailable', e); }
 
     // ── Problem Lens ──────────────────────────────────────────────────────────────
 
@@ -682,6 +725,20 @@
       } catch { optionRows = []; }
     }
 
+    function buildOwnerCell(i, currentOwner) {
+      const members = getDwMembers();
+      if (!members.length) {
+        return `<input value="${escHtml(currentOwner)}" onchange="updateOption(${i},'owner',this.value)" placeholder="Owner…">`;
+      }
+      const opts = members.map(m =>
+        `<option value="${escHtml(m.name)}" ${m.name === currentOwner ? 'selected' : ''}>${escHtml(m.name)}${m.role ? ` (${escHtml(m.role)})` : ''}</option>`
+      ).join('');
+      return `<select onchange="updateOption(${i},'owner',this.value)">
+        <option value="" ${!currentOwner ? 'selected' : ''}>— assign —</option>
+        ${opts}
+      </select>`;
+    }
+
     function renderOptions() {
       const tbody = document.getElementById('option-tbody');
       tbody.innerHTML = '';
@@ -726,7 +783,7 @@
           <option value="High"   ${row.irreversibility === 'High' ? 'selected' : ''}>High</option>
         </select>
       </td>
-      <td><input value="${escHtml(row.owner)}"     onchange="updateOption(${i},'owner',this.value)"></td>
+      <td>${buildOwnerCell(i, row.owner)}</td>
       <td><button class="btn-danger" onclick="deleteOptionRow(${i})" title="Delete">✕</button></td>
     `;
         tbody.appendChild(tr);
