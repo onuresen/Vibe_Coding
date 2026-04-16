@@ -27,11 +27,9 @@ const HubLinks = (() => {
   const TOOL_NAMES = {
     'project-hub':        'Project Hub',
     'schedule':           'Schedule',
-    'decision-log':       'Decision Log',
     'idea-swiper':        'Idea Swiper',
     'kmqt-board':         'KMQT Board',
-    'decision-workspace': 'Decision Workspace',
-    'alignment':          'Alignment'
+    'decision-hub':       'Decision Hub'
   };
 
   let _currentTool = null;
@@ -86,10 +84,10 @@ const HubLinks = (() => {
         return items;
       }
 
-      if (toolId === 'decision-log') {
-        const data = HubStorage.get('decision-log-v1');
+      if (toolId === 'decision-hub') {
+        const data = HubStorage.get('decision-hub-v1');
         if (!data) return [];
-        return (data.entries || []).map(e => ({
+        return data.map(e => ({
           id: e.id,
           label: e.title || '(untitled)',
           subtitle: e.type || 'decision'

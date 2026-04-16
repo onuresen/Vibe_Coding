@@ -20,6 +20,7 @@
   </style>
 
   <script src="hub-storage.js"></script>
+  <script src="hub-tutorial.js"></script>
   <style>
     *,
     *::before,
@@ -667,6 +668,7 @@
       <span class="session-label">Session</span>
       <input id="session-name" type="text" placeholder="Name this session…" autocomplete="off" spellcheck="false">
       <div class="session-spacer"></div>
+      <button style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:10px;font-family:var(--font-m);" onclick="startTour()" title="Interactive Tour">?</button>
       <span id="breadcrumb"></span>
     </div>
 
@@ -708,14 +710,6 @@
         desc: 'Track milestones, tasks and workstreams across a project'
       },
       {
-        id: 'task-explorer',
-        label: 'Task Explorer',
-        group: 'PLAN',
-        icon: '≋',
-        file: 'task-explorer.html',
-        desc: 'Import and explore work items across streams'
-      },
-      {
         id: 'schedule',
         label: 'Schedule',
         group: 'PLAN',
@@ -740,28 +734,12 @@
         desc: 'Known / Messy / Questions / Thinking structured board'
       },
       {
-        id: 'decision-log',
-        label: 'Decision Log',
+        id: 'decision-hub',
+        label: 'Decision Hub',
         group: 'DECIDE',
         icon: '◎',
-        file: 'decision-log.html',
-        desc: 'Persistent log of decisions, rationale and outcomes'
-      },
-      {
-        id: 'decision-workspace',
-        label: 'Decision Workspace',
-        group: 'DECIDE',
-        icon: '⊡',
-        file: 'decision-workspace.html',
-        desc: 'Problem framing, decision canvas and option mapping'
-      },
-      {
-        id: 'alignment',
-        label: 'Alignment',
-        group: 'DECIDE',
-        icon: '◉',
-        file: 'alignment.html',
-        desc: 'Three-party stakeholder consensus voting and analysis'
+        file: 'decision-hub.html',
+        desc: 'Comprehensive tool for tracking decisions, framing problems, and gaining alignment'
       }
     ];
 
@@ -1218,6 +1196,19 @@
       } catch { }
     }
 
+    function startTour() {
+      goHome();
+      setTimeout(() => {
+        HubTutorial.start([
+          { element: '.home-greeting', title: 'Welcome to Thinking Hub', text: 'This is your comprehensive workspace for ideation, planning, and decision making.' },
+          { element: '.sidebar-nav', title: 'The Tools', text: 'Use the sidebar to quickly switch between your specialized apps without opening new tabs.' },
+          { element: '.session-bar', title: 'Contextual Sessions', text: 'You can name your session here (e.g. "Q3 Planning") to keep track of what you are focused on right now.' },
+          { element: '.cloud-status-row', title: 'Cloud Sync', text: 'By default, everything saves instantly to your local browser. Click "Connect" to join a shared workspace and sync data.' },
+          { element: '#app-grid', title: 'Launch an App', text: 'Click any tool here or in the sidebar to get started. Have fun exploring!' }
+        ]);
+      }, 100);
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────────────
 
     initSession();
@@ -1227,6 +1218,12 @@
     refreshRecentStrip();
     setGreeting();
     initCloudPanel();
+    
+    // Auto-start tutorial on first run
+    if (!HubStorage.get('tutorial-seen-v1')) {
+      HubStorage.set('tutorial-seen-v1', true);
+      setTimeout(startTour, 300);
+    }
   </script>
 </body>
 
