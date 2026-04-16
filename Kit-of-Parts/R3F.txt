@@ -1,0 +1,92 @@
+# 1. Create the project
+npm create vite@latest ic-configurator -- --template react
+
+# 2. Go into the folder
+cd ic-configurator
+
+# 3. Install the 3D 'Kit-of-Parts'
+npm install three @types/three @react-three/fiber @react-three/drei
+npm install gsap # For smooth animations
+
+# 4. Start the dev server
+npm run dev
+
+
+import React, { useState, useRef } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { OrbitControls, Edges, ContactShadows, PerspectiveCamera, Environment } from '@react-three/drei'
+import { gsap } from 'gsap'
+
+function Part({ name, position, explodedPos, color, isExploded, metadata }) {
+  const meshRef = useRef()
+
+  // Animate position based on 'isExploded' state
+  React.useEffect(() => {
+    const target = isExploded ? explodedPos : position
+    gsap.to(meshRef.current.position, {
+      x: target[0], y: target[1], z: target[2],
+      duration: 1.2, ease: "power4.out"
+    })
+  }, [isExploded])
+
+  return (
+    <mesh 
+      ref={meshRef} 
+      position={position}
+      onClick={(e) => {
+        e.stopPropagation()
+        alert(`Component: ${name}\nLogic: ${metadata}`)
+      }}
+    >
+      <boxGeometry args={[2, 1, 2]} />
+      <meshStandardMaterial color={color} transparent opacity={name.includes('Layer') ? 0.5 : 1} />
+      
+      {/* This gives you the clean "Rectangles" style outlines */}
+      <Edges scale={1} threshold={15} color="black" />
+    </mesh>
+  )
+}
+
+export default function App() {
+  const [exploded, setExploded] = useState(false)
+
+  return (
+    <div style={{ width: '100vw', height: '100vh', background: '#f0f0f0' }}>
+      <button 
+        onClick={() => setExploded(!exploded)}
+        style={{ position: 'absolute', top: 20, left: 20, zIndex: 1, padding: '10px 20px', cursor: 'pointer' }}
+      >
+        {exploded ? "ASSEMBLE" : "EXPLODE VIEW"}
+      </button>
+
+      <Canvas shadows>
+        <PerspectiveCamera makeDefault position={[5, 5, 5]} />
+        <OrbitControls makeDefault />
+        <Environment preset="city" />
+
+        <group>
+          <Part 
+            name="Decision Layer" 
+            position={[0, 2, 0]} explodedPos={[0, 4, 0]} 
+            color="#3498db" isExploded={exploded} 
+            metadata="Smart BIM Ruleset applied"
+          />
+          <Part 
+            name="Structure" 
+            position={[0, 1, 0]} explodedPos={[0, 1, 0]} 
+            color="#ffffff" isExploded={exploded} 
+            metadata="Standard Steel Frame"
+          />
+          <Part 
+            name="Foundation" 
+            position={[0, 0, 0]} explodedPos={[0, -1, 0]} 
+            color="#95a5a6" isExploded={exploded} 
+            metadata="Concrete Slab"
+          />
+        </group>
+
+        <ContactShadows position={[0, -1.5, 0]} opacity={0.4} scale={10} blur={2} />
+      </Canvas>
+    </div>
+  )
+}
