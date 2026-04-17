@@ -20,6 +20,13 @@ function EyeClosed() {
   )
 }
 
+function formatTime(ms) {
+  const total = Math.floor(ms / 1000)
+  const m = String(Math.floor(total / 60)).padStart(2, '0')
+  const s = String(total % 60).padStart(2, '0')
+  return `${m}:${s}`
+}
+
 export default function Sidebar({
   exploded, onToggleExplode,
   visible, onToggle,
@@ -28,12 +35,69 @@ export default function Sidebar({
   sequenceMode, onToggleSequence, sequenceStep, maxStep, onStepForward, onStepBack,
   showBOM, onToggleBOM,
   showEstimator, onToggleEstimator,
+  showCarbon, onToggleCarbon,
   showDimensions, onToggleDimensions,
   sectionCutActive, onToggleSectionCut, sectionCutY, onSectionCutY,
+  siteMode, onToggleSiteMode, placedUnits, selectedUnitType, onSelectUnitType,
+  gameMode, gamePhase, gameStep, gameMistakes, gameElapsed, onStartGame, onExitGame,
 }) {
   const currentSequencePart = sequenceMode && sequenceStep > 0
     ? PARTS.find((p) => p.sequence === sequenceStep)
     : null
+
+  // ── Game HUD mode ────────────────────────────────────────
+  if (gameMode) {
+    const placedCount = gameStep - 1
+    const nextPart = PARTS.find(p => p.sequence === gameStep)
+
+    return (
+      <aside className="sidebar">
+        <div className="sidebar-brand">Assembly Challenge</div>
+
+        <div className="game-hud">
+          <div className="game-hud-phase">
+            {gamePhase === 'complete' ? 'Complete!' : 'Build in order →'}
+          </div>
+
+          {/* Progress dots */}
+          <div className="game-progress-dots">
+            {PARTS.map((p) => (
+              <div
+                key={p.id}
+                className={`game-dot ${p.sequence < gameStep ? 'game-dot--done' : p.sequence === gameStep ? 'game-dot--current' : ''}`}
+                title={p.id}
+              />
+            ))}
+          </div>
+
+          <div className="game-hud-stats">
+            <div className="game-hud-stat">
+              <span className="game-hud-val">{formatTime(gameElapsed)}</span>
+              <span className="game-hud-label">TIME</span>
+            </div>
+            <div className="game-hud-divider" />
+            <div className="game-hud-stat">
+              <span className="game-hud-val">{gameMistakes}</span>
+              <span className="game-hud-label">MISTAKES</span>
+            </div>
+            <div className="game-hud-divider" />
+            <div className="game-hud-stat">
+              <span className="game-hud-val">{placedCount}/{maxStep}</span>
+              <span className="game-hud-label">PLACED</span>
+            </div>
+          </div>
+
+          {nextPart && gamePhase === 'playing' && (
+            <div className="game-hud-hint">
+              Click part #{gameStep} in the scene
+            </div>
+          )}
+
+          <button className="game-exit-btn" onClick={onExitGame}>EXIT GAME</button>
+        </div>
+      </aside>
+    )
+  }
 
   return (
     <aside className="sidebar">
@@ -43,19 +107,30 @@ export default function Sidebar({
       <div className="sidebar-section-label">View</div>
       <div className="btn-row">
         <button
-          className={`view-btn ${!sequenceMode && exploded ? 'view-btn--active' : ''}`}
+          className={`view-btn ${!sequenceMode && !siteMode && exploded ? 'view-btn--active' : ''}`}
           onClick={onToggleExplode}
-          disabled={sequenceMode}
+          disabled={sequenceMode || siteMode}
           title="Explode / Assemble view"
         >
-          {exploded && !sequenceMode ? 'ASSEMBLE' : 'EXPLODE'}
+          {exploded && !sequenceMode && !siteMode ? 'ASSEMBLE' : 'EXPLODE'}
         </button>
         <button
           className={`view-btn ${sequenceMode ? 'view-btn--active' : ''}`}
           onClick={onToggleSequence}
+          disabled={siteMode}
           title="Step through assembly sequence"
         >
           SEQUENCE
+        </button>
+      </div>
+      <div className="btn-row" style={{ marginTop: 6 }}>
+        <button
+          className={`view-btn ${siteMode ? 'view-btn--active view-btn--site' : ''}`}
+          onClick={onToggleSiteMode}
+          disabled={sequenceMode}
+          title="Site plan layout — place multiple units"
+        >
+          {siteMode ? 'EXIT SITE' : 'SITE PLAN'}
         </button>
       </div>
 
@@ -70,12 +145,30 @@ export default function Sidebar({
               : `Complete (${maxStep}/${maxStep})`}
           </div>
           <div className="btn-row">
-            <button className="seq-btn" onClick={onStepBack} disabled={sequenceStep === 0}>
-              ← PREV
-            </button>
-            <button className="seq-btn" onClick={onStepForward} disabled={sequenceStep === maxStep}>
-              NEXT →
-            </button>
+            <button className="seq-btn" onClick={onStepBack} disabled={sequenceStep === 0}>← PREV</button>
+            <button className="seq-btn" onClick={onStepForward} disabled={sequenceStep === maxStep}>NEXT →</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Site unit picker ── */}
+      {siteMode && (
+        <div className="site-controls">
+          <div className="sidebar-section-label" style={{ marginTop: 8 }}>Unit Type</div>
+          <div className="preset-row">
+            {PRESETS.map(preset => (
+              <button
+                key={preset.id}
+                className={`preset-btn ${selectedUnitType === preset.id ? 'preset-btn--active' : ''}`}
+                onClick={() => onSelectUnitType(preset.id)}
+                title={preset.description}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <div className="site-unit-count">
+            {placedUnits.length} unit{placedUnits.length !== 1 ? 's' : ''} placed &nbsp;·&nbsp; 25 cells
           </div>
         </div>
       )}
@@ -83,94 +176,126 @@ export default function Sidebar({
       <div className="sidebar-divider" />
 
       {/* ── Presets ── */}
-      <div className="sidebar-section-label">Presets</div>
-      <div className="preset-row">
-        {PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            className={`preset-btn ${activePreset === preset.id ? 'preset-btn--active' : ''}`}
-            onClick={() => onApplyPreset(preset)}
-            title={preset.description}
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="sidebar-divider" />
+      {!siteMode && (
+        <>
+          <div className="sidebar-section-label">Presets</div>
+          <div className="preset-row">
+            {PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                className={`preset-btn ${activePreset === preset.id ? 'preset-btn--active' : ''}`}
+                onClick={() => onApplyPreset(preset)}
+                title={preset.description}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <div className="sidebar-divider" />
+        </>
+      )}
 
       {/* ── Components ── */}
-      <div className="sidebar-section-label">Components</div>
-      <ul className="parts-list">
-        {PARTS.map((part) => {
-          const variantIdx = selectedVariants[part.id] ?? 0
-          const activeColor = part.variants[variantIdx].color
-          const isActive = selected?.id === part.id
-          const isHidden = !visible[part.id]
-          return (
-            <li
-              key={part.id}
-              className={[
-                'part-item',
-                isActive ? 'part-item--active' : '',
-                isHidden ? 'part-item--hidden' : '',
-              ].join(' ')}
-            >
-              <div className="part-swatch" style={{ background: activeColor }} />
-              <span className="part-name">{part.id}</span>
-              <button
-                className="part-toggle"
-                onClick={() => onToggle(part.id)}
-                title={isHidden ? 'Show' : 'Hide'}
-              >
-                {isHidden ? <EyeClosed /> : <EyeOpen />}
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-
-      <div className="sidebar-divider" />
+      {!siteMode && (
+        <>
+          <div className="sidebar-section-label">Components</div>
+          <ul className="parts-list">
+            {PARTS.map((part) => {
+              const variantIdx = selectedVariants[part.id] ?? 0
+              const activeColor = part.variants[variantIdx].color
+              const isActive = selected?.id === part.id
+              const isHidden = !visible[part.id]
+              return (
+                <li
+                  key={part.id}
+                  className={[
+                    'part-item',
+                    isActive ? 'part-item--active' : '',
+                    isHidden ? 'part-item--hidden' : '',
+                  ].join(' ')}
+                >
+                  <div className="part-swatch" style={{ background: activeColor }} />
+                  <span className="part-name">{part.id}</span>
+                  <button
+                    className="part-toggle"
+                    onClick={() => onToggle(part.id)}
+                    title={isHidden ? 'Show' : 'Hide'}
+                  >
+                    {isHidden ? <EyeClosed /> : <EyeOpen />}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="sidebar-divider" />
+        </>
+      )}
 
       {/* ── Tools ── */}
-      <div className="sidebar-section-label">Tools</div>
-      <div className="tools-grid">
-        <button
-          className={`tool-btn ${showBOM ? 'tool-btn--active' : ''}`}
-          onClick={onToggleBOM}
-          title="Bill of Materials"
-        >
-          BOM
-        </button>
-        <button
-          className={`tool-btn ${showEstimator ? 'tool-btn--active' : ''}`}
-          onClick={onToggleEstimator}
-          title="Weight & Cost Estimator"
-        >
-          COST
-        </button>
-        <button
-          className={`tool-btn ${showDimensions ? 'tool-btn--active' : ''}`}
-          onClick={onToggleDimensions}
-          title="Dimension Overlay"
-        >
-          DIMS
-        </button>
-        <button
-          className={`tool-btn ${sectionCutActive ? 'tool-btn--active' : ''}`}
-          onClick={onToggleSectionCut}
-          title="Section Cut"
-        >
-          CUT
-        </button>
-      </div>
+      {!siteMode && (
+        <>
+          <div className="sidebar-section-label">Tools</div>
+          <div className="tools-grid">
+            <button
+              className={`tool-btn ${showBOM ? 'tool-btn--active' : ''}`}
+              onClick={onToggleBOM}
+              title="Bill of Materials"
+            >
+              BOM
+            </button>
+            <button
+              className={`tool-btn ${showEstimator ? 'tool-btn--active' : ''}`}
+              onClick={onToggleEstimator}
+              title="Weight & Cost Estimator"
+            >
+              COST
+            </button>
+            <button
+              className={`tool-btn ${showDimensions ? 'tool-btn--active' : ''}`}
+              onClick={onToggleDimensions}
+              title="Dimension Overlay"
+            >
+              DIMS
+            </button>
+            <button
+              className={`tool-btn ${sectionCutActive ? 'tool-btn--active' : ''}`}
+              onClick={onToggleSectionCut}
+              title="Section Cut"
+            >
+              CUT
+            </button>
+          </div>
+
+          {/* CARBON button — full width below the 2×2 grid */}
+          <div style={{ marginTop: 5 }}>
+            <button
+              className={`tool-btn tool-btn--carbon ${showCarbon ? 'tool-btn--active' : ''}`}
+              style={{ width: '100%' }}
+              onClick={onToggleCarbon}
+              title="Embodied Carbon — RIBA 2030 budget tracker"
+            >
+              CO₂ CARBON
+            </button>
+          </div>
+
+          {/* GAME button — full width below the 2×2 grid */}
+          <div style={{ marginTop: 5 }}>
+            <button
+              className="tool-btn tool-btn--game"
+              style={{ width: '100%' }}
+              onClick={onStartGame}
+              title="Assembly Challenge — click parts in build order!"
+            >
+              ▶ ASSEMBLY GAME
+            </button>
+          </div>
+        </>
+      )}
 
       {/* ── Section Cut Slider ── */}
-      {sectionCutActive && (
+      {sectionCutActive && !siteMode && (
         <div className="section-slider-wrap">
-          <div className="section-slider-label">
-            Cut height: {sectionCutY.toFixed(1)} m
-          </div>
+          <div className="section-slider-label">Cut height: {sectionCutY.toFixed(1)} m</div>
           <input
             type="range"
             className="section-slider"
@@ -187,7 +312,9 @@ export default function Sidebar({
         </div>
       )}
 
-      <div className="sidebar-hint">Click a part to inspect</div>
+      <div className="sidebar-hint">
+        {siteMode ? 'Click a cell to place · Click unit to remove' : 'Click a part to inspect'}
+      </div>
     </aside>
   )
 }

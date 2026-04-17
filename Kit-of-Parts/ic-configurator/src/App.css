@@ -687,3 +687,367 @@
   backdrop-filter: blur(4px);
   user-select: none;
 }
+
+.part-label--correct {
+  border-left-color: #2ecc71;
+  background: rgba(39, 174, 96, 0.85);
+}
+
+.part-label--wrong {
+  border-left-color: #e74c3c;
+  background: rgba(192, 57, 43, 0.85);
+}
+
+/* ─── Site mode controls ──────────────────────────────── */
+.site-controls {
+  margin-top: 4px;
+}
+
+.site-unit-count {
+  margin-top: 7px;
+  font-size: 11px;
+  color: #888;
+  font-weight: 500;
+  text-align: center;
+}
+
+.view-btn--site {
+  background: #27ae60 !important;
+  border-color: #27ae60 !important;
+  color: #fff !important;
+}
+
+/* ─── Game tool button ────────────────────────────────── */
+.tool-btn--game {
+  background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+  color: #fff !important;
+  border-color: transparent !important;
+  letter-spacing: 0.07em;
+}
+
+.tool-btn--game:hover {
+  background: linear-gradient(135deg, #34495e 0%, #2980b9 100%) !important;
+}
+
+/* ─── Game HUD (in sidebar) ───────────────────────────── */
+.game-hud {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.game-hud-phase {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2c3e50;
+  letter-spacing: 0.04em;
+}
+
+.game-progress-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.game-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  border: 2px solid #ccc;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.game-dot--done {
+  background: #2ecc71;
+  border-color: #27ae60;
+}
+
+.game-dot--current {
+  background: #3498db;
+  border-color: #2980b9;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
+}
+
+.game-hud-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #f7f9fb;
+  border-radius: 6px;
+  padding: 8px 4px;
+}
+
+.game-hud-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.game-hud-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2c3e50;
+  font-family: 'Segoe UI', monospace, sans-serif;
+  line-height: 1;
+}
+
+.game-hud-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #bbb;
+}
+
+.game-hud-divider {
+  width: 1px;
+  height: 28px;
+  background: #e0e0e0;
+  margin: 0 2px;
+}
+
+.game-hud-hint {
+  font-size: 11px;
+  color: #555;
+  background: rgba(52, 152, 219, 0.08);
+  border-left: 3px solid #3498db;
+  padding: 6px 8px;
+  border-radius: 0 4px 4px 0;
+  line-height: 1.4;
+}
+
+.game-exit-btn {
+  padding: 8px;
+  background: #ecf0f1;
+  color: #555;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 700;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  transition: background 0.15s;
+}
+
+.game-exit-btn:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+
+/* ─── Game score overlay ──────────────────────────────── */
+.game-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.game-score-panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 36px 40px;
+  width: 320px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.game-score-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #2c3e50;
+}
+
+.game-score-stars {
+  display: flex;
+  gap: 6px;
+}
+
+.star {
+  font-size: 32px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.star--filled {
+  color: #f39c12;
+  text-shadow: 0 0 12px rgba(243, 156, 18, 0.5);
+}
+
+.star--empty {
+  color: #e0e0e0;
+}
+
+.game-score-rating {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  letter-spacing: 0.04em;
+}
+
+.game-score-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #f7f9fb;
+  border-radius: 8px;
+  padding: 12px 8px;
+  width: 100%;
+}
+
+.game-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.game-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #2c3e50;
+  line-height: 1;
+}
+
+.game-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #bbb;
+}
+
+.game-stat-divider {
+  width: 1px;
+  height: 36px;
+  background: #e0e0e0;
+  margin: 0 4px;
+}
+
+.game-score-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.game-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 700;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  transition: background 0.15s;
+}
+
+.game-btn--primary {
+  background: #2c3e50;
+  color: #fff;
+}
+
+.game-btn--primary:hover {
+  background: #34495e;
+}
+
+.game-btn--secondary {
+  background: #ecf0f1;
+  color: #555;
+}
+
+.game-btn--secondary:hover {
+  background: #dfe6e9;
+}
+
+/* ─── Carbon Panel ────────────────────────────────────── */
+.carbon-panel {
+  right: 300px;
+}
+
+.carbon-budget-wrap {
+  padding: 0 14px 10px;
+  border-top: 1px solid #ebebeb;
+}
+
+.carbon-budget-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #bbb;
+  margin-bottom: 6px;
+  padding-top: 10px;
+}
+
+.carbon-budget-track {
+  position: relative;
+  height: 10px;
+  background: #f0f0f0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.carbon-budget-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(to right, #27ae60 0%, #f39c12 65%, #e74c3c 100%);
+  transition: width 0.4s ease;
+}
+
+.carbon-budget-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 2px;
+  background: rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.carbon-footer-note {
+  padding: 6px 14px 10px;
+  font-size: 9px;
+  color: #ccc;
+  font-style: italic;
+  border-top: 1px solid #f5f5f5;
+  text-align: right;
+}
+
+.tool-btn--carbon {
+  border-color: rgba(39, 174, 96, 0.4) !important;
+  color: #27ae60;
+}
+
+.tool-btn--carbon:hover {
+  background: rgba(39, 174, 96, 0.08) !important;
+}
+
+.tool-btn--carbon.tool-btn--active {
+  background: #27ae60 !important;
+  border-color: #27ae60 !important;
+  color: #fff !important;
+}

@@ -13,6 +13,7 @@ export const PARTS = [
         meta: 'Pre-cast Concrete Slab (Type A)',
         weight_kg: 4200,
         unit_cost_usd: 8500,
+        carbon_kgco2e: 525,
       },
       {
         label: 'Type B – Post-tensioned Slab',
@@ -20,6 +21,7 @@ export const PARTS = [
         meta: 'Post-tensioned Concrete Slab – High Load',
         weight_kg: 5100,
         unit_cost_usd: 11200,
+        carbon_kgco2e: 740,
       },
       {
         label: 'Type C – Hollow-core Plank',
@@ -27,6 +29,7 @@ export const PARTS = [
         meta: 'Hollow-core Pre-stressed Plank – Lightweight',
         weight_kg: 2800,
         unit_cost_usd: 6400,
+        carbon_kgco2e: 294,
       },
     ],
   },
@@ -44,6 +47,7 @@ export const PARTS = [
         meta: 'Steel Frame – Smart BIM Standard',
         weight_kg: 3600,
         unit_cost_usd: 22000,
+        carbon_kgco2e: 9036,
       },
       {
         label: 'Heavy Steel Frame',
@@ -51,6 +55,7 @@ export const PARTS = [
         meta: 'Heavy Structural Steel – Column & Beam',
         weight_kg: 5200,
         unit_cost_usd: 31000,
+        carbon_kgco2e: 14092,
       },
       {
         label: 'Timber Frame (CLT)',
@@ -58,6 +63,7 @@ export const PARTS = [
         meta: 'Cross-laminated Timber Frame – Low Carbon',
         weight_kg: 1800,
         unit_cost_usd: 18500,
+        carbon_kgco2e: 558,
       },
     ],
   },
@@ -74,6 +80,7 @@ export const PARTS = [
         meta: 'Off-site Fabricated Unit 01 – Standard',
         weight_kg: 2100,
         unit_cost_usd: 14000,
+        carbon_kgco2e: 1785,
       },
       {
         label: 'Pod Type 02 – Accessible',
@@ -81,6 +88,7 @@ export const PARTS = [
         meta: 'Off-site Fabricated Unit 02 – ADA Accessible',
         weight_kg: 2400,
         unit_cost_usd: 17500,
+        carbon_kgco2e: 2040,
       },
       {
         label: 'Pod Type 03 – Compact',
@@ -88,6 +96,7 @@ export const PARTS = [
         meta: 'Off-site Fabricated Unit 03 – Compact Module',
         weight_kg: 1600,
         unit_cost_usd: 10800,
+        carbon_kgco2e: 1360,
       },
     ],
   },
@@ -104,6 +113,7 @@ export const PARTS = [
         meta: 'Insulated Glass Panel – High Performance',
         weight_kg: 420,
         unit_cost_usd: 9200,
+        carbon_kgco2e: 647,
       },
       {
         label: 'Aluminum Composite Panel',
@@ -111,6 +121,7 @@ export const PARTS = [
         meta: 'Aluminum Composite Rainscreen Panel',
         weight_kg: 310,
         unit_cost_usd: 6800,
+        carbon_kgco2e: 2554,
       },
       {
         label: 'Brick Slip Façade',
@@ -118,6 +129,7 @@ export const PARTS = [
         meta: 'Pre-fabricated Brick Slip Cladding System',
         weight_kg: 680,
         unit_cost_usd: 11400,
+        carbon_kgco2e: 163,
       },
     ],
   },
@@ -135,6 +147,7 @@ export const PARTS = [
         meta: 'Data & Utilities Distribution Layer',
         weight_kg: 180,
         unit_cost_usd: 4500,
+        carbon_kgco2e: 27,
       },
       {
         label: 'MEP Coordinated Slab',
@@ -142,6 +155,7 @@ export const PARTS = [
         meta: 'MEP Pre-coordinated Flat Slab Layer',
         weight_kg: 220,
         unit_cost_usd: 6200,
+        carbon_kgco2e: 33,
       },
       {
         label: 'Smart Services Layer',
@@ -149,6 +163,7 @@ export const PARTS = [
         meta: 'Smart Building Services Integration Layer',
         weight_kg: 160,
         unit_cost_usd: 8900,
+        carbon_kgco2e: 24,
       },
     ],
   },

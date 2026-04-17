@@ -45,6 +45,10 @@ export default function InfoPanel({ selected, selectedVariants, onVariantChange 
           <span className="info-stat-label">Unit Cost</span>
           <span className="info-stat-value">${activeVariant.unit_cost_usd.toLocaleString()}</span>
         </div>
+        <div className="info-stat">
+          <span className="info-stat-label">CO₂e</span>
+          <span className="info-stat-value">{activeVariant.carbon_kgco2e.toLocaleString()} kg</span>
+        </div>
       </div>
     </div>
   )
