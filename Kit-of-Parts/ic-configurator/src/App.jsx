@@ -6,21 +6,27 @@ import BOMPanel from './components/BOMPanel'
 import EstimatorPanel from './components/EstimatorPanel'
 import GameScorePanel from './components/GameScorePanel'
 import CarbonPanel from './components/CarbonPanel'
-import { PARTS } from './components/partsData'
-import { PRESETS } from './components/presets'
+import EnvPanel from './components/EnvPanel'
+import { useKit } from './components/KitContext'
 import './App.css'
 
-const DEFAULT_VARIANTS = Object.fromEntries(PARTS.map((p) => [p.id, 0]))
-const DEFAULT_VISIBLE = Object.fromEntries(PARTS.map((p) => [p.id, true]))
-
 export default function App() {
+  const { parts, presets, isLoading } = useKit()
   // ── Existing state ──────────────────────────────────────
   const [exploded, setExploded] = useState(false)
   const [selected, setSelected] = useState(null)
-  const [visible, setVisible] = useState(DEFAULT_VISIBLE)
-
-  const [selectedVariants, setSelectedVariants] = useState(DEFAULT_VARIANTS)
+  const [visible, setVisible] = useState({})
+  const [selectedVariants, setSelectedVariants] = useState({})
   const [activePreset, setActivePreset] = useState(null)
+
+  useEffect(() => {
+    if (parts && parts.length > 0) {
+      setVisible(Object.fromEntries(parts.map((p) => [p.id, true])))
+      setSelectedVariants(Object.fromEntries(parts.map((p) => [p.id, 0])))
+      setSelected(null)
+      setActivePreset(null)
+    }
+  }, [parts])
 
   const [sequenceMode, setSequenceMode] = useState(false)
   const [sequenceStep, setSequenceStep] = useState(0)
@@ -33,10 +39,28 @@ export default function App() {
   const [sectionCutActive, setSectionCutActive] = useState(false)
   const [sectionCutY, setSectionCutY] = useState(3.5)
 
+  // ── Environment Settings ─────────────────────────────────
+  const [showEnv, setShowEnv] = useState(false)
+  const [envSettings, setEnvSettings] = useState({
+    grass: true,
+    time: 12,
+    clouds: false,
+    stars: false
+  })
+
   // ── Site mode ───────────────────────────────────────────
   const [siteMode, setSiteMode] = useState(false)
   const [placedUnits, setPlacedUnits] = useState([])
-  const [selectedUnitType, setSelectedUnitType] = useState(PRESETS[0].id)
+  const [selectedUnitType, setSelectedUnitType] = useState(null)
+
+  // ── Builder mode ─────────────────────────────────────────
+  const [builderMode, setBuilderMode] = useState(false)
+
+  useEffect(() => {
+    if (presets && presets.length > 0 && !selectedUnitType) {
+      setSelectedUnitType(presets[0].id)
+    }
+  }, [presets, selectedUnitType])
 
   // ── Game mode ───────────────────────────────────────────
   const [gameMode, setGameMode] = useState(false)
@@ -68,8 +92,10 @@ export default function App() {
   }
 
   function applyPreset(preset) {
-    setSelectedVariants({ ...DEFAULT_VARIANTS, ...preset.variants })
-    setVisible({ ...DEFAULT_VISIBLE, ...preset.visible })
+    const defaultVariants = Object.fromEntries(parts.map((p) => [p.id, 0]))
+    const defaultVisible = Object.fromEntries(parts.map((p) => [p.id, true]))
+    setSelectedVariants({ ...defaultVariants, ...preset.variants })
+    setVisible({ ...defaultVisible, ...preset.visible })
     setActivePreset(preset.id)
     setSelected(null)
   }
@@ -86,7 +112,7 @@ export default function App() {
     }
   }
 
-  const maxStep = PARTS.length
+  const maxStep = parts ? parts.length : 0
 
   function stepForward() { setSequenceStep((s) => Math.min(s + 1, maxStep)) }
   function stepBack() { setSequenceStep((s) => Math.max(s - 1, 0)) }
@@ -101,6 +127,20 @@ export default function App() {
       setGamePhase('idle')
     }
     setSiteMode(v => !v)
+  }
+
+  // ── Builder mode handlers ────────────────────────────────
+  function toggleBuilderMode() {
+    if (!builderMode) {
+      setExploded(false)
+      setSequenceMode(false)
+      setSequenceStep(0)
+      setGameMode(false)
+      setGamePhase('idle')
+      setSiteMode(false)
+    }
+    setBuilderMode(v => !v)
+    setSelected(null)
   }
 
   function placeUnit(col, row, presetId) {
@@ -142,7 +182,7 @@ export default function App() {
       return
     }
     const nextStep = gameStep + 1
-    if (nextStep > PARTS.length) {
+    if (nextStep > parts.length) {
       // Capture exact final time before interval stops
       setGameElapsed(Date.now() - gameStartTimeRef.current)
       setGamePhase('complete')
@@ -150,6 +190,10 @@ export default function App() {
     } else {
       setGameStep(nextStep)
     }
+  }
+
+  if (isLoading || !parts || parts.length === 0) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white', background: '#2c3e50' }}>Loading Kit...</div>
   }
 
   return (
@@ -193,9 +237,15 @@ export default function App() {
         gameElapsed={gameElapsed}
         onStartGame={startGame}
         onExitGame={exitGame}
+        builderMode={builderMode}
+        onToggleBuilderMode={toggleBuilderMode}
+        showEnv={showEnv}
+        onToggleEnv={() => setShowEnv(v => !v)}
       />
 
       <Scene
+        builderMode={builderMode}
+        selectedPartId={selected?.id}
         isExploded={sequenceMode ? false : exploded}
         visible={visible}
         onSelect={setSelected}
@@ -214,9 +264,10 @@ export default function App() {
         gameMode={gameMode}
         gameStep={gameStep}
         onGameClick={handleGameClick}
+        envSettings={envSettings}
       />
 
-      {!siteMode && !gameMode && (
+      {!siteMode && !gameMode && !builderMode && (
         <InfoPanel
           selected={selected}
           selectedVariants={selectedVariants}
@@ -245,6 +296,14 @@ export default function App() {
           selectedVariants={selectedVariants}
           visible={visible}
           onClose={() => setShowCarbon(false)}
+        />
+      )}
+
+      {showEnv && (
+        <EnvPanel
+          envSettings={envSettings}
+          setEnvSettings={setEnvSettings}
+          onClose={() => setShowEnv(false)}
         />
       )}
 

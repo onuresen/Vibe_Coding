@@ -1,15 +1,17 @@
-import { PARTS } from './partsData'
+import { useKit } from './KitContext'
 
 // Foundation footprint for cost/m² calculation (4m × 4m = 16 m²)
 const FOOTPRINT_M2 = 16
 
 export default function EstimatorPanel({ selectedVariants, visible, onClose }) {
+  const { parts } = useKit()
+
   function getVariant(part) {
     const idx = selectedVariants[part.id] ?? 0
     return part.variants[idx]
   }
 
-  const activeParts = PARTS.filter((p) => visible[p.id])
+  const activeParts = parts.filter((p) => visible[p.id])
   const totalWeight = activeParts.reduce((sum, p) => sum + getVariant(p).weight_kg, 0)
   const totalCost = activeParts.reduce((sum, p) => sum + getVariant(p).unit_cost_usd, 0)
   const costPerM2 = Math.round(totalCost / FOOTPRINT_M2)

@@ -1,6 +1,5 @@
-import { PARTS } from './partsData'
-import { PRESETS } from './presets'
-
+import { useKit } from './KitContext'
+import BuilderPanel from './BuilderPanel'
 function EyeOpen() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
@@ -40,15 +39,19 @@ export default function Sidebar({
   sectionCutActive, onToggleSectionCut, sectionCutY, onSectionCutY,
   siteMode, onToggleSiteMode, placedUnits, selectedUnitType, onSelectUnitType,
   gameMode, gamePhase, gameStep, gameMistakes, gameElapsed, onStartGame, onExitGame,
+  builderMode, onToggleBuilderMode,
+  showEnv, onToggleEnv,
 }) {
+  const { parts, presets, loadKitFromFile } = useKit()
+
   const currentSequencePart = sequenceMode && sequenceStep > 0
-    ? PARTS.find((p) => p.sequence === sequenceStep)
+    ? parts.find((p) => p.sequence === sequenceStep)
     : null
 
   // ── Game HUD mode ────────────────────────────────────────
   if (gameMode) {
     const placedCount = gameStep - 1
-    const nextPart = PARTS.find(p => p.sequence === gameStep)
+    const nextPart = parts.find(p => p.sequence === gameStep)
 
     return (
       <aside className="sidebar">
@@ -61,7 +64,7 @@ export default function Sidebar({
 
           {/* Progress dots */}
           <div className="game-progress-dots">
-            {PARTS.map((p) => (
+            {parts.map((p) => (
               <div
                 key={p.id}
                 className={`game-dot ${p.sequence < gameStep ? 'game-dot--done' : p.sequence === gameStep ? 'game-dot--current' : ''}`}
@@ -127,10 +130,18 @@ export default function Sidebar({
         <button
           className={`view-btn ${siteMode ? 'view-btn--active view-btn--site' : ''}`}
           onClick={onToggleSiteMode}
-          disabled={sequenceMode}
+          disabled={sequenceMode || builderMode}
           title="Site plan layout — place multiple units"
         >
           {siteMode ? 'EXIT SITE' : 'SITE PLAN'}
+        </button>
+        <button
+          className={`view-btn ${builderMode ? 'view-btn--active' : ''}`}
+          onClick={onToggleBuilderMode}
+          disabled={sequenceMode || siteMode}
+          title="Author Kit — construct assemblies visually"
+        >
+          {builderMode ? 'EXIT BUILDER' : 'BUILDER MODE'}
         </button>
       </div>
 
@@ -156,7 +167,7 @@ export default function Sidebar({
         <div className="site-controls">
           <div className="sidebar-section-label" style={{ marginTop: 8 }}>Unit Type</div>
           <div className="preset-row">
-            {PRESETS.map(preset => (
+            {presets.map(preset => (
               <button
                 key={preset.id}
                 className={`preset-btn ${selectedUnitType === preset.id ? 'preset-btn--active' : ''}`}
@@ -180,7 +191,7 @@ export default function Sidebar({
         <>
           <div className="sidebar-section-label">Presets</div>
           <div className="preset-row">
-            {PRESETS.map((preset) => (
+            {presets.map((preset) => (
               <button
                 key={preset.id}
                 className={`preset-btn ${activePreset === preset.id ? 'preset-btn--active' : ''}`}
@@ -200,7 +211,7 @@ export default function Sidebar({
         <>
           <div className="sidebar-section-label">Components</div>
           <ul className="parts-list">
-            {PARTS.map((part) => {
+            {parts.map((part) => {
               const variantIdx = selectedVariants[part.id] ?? 0
               const activeColor = part.variants[variantIdx].color
               const isActive = selected?.id === part.id
@@ -227,6 +238,22 @@ export default function Sidebar({
               )
             })}
           </ul>
+          <div className="sidebar-divider" />
+        </>
+      )}
+
+      {/* ── Kit Definition ── */}
+      {!siteMode && (
+        <>
+          <div className="sidebar-section-label">Configurator</div>
+          <div style={{ padding: '0 12px 12px' }}>
+            <button className="tool-btn" style={{ width: '100%', position: 'relative' }}>
+              LOAD KIT JSON
+              <input type="file" accept=".json" onChange={(e) => {
+                if (e.target.files.length > 0) loadKitFromFile(e.target.files[0])
+              }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0, cursor: 'pointer' }} />
+            </button>
+          </div>
           <div className="sidebar-divider" />
         </>
       )}
@@ -266,6 +293,18 @@ export default function Sidebar({
             </button>
           </div>
 
+          {/* ENVIRONMENT button */}
+          <div style={{ marginTop: 5 }}>
+            <button
+              className={`tool-btn ${showEnv ? 'tool-btn--active' : ''}`}
+              style={{ width: '100%' }}
+              onClick={onToggleEnv}
+              title="Environment settings (Sky, Grass, Weather)"
+            >
+              ENVIRONMENT
+            </button>
+          </div>
+
           {/* CARBON button — full width below the 2×2 grid */}
           <div style={{ marginTop: 5 }}>
             <button
@@ -290,6 +329,11 @@ export default function Sidebar({
             </button>
           </div>
         </>
+      )}
+
+      {/* ── Builder Panel ── */}
+      {builderMode && (
+        <BuilderPanel selected={selected} />
       )}
 
       {/* ── Section Cut Slider ── */}

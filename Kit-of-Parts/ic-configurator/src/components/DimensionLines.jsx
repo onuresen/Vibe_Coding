@@ -1,5 +1,4 @@
 import { Html, Line } from '@react-three/drei'
-import { PARTS } from './partsData'
 
 // Draws overall dimension annotations for the assembled building.
 // Shows: total width (X), total depth (Z), total height (Y).

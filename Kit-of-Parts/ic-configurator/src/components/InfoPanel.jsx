@@ -1,11 +1,13 @@
-import { PARTS } from './partsData'
+import { useKit } from './KitContext'
 
 export default function InfoPanel({ selected, selectedVariants, onVariantChange }) {
+  const { parts } = useKit()
+
   if (!selected) {
     return <div className="info-panel" style={{ opacity: 0, pointerEvents: 'none' }} />
   }
 
-  const part = PARTS.find((p) => p.id === selected.id)
+  const part = parts.find((p) => p.id === selected.id)
   if (!part) return null
 
   const activeIdx = selectedVariants[part.id] ?? 0

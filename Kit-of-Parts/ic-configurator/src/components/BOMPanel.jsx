@@ -1,6 +1,8 @@
-import { PARTS } from './partsData'
+import { useKit } from './KitContext'
 
 export default function BOMPanel({ selectedVariants, visible, onClose }) {
+  const { parts } = useKit()
+
   function getVariant(part) {
     const idx = selectedVariants[part.id] ?? 0
     return part.variants[idx]
@@ -8,7 +10,7 @@ export default function BOMPanel({ selectedVariants, visible, onClose }) {
 
   function exportCSV() {
     const headers = ['Component', 'Type', 'Variant', 'Visible', 'Weight (kg)', 'Unit Cost (USD)']
-    const rows = PARTS.map((part) => {
+    const rows = parts.map((part) => {
       const v = getVariant(part)
       return [
         part.id,
@@ -19,8 +21,8 @@ export default function BOMPanel({ selectedVariants, visible, onClose }) {
         v.unit_cost_usd,
       ]
     })
-    const totalWeight = PARTS.filter(p => visible[p.id]).reduce((sum, p) => sum + getVariant(p).weight_kg, 0)
-    const totalCost = PARTS.filter(p => visible[p.id]).reduce((sum, p) => sum + getVariant(p).unit_cost_usd, 0)
+    const totalWeight = parts.filter(p => visible[p.id]).reduce((sum, p) => sum + getVariant(p).weight_kg, 0)
+    const totalCost = parts.filter(p => visible[p.id]).reduce((sum, p) => sum + getVariant(p).unit_cost_usd, 0)
     rows.push(['', '', '', 'TOTALS', totalWeight, totalCost])
 
     const csv = [headers, ...rows]
@@ -36,7 +38,7 @@ export default function BOMPanel({ selectedVariants, visible, onClose }) {
     URL.revokeObjectURL(url)
   }
 
-  const activeParts = PARTS.filter((p) => visible[p.id])
+  const activeParts = parts.filter((p) => visible[p.id])
   const totalWeight = activeParts.reduce((sum, p) => sum + getVariant(p).weight_kg, 0)
   const totalCost = activeParts.reduce((sum, p) => sum + getVariant(p).unit_cost_usd, 0)
 
@@ -57,7 +59,7 @@ export default function BOMPanel({ selectedVariants, visible, onClose }) {
           </tr>
         </thead>
         <tbody>
-          {PARTS.map((part) => {
+          {parts.map((part) => {
             const v = getVariant(part)
             const isHidden = !visible[part.id]
             return (

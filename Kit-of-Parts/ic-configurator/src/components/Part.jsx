@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useMemo } from 'react'
-import { Edges, Html } from '@react-three/drei'
+import { Edges, Html, TransformControls } from '@react-three/drei'
+import { useKit } from './KitContext'
 import { gsap } from 'gsap'
 import * as THREE from 'three'
 
@@ -16,8 +17,11 @@ export default function Part({
   gameMode,
   gameStep,
   onGameClick,
+  builderMode,
+  isSelected,
 }) {
   const meshRef = useRef()
+  const { updatePart } = useKit()
   const [hovered, setHovered] = useState(false)
   const [flashState, setFlashState] = useState(null) // null | 'correct' | 'wrong'
   const prevSequenceStep = useRef(-1)
@@ -169,7 +173,14 @@ export default function Part({
 
   const labelY = data.size[1] / 2 + 0.25
 
-  return (
+  function handleTranslateEnd() {
+    if (!meshRef.current) return
+    const p = meshRef.current.position
+    // Update both pos and exp so explode view scales relative to new position
+    updatePart(data.id, { pos: [p.x, p.y, p.z], exp: [p.x, p.y + 2, p.z] })
+  }
+
+  const content = (
     <mesh
       ref={meshRef}
       position={data.pos}
@@ -180,7 +191,11 @@ export default function Part({
       castShadow={!isWire && !isGhost}
       receiveShadow
     >
-      <boxGeometry args={data.size} />
+      {data.shape === 'cylinder' ? (
+        <cylinderGeometry args={data.cylinderArgs || [data.size[0]/2, data.size[0]/2, data.size[1], 32]} />
+      ) : (
+        <boxGeometry args={data.size} />
+      )}
       <meshStandardMaterial
         color={color}
         transparent={transparent}
@@ -202,4 +217,14 @@ export default function Part({
       )}
     </mesh>
   )
+
+  if (builderMode && isSelected) {
+    return (
+      <TransformControls mode="translate" translationSnap={0.5} onMouseUp={handleTranslateEnd}>
+        {content}
+      </TransformControls>
+    )
+  }
+
+  return content
 }

@@ -1,16 +1,18 @@
-import { PARTS } from './partsData'
+import { useKit } from './KitContext'
 
 const FOOTPRINT_M2 = 16
 const RIBA_BUDGET = 300        // kg CO₂e/m²
 const RIBA_BUDGET_TOTAL = RIBA_BUDGET * FOOTPRINT_M2  // 4800 kg CO₂e
 
 export default function CarbonPanel({ selectedVariants, visible, onClose }) {
+  const { parts } = useKit()
+
   function getVariant(part) {
     const idx = selectedVariants[part.id] ?? 0
     return part.variants[idx]
   }
 
-  const activeParts = PARTS.filter(p => visible[p.id])
+  const activeParts = parts.filter(p => visible[p.id])
   const totalCarbon = activeParts.reduce((sum, p) => sum + getVariant(p).carbon_kgco2e, 0)
   const carbonPerM2 = Math.round(totalCarbon / FOOTPRINT_M2)
   const budgetPct = Math.round((carbonPerM2 / RIBA_BUDGET) * 100)

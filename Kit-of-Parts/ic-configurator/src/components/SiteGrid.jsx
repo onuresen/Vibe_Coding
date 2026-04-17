@@ -1,18 +1,17 @@
 import { useState } from 'react'
 import { Grid, Html, Edges } from '@react-three/drei'
-import { PRESETS } from './presets'
-import { PARTS } from './partsData'
+import { useKit } from './KitContext'
 
 const COLS = 5
 const ROWS = 5
 const SPACING = 5.5
 
-function getPresetColor(presetId, partId) {
-  const preset = PRESETS.find(p => p.id === presetId)
-  const part = PARTS.find(p => p.id === partId)
+function getPresetColor(presetId, partId, parts, presets) {
+  const preset = presets.find(p => p.id === presetId)
+  const part = parts.find(p => p.id === partId)
   if (!part) return '#888'
   const idx = preset?.variants?.[partId] ?? 0
-  return part.variants[idx]?.color ?? part.variants[0].color
+  return part.variants[idx]?.color ?? '#888'
 }
 
 function cellPos(col, row) {
@@ -23,42 +22,45 @@ function cellPos(col, row) {
 }
 
 function MiniBuilding({ presetId, col, row }) {
-  const foundColor = getPresetColor(presetId, 'Foundation')
-  const cladColor = getPresetColor(presetId, 'Cladding')
+  const { parts, presets } = useKit()
   const [cx, cz] = cellPos(col, row)
+  const preset = presets.find(p => p.id === presetId)
 
   return (
     <group position={[cx, 0, cz]} scale={[0.48, 0.48, 0.48]}>
-      {/* Foundation slab */}
-      <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
-        <boxGeometry args={[4, 0.5, 4]} />
-        <meshStandardMaterial color={foundColor} />
-      </mesh>
-      {/* Structure frame (wireframe-ish) */}
-      <mesh position={[0, 1.25, 0]}>
-        <boxGeometry args={[3.8, 2, 3.8]} />
-        <meshStandardMaterial color="#34495e" transparent opacity={0.07} depthWrite={false} />
-        <Edges color="#34495e" />
-      </mesh>
-      {/* Cladding panel */}
-      <mesh position={[-1.9, 1.25, 0]}>
-        <boxGeometry args={[0.15, 2.2, 3.8]} />
-        <meshStandardMaterial color={cladColor} />
-      </mesh>
-      {/* Interface layer */}
-      <mesh position={[0, 2.5, 0]}>
-        <boxGeometry args={[4, 0.12, 4]} />
-        <meshStandardMaterial color="#3498db" transparent opacity={0.5} />
-      </mesh>
+      {parts && parts.map(part => {
+        const variantIdx = preset?.variants?.[part.id] ?? 0
+        const color = part.variants[variantIdx]?.color ?? '#888'
+        const isWire = part.wire ?? false
+        const isTrans = part.transparent ?? false
+
+        return (
+          <mesh key={part.id} position={part.pos} castShadow={!isWire} receiveShadow={!isWire}>
+            {part.shape === 'cylinder' ? (
+              <cylinderGeometry args={part.cylinderArgs || [part.size[0]/2, part.size[0]/2, part.size[1], 32]} />
+            ) : (
+              <boxGeometry args={part.size} />
+            )}
+            <meshStandardMaterial 
+              color={color} 
+              transparent={isTrans || isWire} 
+              opacity={isWire ? 0.07 : isTrans ? 0.5 : 1}
+              depthWrite={!isWire} 
+            />
+            {isWire && <Edges color={color} />}
+          </mesh>
+        )
+      })}
     </group>
   )
 }
 
 function GridCell({ col, row, placed, onPlace, onRemove, selectedUnitType }) {
+  const { presets } = useKit()
   const [hovered, setHovered] = useState(false)
   const [cx, cz] = cellPos(col, row)
   const cw = SPACING - 0.6
-  const presetLabel = PRESETS.find(p => p.id === selectedUnitType)?.label ?? selectedUnitType
+  const presetLabel = presets.find(p => p.id === selectedUnitType)?.label ?? selectedUnitType
 
   return (
     <group position={[cx, 0, cz]}>
