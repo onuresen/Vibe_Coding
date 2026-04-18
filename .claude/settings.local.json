@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/Project Hub/project-hub v5.html' 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/project-hub.html')",
+      "Bash(cp 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/Idea-Swiper/idea-swiper-v7_1.html' 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/idea-swiper.html')",
+      "Bash(cp 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/KMQT-Board/kmqt-board-v2.html' 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/kmqt-board.html')",
+      "Bash(cp 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/To-Organize/decision-log.html' 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/decision-log.html')",
+      "Bash(cp 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/Task-Explorer/task-explorer v4.html' 'C:/Users/onure/Documents/GitHub/Vibe_Coding/Thinking Hub/task-explorer.html')"
+    ]
+  }
+}
