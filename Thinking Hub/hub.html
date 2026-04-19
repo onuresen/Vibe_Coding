@@ -21,6 +21,8 @@
 
   <script src="hub-storage.js"></script>
   <script src="hub-tutorial.js"></script>
+  <script src="hub-links.js"></script>
+  <script src="hub-search.js"></script>
   <style>
     *,
     *::before,
@@ -632,6 +634,29 @@
       border: none;
       display: none;
     }
+    /* ── Data Modal ─────────────────────────────────── */
+    .data-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      display: none; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .data-modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+      width: 400px; max-width: 90vw; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    .data-modal-title { font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+    .data-modal-desc { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.5; }
+    .data-size { font-family: var(--font-m); font-size: 11px; color: var(--accent); margin-bottom: 20px; padding: 6px 12px; background: var(--accent-dim); border-radius: 6px; display:inline-block; }
+    .data-btn-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .data-btn {
+      flex: 1; padding: 10px 0; border-radius: 8px; font-family: var(--font-b); font-size: 13px; font-weight: 500; cursor: pointer; text-align: center; border: 1px solid transparent; transition: all 0.15s;
+    }
+    .data-btn.primary { background: var(--accent); color: #111; }
+    .data-btn.primary:hover { opacity: 0.9; }
+    .data-btn.secondary { background: var(--surface2); color: var(--text2); border-color: var(--border2); }
+    .data-btn.secondary:hover { background: var(--surface); color: var(--text); border-color: var(--border); }
+    .data-modal-footer { border-top: 1px solid var(--border); padding-top: 14px; text-align: right; }
+    .close-modal-btn { background: none; border: none; font-size: 13px; color: var(--text3); cursor: pointer; font-family: var(--font-b); }
+    .close-modal-btn:hover { color: var(--text); }
   </style>
 </head>
 
@@ -668,6 +693,7 @@
       <span class="session-label">Session</span>
       <input id="session-name" type="text" placeholder="Name this session…" autocomplete="off" spellcheck="false">
       <div class="session-spacer"></div>
+      <button style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:8px;font-family:var(--font-m);" onclick="openDataModal()" title="Data & Backup">⚙️</button>
       <button style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:10px;font-family:var(--font-m);" onclick="startTour()" title="Interactive Tour">?</button>
       <span id="breadcrumb"></span>
     </div>
@@ -697,6 +723,24 @@
     </div>
   </div>
 
+  <!-- Data Backup Modal -->
+  <div id="data-modal" class="data-modal-overlay" onclick="if(event.target===this) closeDataModal()">
+    <div class="data-modal">
+      <div class="data-modal-title">Data & Backup</div>
+      <div class="data-modal-desc">Download a complete snapshot of all your local Thinking Hub data (projects, tasks, ideas, decisions, schedule).</div>
+      <div class="data-size" id="data-size-str">0 KB in local storage</div>
+      
+      <div class="data-btn-row">
+        <button class="data-btn primary" onclick="exportHubData()">Export Backup (.json)</button>
+        <button class="data-btn secondary" onclick="triggerImport()">Import Backup</button>
+      </div>
+      <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleImportFile(event)">
+      
+      <div class="data-modal-footer">
+        <button class="close-modal-btn" onclick="closeDataModal()">Close</button>
+      </div>
+    </div>
+  </div>
   <script>
     // ── App registry ──────────────────────────────────────────────────────────────
 
@@ -740,6 +784,22 @@
         icon: '◎',
         file: 'decision-hub.html',
         desc: 'Comprehensive tool for tracking decisions, framing problems, and gaining alignment'
+      },
+      {
+        id: 'graph-hub',
+        label: 'Dependency Graph',
+        group: 'THINK',
+        icon: '🕸️',
+        file: 'graph-hub.html',
+        desc: 'Visual map of your tasks, decisions, and ideas'
+      },
+      {
+        id: 'canvas-hub',
+        label: 'Spatial Canvas',
+        group: 'THINK',
+        icon: '✏️',
+        file: 'canvas-hub.html',
+        desc: 'Unstructured spatial notes for limitless ideation'
       }
     ];
 
@@ -1209,6 +1269,67 @@
       }, 100);
     }
 
+    // ── Data Export / Import ──────────────────────────────────────────────────────
+
+    function openDataModal() {
+      document.getElementById('data-modal').style.display = 'flex';
+      
+      let kb = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        const item = localStorage.getItem(key);
+        kb += (item.length * 2) / 1024;
+      }
+      document.getElementById('data-size-str').textContent = kb.toFixed(1) + ' KB in local storage';
+    }
+
+    function closeDataModal() {
+      document.getElementById('data-modal').style.display = 'none';
+      document.getElementById('import-file').value = '';
+    }
+
+    function exportHubData() {
+      const db = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        db[k] = localStorage.getItem(k);
+      }
+      const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `thinking-hub-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function triggerImport() {
+      document.getElementById('import-file').click();
+    }
+
+    function handleImportFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const db = JSON.parse(ev.target.result);
+          if (!confirm('This will OVERWRITE your current local data with the backup.\\nAre you sure you want to proceed?')) return;
+          
+          for (const k in db) {
+            if (db.hasOwnProperty(k)) {
+              localStorage.setItem(k, db[k]);
+            }
+          }
+          alert('Import successful! The hub will now reload.');
+          location.reload();
+        } catch (err) {
+          alert('Failed to parse backup file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────────────
 
     initSession();
@@ -1218,6 +1339,7 @@
     refreshRecentStrip();
     setGreeting();
     initCloudPanel();
+    HubSearch.init();
     
     // Auto-start tutorial on first run
     if (!HubStorage.get('tutorial-seen-v1')) {

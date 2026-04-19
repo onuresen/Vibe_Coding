@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spatial Canvas - Thinking Hub</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
+  <link rel="stylesheet" href="theme.css">
+  <script src="hub-storage.js"></script>
+  <script src="hub-links.js"></script>
+  <style>
+    body {
+      margin: 0; padding: 0; background: #111; color: var(--text);
+      font-family: var(--font-b); display: flex; flex-direction: column;
+      height: 100vh; overflow: hidden; user-select: none;
+    }
+    
+    /* Background dot grid */
+    .viewport {
+      flex: 1; position: relative; overflow: hidden;
+      background-image: radial-gradient(rgba(255,255,255,0.15) 1px, transparent 1px);
+      background-size: 20px 20px; background-position: 0 0;
+      cursor: grab;
+    }
+    .viewport.panning { cursor: grabbing; }
+
+    #canvas-layer {
+      position: absolute; top: 0; left: 0; width: 0; height: 0;
+      transform-origin: 0 0;
+    }
+
+    /* Controls overlay */
+    .controls {
+      position: absolute; bottom: 20px; left: 20px;
+      display: flex; gap: 8px; z-index: 100;
+    }
+    .btn {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 11px;
+      font-family: var(--font-b); transition: all 0.15s; font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .btn:hover { background: var(--accent-dim); color: var(--accent); border-color: rgba(184, 240, 51, 0.4); }
+
+    .help-text {
+      position: absolute; top: 20px; left: 20px; color: var(--text3); font-size: 11px; pointer-events: none;
+    }
+
+    /* Sticky nodes */
+    .node {
+      position: absolute; width: 180px; min-height: 80px; 
+      background: #2a2a30; border: 1px solid #444; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4); display: flex; flex-direction: column;
+      cursor: pointer; cursor: grab;
+    }
+    .node:active { cursor: grabbing; }
+    .node.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(184, 240, 51, 0.3); z-index: 10; }
+    
+    .node-header {
+      height: 12px; background: rgba(0,0,0,0.2); border-bottom: 1px solid transparent; 
+      border-radius: 8px 8px 0 0; pointer-events: none;
+    }
+    .node-body {
+      padding: 10px; flex: 1; outline: none; font-size: 13px; font-weight: 500;
+      color: #edece4; line-height: 1.4; word-wrap: break-word; overflow-y: hidden;
+      cursor: text;
+    }
+    .node-body:empty:before { content: 'Type here...'; color: #6d6c78; pointer-events: none; }
+
+    /* Node colors */
+    .node.c-gray { background: #2a2a30; border-color: #444; }
+    .node.c-yellow { background: #4a4128; border-color: #7a6a42; }
+    .node.c-green { background: #284a32; border-color: #427a53; }
+    .node.c-blue { background: #28394a; border-color: #42617a; }
+    .node.c-red { background: #4a2828; border-color: #7a4242; }
+
+    .node-actions {
+      position: absolute; top: -35px; left: 0; display: none; gap: 4px;
+      background: var(--surface); padding: 4px; border-radius: 6px; border: 1px solid var(--border);
+    }
+    .node.selected .node-actions { display: flex; }
+    .na-btn {
+      width: 24px; height: 24px; border: none; background: transparent; color: var(--text2);
+      border-radius: 4px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;
+    }
+    .na-btn:hover { background: var(--surface2); color: var(--text); }
+    .na-btn.del:hover { background: rgba(232, 69, 90, 0.15); color: #e8455a; }
+
+    .color-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); }
+
+  </style>
+</head>
+<body>
+
+  <div class="help-text">Double-click to create • Space+Drag to pan • Scroll to zoom</div>
+
+  <div class="viewport" id="viewport">
+    <div id="canvas-layer"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="zoomIn()">Zoom In</button>
+    <button class="btn" onclick="zoomOut()">Zoom Out</button>
+    <button class="btn" onclick="resetView()">Reset View</button>
+  </div>
+
+  <script>
+    HubLinks.init('canvas-hub');
+
+    const STORAGE_KEY = 'canvas-v1';
+    let db = {
+      nodes: [],
+      panX: window.innerWidth / 2,
+      panY: window.innerHeight / 2,
+      zoom: 1
+    };
+
+    const viewport = document.getElementById('viewport');
+    const layer = document.getElementById('canvas-layer');
+    
+    // Load state
+    try {
+      const stored = HubStorage.get(STORAGE_KEY);
+      if (stored && stored.nodes) db = stored;
+    } catch {}
+
+    // Init position
+    if (db.nodes.length === 0) {
+      db.panX = window.innerWidth / 2;
+      db.panY = window.innerHeight / 2;
+    }
+
+    // ── Saving ────────────────────────────────────────────────────────
+    
+    let _saveTimer;
+    function pulseSave() {
+      clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(() => {
+        HubStorage.set(STORAGE_KEY, db);
+      }, 500);
+    }
+
+    HubStorage.subscribe(STORAGE_KEY, () => {
+      const stored = HubStorage.get(STORAGE_KEY);
+      if (stored) { db = stored; renderNodes(); updateTransform(); }
+    });
+
+    // ── Viewport Panning/Zooming ──────────────────────────────────────
+
+    let isPanning = false;
+    let startPanX = 0, startPanY = 0;
+    let spacePressed = false;
+
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space' && document.activeElement.tagName !== 'DIV') {
+        spacePressed = true; viewport.style.cursor = 'grab';
+      }
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        if (selectedNodeId && document.activeElement.tagName !== 'DIV') {
+          deleteNode(selectedNodeId);
+        }
+      }
+    });
+    document.addEventListener('keyup', e => {
+      if (e.code === 'Space') {
+        spacePressed = false; viewport.style.cursor = '';
+      }
+    });
+
+    viewport.addEventListener('mousedown', e => {
+      if (e.target !== viewport) return;
+      if (e.button === 1 || spacePressed || e.button === 0) {
+        if (!spacePressed && e.target !== viewport) return; // Only pan on empty space unless space is down
+        isPanning = true;
+        startPanX = e.clientX - db.panX;
+        startPanY = e.clientY - db.panY;
+        viewport.classList.add('panning');
+      }
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (isPanning) {
+        db.panX = e.clientX - startPanX;
+        db.panY = e.clientY - startPanY;
+        updateTransform();
+      }
+      if (isDraggingNode && dragNode) {
+        const dx = (e.clientX - startNodeMouseX) / db.zoom;
+        const dy = (e.clientY - startNodeMouseY) / db.zoom;
+        dragNode.node.x = startNodeX + dx;
+        dragNode.node.y = startNodeY + dy;
+        dragNode.el.style.left = dragNode.node.x + 'px';
+        dragNode.el.style.top = dragNode.node.y + 'px';
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isPanning) {
+        isPanning = false;
+        viewport.classList.remove('panning');
+        pulseSave();
+      }
+      if (isDraggingNode) {
+        isDraggingNode = false;
+        dragNode = null;
+        pulseSave();
+      }
+    });
+
+    viewport.addEventListener('wheel', e => {
+      e.preventDefault();
+      
+      // Zoom towards mouse
+      const zoomSensitivity = 0.001;
+      const delta = -e.deltaY * zoomSensitivity;
+      const newZoom = Math.min(Math.max(0.2, db.zoom * Math.exp(delta)), 3);
+      
+      // Adjust pan to zoom into cursor
+      const rect = viewport.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      db.panX = mouseX - (mouseX - db.panX) * (newZoom / db.zoom);
+      db.panY = mouseY - (mouseY - db.panY) * (newZoom / db.zoom);
+      db.zoom = newZoom;
+      
+      updateTransform();
+      pulseSave();
+    }, { passive: false });
+
+    function updateTransform() {
+      layer.style.transform = `translate(${db.panX}px, ${db.panY}px) scale(${db.zoom})`;
+      viewport.style.backgroundPosition = `${db.panX}px ${db.panY}px`;
+      viewport.style.backgroundSize = `${20 * db.zoom}px ${20 * db.zoom}px`;
+    }
+
+    function zoomIn() { db.zoom = Math.min(3, db.zoom * 1.2); updateTransform(); pulseSave(); }
+    function zoomOut() { db.zoom = Math.max(0.2, db.zoom / 1.2); updateTransform(); pulseSave(); }
+    function resetView() { db.zoom = 1; db.panX = window.innerWidth/2; db.panY = window.innerHeight/2; updateTransform(); pulseSave(); }
+
+    // ── Node interactions ─────────────────────────────────────────────
+
+    let selectedNodeId = null;
+    let isDraggingNode = false;
+    let dragNode = null;
+    let startNodeX = 0, startNodeY = 0, startNodeMouseX = 0, startNodeMouseY = 0;
+
+    viewport.addEventListener('dblclick', e => {
+      if (e.target !== viewport) return;
+      const rect = viewport.getBoundingClientRect();
+      const x = (e.clientX - rect.left - db.panX) / db.zoom;
+      const y = (e.clientY - rect.top - db.panY) / db.zoom;
+      createNode(x, y);
+    });
+
+    viewport.addEventListener('click', e => {
+      if (e.target === viewport) {
+        selectNode(null);
+      }
+    });
+
+    function createNode(x, y) {
+      const id = 'cnv-' + Date.now().toString(36);
+      const node = { id, x, y, text: '', color: 'c-gray' };
+      db.nodes.push(node);
+      pulseSave();
+      
+      const el = buildNodeEl(node);
+      layer.appendChild(el);
+      selectNode(id);
+      
+      // Focus text area
+      const body = el.querySelector('.node-body');
+      setTimeout(() => body.focus(), 50);
+    }
+
+    function deleteNode(id) {
+      db.nodes = db.nodes.filter(n => n.id !== id);
+      selectNode(null);
+      renderNodes();
+      pulseSave();
+    }
+
+    function selectNode(id) {
+      selectedNodeId = id;
+      document.querySelectorAll('.node').forEach(el => {
+        el.classList.toggle('selected', el.dataset.id === id);
+      });
+    }
+
+    function setColor(id, color) {
+      const node = db.nodes.find(n => n.id === id);
+      if (node) {
+        node.color = color;
+        const el = document.querySelector(`.node[data-id="${id}"]`);
+        if (el) {
+          el.className = `node selected ${color}`;
+        }
+        pulseSave();
+      }
+    }
+
+    // ── Render ────────────────────────────────────────────────────────
+
+    function renderNodes() {
+      layer.innerHTML = '';
+      db.nodes.forEach(n => {
+        layer.appendChild(buildNodeEl(n));
+      });
+    }
+
+    function buildNodeEl(node) {
+      const el = document.createElement('div');
+      el.className = `node ${node.color || 'c-gray'}`;
+      if (node.id === selectedNodeId) el.classList.add('selected');
+      el.dataset.id = node.id;
+      el.style.left = Math.round(node.x) + 'px';
+      el.style.top = Math.round(node.y) + 'px';
+
+      // Actions bar
+      const actions = document.createElement('div');
+      actions.className = 'node-actions';
+      
+      const colors = ['c-gray', 'c-yellow', 'c-green', 'c-blue', 'c-red'];
+      colors.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'na-btn';
+        btn.innerHTML = `<div class="color-dot" style="background:var(--${c.replace('c-','swatch-')}, ${c==='c-yellow'?'#b29f5f':c==='c-green'?'#5fb27a':c==='c-blue'?'#5f8bb2':c==='c-red'?'#b25f5f':'#777'})"></div>`;
+        btn.onmousedown = (e) => { e.stopPropagation(); setColor(node.id, c); };
+        actions.appendChild(btn);
+      });
+
+      const linkBtn = document.createElement('button');
+      linkBtn.className = 'na-btn hl-btn'; // Hub-links hook
+      linkBtn.innerHTML = '🔗';
+      linkBtn.title = 'Link to hub items';
+      linkBtn.onmousedown = (e) => { 
+        e.stopPropagation(); 
+        const excerpt = (node.text || 'Canvas Node').replace(/<[^>]*>?/gm, '');
+        HubLinks.openModal('canvas-hub', node.id, excerpt.slice(0, 30)); 
+      };
+      actions.appendChild(linkBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'na-btn del';
+      delBtn.innerHTML = '✕';
+      delBtn.onmousedown = (e) => { e.stopPropagation(); deleteNode(node.id); };
+      actions.appendChild(delBtn);
+
+      el.appendChild(actions);
+
+      // Node structure
+      const header = document.createElement('div');
+      header.className = 'node-header';
+      el.appendChild(header);
+
+      const body = document.createElement('div');
+      body.className = 'node-body';
+      body.contentEditable = true;
+      body.innerHTML = node.text || '';
+      el.appendChild(body);
+
+      // Drag logic
+      el.addEventListener('mousedown', e => {
+        if (e.target === body) return; // Allow text selection inside body
+        if (spacePressed) return;
+        e.stopPropagation();
+        selectNode(node.id);
+        isDraggingNode = true;
+        dragNode = { node, el };
+        startNodeX = node.x;
+        startNodeY = node.y;
+        startNodeMouseX = e.clientX;
+        startNodeMouseY = e.clientY;
+      });
+
+      body.addEventListener('input', () => {
+        node.text = body.innerHTML;
+        pulseSave();
+      });
+
+      // Show links popover
+      const hlBadge = document.createElement('div');
+      hlBadge.className = 'hl-badge-container';
+      hlBadge.style.position = 'absolute';
+      hlBadge.style.bottom = '-10px';
+      hlBadge.style.right = '10px';
+      el.appendChild(hlBadge);
+      
+      function renderLinkBadge() {
+        hlBadge.innerHTML = '';
+        const links = HubLinks.getLinksFor('canvas-hub', node.id);
+        if (links.length > 0) {
+          const badge = document.createElement('button');
+          badge.className = 'hl-badge';
+          badge.innerHTML = `🔗 ${links.length}`;
+          badge.onclick = (e) => {
+            e.stopPropagation();
+            HubLinks.showLinksPopover('canvas-hub', node.id, badge);
+          };
+          hlBadge.appendChild(badge);
+        }
+      }
+      
+      // We monkey-patch the original onLinkChange to also re-render badges
+      const oldChange = window.__hl_onLinkChange;
+      window.__hl_onLinkChange = function() {
+        if (oldChange) oldChange();
+        document.querySelectorAll('.node').forEach(nodeEl => {
+          // Re-render badge for every node. Simple approach.
+          // For a robust system we'd use custom events, but this works perfectly.
+        });
+        renderNodes(); // Simple refresh to show new badges
+      };
+      
+      renderLinkBadge();
+      
+      return el;
+    }
+
+    // Init
+    updateTransform();
+    renderNodes();
+    
+    // Add custom resolver so Hub Search finds Canvas nodes
+    HubLinks.resolveItems = (function(old) {
+      return function(toolId) {
+        if (toolId === 'canvas-hub') {
+          const dbData = HubStorage.get(STORAGE_KEY) || {nodes:[]};
+          return dbData.nodes.map(n => {
+            let plainText = (n.text || '').replace(/<[^>]*>?/gm, '');
+            return {
+              id: n.id,
+              label: plainText.slice(0, 50) || '(empty node)',
+              subtitle: 'canvas note'
+            }
+          });
+        }
+        return old(toolId);
+      };
+    })(HubLinks.resolveItems);
+
+  </script>
+</body>
+</html>
