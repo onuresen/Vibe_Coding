@@ -662,6 +662,7 @@
 </head>
 
 <body>
+  <a href="#home-dashboard" class="skip-link">Skip to main content</a>
 
   <!-- Sidebar -->
   <nav class="sidebar">
@@ -694,8 +695,8 @@
       <span class="session-label">Session</span>
       <input id="session-name" type="text" placeholder="Name this session…" autocomplete="off" spellcheck="false">
       <div class="session-spacer"></div>
-      <button style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:8px;font-family:var(--font-m);" onclick="openDataModal()" title="Data & Backup">⚙️</button>
-      <button style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:10px;font-family:var(--font-m);" onclick="startTour()" title="Interactive Tour">?</button>
+      <button style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:8px;font-family:var(--font-m);" onclick="openDataModal()" title="Data & Backup" aria-label="Data &amp; Backup">⚙️</button>
+      <button style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:10px;font-family:var(--font-m);" onclick="startTour()" title="Interactive Tour" aria-label="Interactive Tour">?</button>
       <span id="breadcrumb"></span>
     </div>
 
@@ -725,9 +726,9 @@
   </div>
 
   <!-- Data Backup Modal -->
-  <div id="data-modal" class="data-modal-overlay" onclick="if(event.target===this) closeDataModal()">
+  <div id="data-modal" class="data-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="data-modal-title" onclick="if(event.target===this) closeDataModal()">
     <div class="data-modal">
-      <div class="data-modal-title">Data & Backup</div>
+      <div class="data-modal-title" id="data-modal-title">Data & Backup</div>
       <div class="data-modal-desc">Download a complete snapshot of all your local Thinking Hub data (projects, tasks, ideas, decisions, schedule).</div>
       <div class="data-size" id="data-size-str">0 KB in local storage</div>
       
@@ -987,8 +988,9 @@
     // ── Keyboard shortcut (Escape → home) ────────────────────────────────────────
 
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && activeAppId && document.activeElement.tagName !== 'INPUT') {
-        goHome();
+      if (e.key === 'Escape') {
+        if (document.getElementById('data-modal').style.display === 'flex') { closeDataModal(); return; }
+        if (activeAppId && document.activeElement.tagName !== 'INPUT') goHome();
       }
     });
 
@@ -1272,8 +1274,13 @@
 
     // ── Data Export / Import ──────────────────────────────────────────────────────
 
+    let _modalTrigger = null;
     function openDataModal() {
+      _modalTrigger = document.activeElement;
       document.getElementById('data-modal').style.display = 'flex';
+      // Move focus inside the modal
+      const firstBtn = document.querySelector('#data-modal .data-btn');
+      if (firstBtn) setTimeout(() => firstBtn.focus(), 50);
       
       let kb = 0;
       for (let i = 0; i < localStorage.length; i++) {
@@ -1287,6 +1294,8 @@
     function closeDataModal() {
       document.getElementById('data-modal').style.display = 'none';
       document.getElementById('import-file').value = '';
+      // Return focus to the element that opened the modal
+      if (_modalTrigger) { _modalTrigger.focus(); _modalTrigger = null; }
     }
 
     function exportHubData() {
