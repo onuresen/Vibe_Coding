@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Language as Fluid</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #070A0F;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* No UI. No labels. */
+  </style>
+</head>
+
+<body>
+  <canvas id="c"></canvas>
+  <script>
+    (() => {
+      "use strict";
+
+      // ============================================================
+      // Language as Fluid — single-file canvas experience
+      // Words are substances. Meaning is viscosity. Grammar is flow.
+      // ============================================================
+
+      const canvas = document.getElementById("c");
+      const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+
+      const DPR = () => Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+      let W = 0, H = 0, dpr = 1;
+
+      // Adaptive quality (graceful degradation)
+      let quality = {
+        scale: 6,              // field grid cell size in pixels (lower = higher quality)
+        radiusCells: 18,       // kernel radius in grid cells
+        maxNodesTotal: 220,    // cap nodes total
+        trailAlpha: 0.08,      // persistence
+        flowLines: 140,        // how many flow strokes per frame
+      };
+      const frameTimes = [];
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smoothstep = (a, b, x) => {
+        const t = clamp((x - a) / (b - a), 0, 1);
+        return t * t * (3 - 2 * t);
+      };
+
+      function resize() {
+        dpr = DPR();
+        W = Math.floor(innerWidth * dpr);
+        H = Math.floor(innerHeight * dpr);
+        canvas.width = W;
+        canvas.height = H;
+        // Reset subtle background
+        ctx.fillStyle = "#070A0F";
+        ctx.fillRect(0, 0, W, H);
+        field.init();
+      }
+      addEventListener("resize", resize, { passive: true });
+
+      // ---------- Random / hashing ----------
+      const rand = (a = 1, b = 0) => Math.random() * a + b;
+      const hash32 = (str) => {
+        let h = 2166136261 >>> 0;
+        for (let i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+      };
+      const h2f = (h) => (h >>> 0) / 4294967295;
+
+      // ---------- Pointer (currents / shear / pressure) ----------
+      const pointer = {
+        x: 0, y: 0,
+        px: 0, py: 0,
+        vx: 0, vy: 0,
+        down: false,
+        id: -1,
+        holdBlob: null,
+        holdT: 0
+      };
+
+      function pointerPos(e) {
+        const r = canvas.getBoundingClientRect();
+        const x = (e.clientX - r.left) * dpr;
+        const y = (e.clientY - r.top) * dpr;
+        return { x, y };
+      }
+
+      function pickBlob(x, y) {
+        // Choose nearest blob centroid
+        let best = null, bestD = 1e9;
+        for (const b of blobs) {
+          const dx = x - b.cx, dy = y - b.cy;
+          const d = dx * dx + dy * dy;
+          if (d < bestD) {
+            bestD = d; best = b;
+          }
+        }
+        // Only if close enough
+        if (best && bestD < (Math.max(40 * dpr, best.size * 1.4) ** 2)) return best;
+        return null;
+      }
+
+      canvas.addEventListener("pointerdown", (e) => {
+        const p = pointerPos(e);
+        pointer.down = true;
+        pointer.id = e.pointerId;
+        pointer.x = pointer.px = p.x;
+        pointer.y = pointer.py = p.y;
+        pointer.vx = pointer.vy = 0;
+        canvas.setPointerCapture(pointer.id);
+
+        // Holding increases pressure
+        pointer.holdBlob = pickBlob(pointer.x, pointer.y);
+        pointer.holdT = 0;
+      });
+
+      canvas.addEventListener("pointermove", (e) => {
+        if (pointer.id !== -1 && e.pointerId !== pointer.id) return;
+        const p = pointerPos(e);
+        pointer.px = pointer.x; pointer.py = pointer.y;
+        pointer.x = p.x; pointer.y = p.y;
+        pointer.vx = (pointer.x - pointer.px);
+        pointer.vy = (pointer.y - pointer.py);
+      });
+
+      canvas.addEventListener("pointerup", (e) => {
+        if (e.pointerId !== pointer.id) return;
+        pointer.down = false;
+        pointer.id = -1;
+        pointer.holdBlob = null;
+        pointer.holdT = 0;
+      });
+
+      // ---------- Typing injects fluid (no visible text) ----------
+      let inputBuffer = "";
+      const wordCounts = new Map(); // repetition thickens
+
+      // Removing text causes suction/collapse
+      const suctionEvents = []; // {x,y,t,str}
+
+      function tokenizeCommit() {
+        const w = inputBuffer.trim();
+        inputBuffer = "";
+        if (!w) return;
+        spawnWordBlob(w);
+      }
+
+      addEventListener("keydown", (e) => {
+        // Keep it quiet: no UI, but typing influences the fluid.
+        if (e.key === "Enter" || e.key === " ") {
+          tokenizeCommit();
+          return;
+        }
+        if (e.key === "Backspace") {
+          if (inputBuffer.length > 0) {
+            inputBuffer = inputBuffer.slice(0, -1);
+          } else {
+            // Pull the last blob inward (collapse) if no buffer
+            if (blobs.length) {
+              const b = blobs[blobs.length - 1];
+              suctionEvents.push({ x: b.cx, y: b.cy, t: 0, str: 1.0 });
+              // "Evaporate" it quickly
+              b.life *= 0.55;
+              b.fade *= 0.55;
+              b.internal *= 0.6;
+            }
+          }
+          return;
+        }
+        if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          inputBuffer += e.key;
+        }
+      });
+
+      // ---------- Language dynamics heuristics ----------
+      function isModifier(word) {
+        const s = word.toLowerCase();
+        return (
+          s.endsWith("ly") || s.endsWith("er") || s.endsWith("est") ||
+          ["very", "more", "less", "almost", "nearly", "too", "so", "quite", "rather", "just", "only", "even"].includes(s)
+        );
+      }
+
+      function negationSign(word) {
+        const s = word.toLowerCase();
+        if (["not", "no", "never", "none", "nothing", "without", "can't", "cannot", "don't", "won't", "isn't", "aren't"].includes(s)) return -1;
+        return 1;
+      }
+
+      function ambiguity(word) {
+        // Ambiguity -> turbulence (simple proxy)
+        // Short words + many vowels + punctuation -> more turbulence.
+        const s = word.toLowerCase();
+        const vowels = (s.match(/[aeiou]/g) || []).length;
+        const punct = (s.match(/[\?\!\~\*]/g) || []).length;
+        const len = Math.max(1, s.length);
+        const vRatio = vowels / len;
+        return clamp(0.15 + 0.9 * (0.55 - Math.abs(vRatio - 0.55)) + 0.35 * punct + (len <= 3 ? 0.25 : 0), 0, 1.4);
+      }
+
+      function rarity(word) {
+        // Rare words behave like heavy droplets (proxy: uncommon letters + length)
+        const s = word.toLowerCase();
+        const uncommon = (s.match(/[jqxzvk]/g) || []).length;
+        const len = s.length;
+        return clamp(0.15 * uncommon + 0.03 * Math.max(0, len - 7), 0, 1.2);
+      }
+
+      // ---------- Blob physics ----------
+      const blobs = [];
+      let lastSpawn = null;
+
+      class Blob {
+        constructor(word) {
+          this.word = word;
+          this.h = hash32(word);
+          this.hue = (h2f(this.h) * 360) % 360;
+          this.sign = negationSign(word);
+
+          const prev = lastSpawn;
+          const baseX = prev ? prev.cx + rand(90 * dpr, -45 * dpr) : W * 0.5 + rand(60 * dpr, -30 * dpr);
+          const baseY = prev ? prev.cy + rand(55 * dpr, -15 * dpr) : H * 0.52 + rand(60 * dpr, -30 * dpr);
+
+          this.cx = clamp(baseX, 80 * dpr, W - 80 * dpr);
+          this.cy = clamp(baseY, 80 * dpr, H - 80 * dpr);
+
+          // Meaning density = viscosity (thicker = slower, more resistant)
+          const count = (wordCounts.get(word.toLowerCase()) || 0) + 1;
+          wordCounts.set(word.toLowerCase(), count);
+
+          const amb = ambiguity(word);
+          const rar = rarity(word);
+          const mod = isModifier(word) ? 1 : 0;
+
+          // More repetition => thicker
+          this.visc = clamp(0.08 + 0.10 * Math.log1p(count) + 0.10 * mod + 0.08 * rar, 0.06, 0.32);
+          this.turb = clamp(0.15 + 0.65 * amb, 0.1, 1.2);
+          this.mass = clamp(0.7 + 1.4 * rar + 0.25 * Math.log1p(count), 0.7, 3.0);
+
+          // Blob size: longer words slightly larger, rare slightly smaller but heavier
+          this.size = clamp((46 + 4 * word.length) * dpr * (1.0 - 0.12 * rar), 42 * dpr, 130 * dpr);
+
+          // Node count (adaptive, capped later globally)
+          this.nodeCount = Math.floor(clamp(5 + word.length * 0.4 + 4 * (1 - amb), 5, 14));
+
+          // Internal "pressure" + cohesion
+          this.internal = 0.95;
+          this.pressure = 0.0;      // increases on hold
+          this.modifier = mod;
+
+          this.life = 1.0;          // slowly evaporates unless reinforced
+          this.fade = 1.0;          // rendering alpha factor
+          this.age = 0;
+
+          // Links to previous word (sentence -> current path)
+          this.prev = prev || null;
+          this.link = prev ? { k: 0.0022, rest: lerp(140, 240, h2f(this.h)), breakDist: 330 * dpr } : null;
+
+          this.nodes = [];
+          const ang0 = rand(Math.PI * 2);
+          for (let i = 0; i < this.nodeCount; i++) {
+            const a = ang0 + i * (Math.PI * 2 / this.nodeCount) + rand(0.3, -0.15);
+            const r = this.size * (0.30 + 0.18 * rand());
+            const x = this.cx + Math.cos(a) * r;
+            const y = this.cy + Math.sin(a) * r;
+            this.nodes.push({
+              x, y, vx: rand(0.8, -0.4) * dpr, vy: rand(0.8, -0.4) * dpr,
+              strength: 1.0,
+            });
+          }
+
+          // Initial drift direction (grammar implied through flow)
+          const dir = prev ? Math.atan2(this.cy - prev.cy, this.cx - prev.cx) : rand(Math.PI * 2);
+          const sp = (2.2 + 1.8 * (1 - this.visc)) * dpr;
+          for (const n of this.nodes) {
+            n.vx += Math.cos(dir) * sp;
+            n.vy += Math.sin(dir) * sp;
+          }
+
+          // Modifiers subtly change nearby flow behavior (will be applied in sim)
+          this.effectRadius = this.size * (0.9 + 0.4 * mod);
+
+          lastSpawn = this;
+        }
+      }
+
+      function spawnWordBlob(word) {
+        // Inject new fluid. Position is influenced by current pointer current if moving.
+        const b = new Blob(word);
+
+        // If pointer is active/moving, inject near it to feel "typing as pouring"
+        const mv = Math.hypot(pointer.vx, pointer.vy);
+        if (mv > 2 * dpr) {
+          b.cx = clamp(pointer.x + rand(50 * dpr, -25 * dpr), 60 * dpr, W - 60 * dpr);
+          b.cy = clamp(pointer.y + rand(50 * dpr, -25 * dpr), 60 * dpr, H - 60 * dpr);
+          // Push along drag
+          const push = clamp(mv * 0.18, 0, 18 * dpr);
+          for (const n of b.nodes) {
+            n.x += (b.cx - n.x) * 0.35;
+            n.y += (b.cy - n.y) * 0.35;
+            n.vx += pointer.vx * 0.10 + (rand(1, -0.5) * dpr);
+            n.vy += pointer.vy * 0.10 + (rand(1, -0.5) * dpr);
+            n.vx += (pointer.vx / mv) * push;
+            n.vy += (pointer.vy / mv) * push;
+          }
+        }
+
+        blobs.push(b);
+
+        // Keep the system calm: cap blob count; old ones evaporate out
+        if (blobs.length > 26) {
+          const old = blobs.shift();
+          // create a soft suction where it disappears
+          suctionEvents.push({ x: old.cx, y: old.cy, t: 0, str: 0.7 });
+        }
+      }
+
+      // ---------- Field renderer (metaball-like scalar field) ----------
+      const field = {
+        gw: 0, gh: 0,
+        scale: 6,
+        F: null, R: null, G: null, B: null,
+        img: null,
+        kernel: null, kr: 0,
+        init() {
+          this.scale = quality.scale;
+          this.gw = Math.max(2, Math.floor(W / this.scale));
+          this.gh = Math.max(2, Math.floor(H / this.scale));
+          const N = this.gw * this.gh;
+          this.F = new Float32Array(N);
+          this.R = new Float32Array(N);
+          this.G = new Float32Array(N);
+          this.B = new Float32Array(N);
+          this.img = ctx.createImageData(this.gw, this.gh);
+          this.buildKernel();
+        },
+        buildKernel() {
+          const r = quality.radiusCells;
+          this.kr = r;
+          // Gaussian-ish kernel table for integer dx,dy
+          const size = (2 * r + 1) * (2 * r + 1);
+          const k = new Float32Array(size);
+          let idx = 0;
+          const sigma = r * 0.55;
+          const inv2s2 = 1.0 / (2 * sigma * sigma);
+          for (let y = -r; y <= r; y++) {
+            for (let x = -r; x <= r; x++) {
+              const d2 = x * x + y * y;
+              // Soft cutoff near edge
+              const w = Math.exp(-d2 * inv2s2) * (d2 <= r * r ? 1 : 0);
+              k[idx++] = w;
+            }
+          }
+          // Normalize peak-ish (optional)
+          this.kernel = k;
+        },
+        clear() {
+          this.F.fill(0);
+          this.R.fill(0);
+          this.G.fill(0);
+          this.B.fill(0);
+        },
+        splatNode(x, y, strength, r, g, b) {
+          const s = this.scale;
+          const gx = (x / s) | 0;
+          const gy = (y / s) | 0;
+          const kr = this.kr;
+          const gw = this.gw, gh = this.gh;
+          const k = this.kernel;
+
+          // Bound box
+          const x0 = Math.max(0, gx - kr);
+          const x1 = Math.min(gw - 1, gx + kr);
+          const y0 = Math.max(0, gy - kr);
+          const y1 = Math.min(gh - 1, gy + kr);
+
+          for (let yy = y0; yy <= y1; yy++) {
+            const dy = yy - gy;
+            const ky = (dy + kr) * (2 * kr + 1);
+            const row = yy * gw;
+            for (let xx = x0; xx <= x1; xx++) {
+              const dx = xx - gx;
+              const w = k[ky + (dx + kr)];
+              if (w <= 1e-6) continue;
+              const id = row + xx;
+              const add = w * strength;
+              this.F[id] += add;
+              this.R[id] += add * r;
+              this.G[id] += add * g;
+              this.B[id] += add * b;
+            }
+          }
+        },
+        render() {
+          const img = this.img.data;
+          const N = this.gw * this.gh;
+
+          // Calm, organic thresholds
+          const t0 = 0.24;
+          const t1 = 0.82;
+
+          // Background remains dark; we draw semi-abstract liquid.
+          for (let i = 0; i < N; i++) {
+            const f = this.F[i];
+
+            // "Silence" becomes visible as emptiness: we keep it truly empty.
+            const a = smoothstep(t0, t1, f);
+
+            const r = (this.R[i] / (f + 1e-6)) || 0;
+            const g = (this.G[i] / (f + 1e-6)) || 0;
+            const b = (this.B[i] / (f + 1e-6)) || 0;
+
+            // Slight glow inside thicker meaning
+            const glow = smoothstep(0.55, 1.35, f) * 0.22;
+
+            // Compose onto near-black base
+            const base = 10;
+            const rr = clamp(base + (r * 255) * a + 120 * glow * a, 0, 255);
+            const gg = clamp(base + (g * 255) * a + 135 * glow * a, 0, 255);
+            const bb = clamp(base + (b * 255) * a + 160 * glow * a, 0, 255);
+
+            const j = i * 4;
+            img[j + 0] = rr;
+            img[j + 1] = gg;
+            img[j + 2] = bb;
+            img[j + 3] = 255;
+          }
+
+          // Draw scaled to full res
+          ctx.imageSmoothingEnabled = true;
+          ctx.putImageData(this.img, 0, 0);
+          ctx.drawImage(canvas, 0, 0, this.gw, this.gh, 0, 0, W, H);
+        }
+      };
+
+      // ---------- Color helpers ----------
+      function hslToRgb(h, s, l) {
+        // h in degrees
+        h = ((h % 360) + 360) % 360;
+        s = clamp(s, 0, 1);
+        l = clamp(l, 0, 1);
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = l - c / 2;
+        let r = 0, g = 0, b = 0;
+        if (h < 60) { r = c; g = x; b = 0; }
+        else if (h < 120) { r = x; g = c; b = 0; }
+        else if (h < 180) { r = 0; g = c; b = x; }
+        else if (h < 240) { r = 0; g = x; b = c; }
+        else if (h < 300) { r = x; g = 0; b = c; }
+        else { r = c; g = 0; b = x; }
+        return [r + m, g + m, b + m];
+      }
+
+      // ---------- Flow strokes (subtle, no UI) ----------
+      function drawFlowLines(dt) {
+        // Short, faint strokes aligned with local currents.
+        const n = quality.flowLines;
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        ctx.globalAlpha = 0.06;
+        ctx.lineWidth = 1.0 * dpr;
+        ctx.beginPath();
+
+        for (let i = 0; i < n; i++) {
+          // sample around the scene
+          const x = rand(W);
+          const y = rand(H);
+          const v = sampleVelocity(x, y);
+          const sp = Math.hypot(v.vx, v.vy);
+          if (sp < 0.25 * dpr) continue;
+          const len = clamp(sp * 2.2, 8 * dpr, 34 * dpr);
+
+          // Slight curvature via perpendicular component
+          const nx = -v.vy, ny = v.vx;
+          const bend = (0.25 + 0.5 * Math.random()) * dpr;
+
+          ctx.moveTo(x, y);
+          ctx.quadraticCurveTo(
+            x + v.vx * len * 0.5 + nx * bend,
+            y + v.vy * len * 0.5 + ny * bend,
+            x + v.vx * len,
+            y + v.vy * len
+          );
+        }
+
+        ctx.strokeStyle = "rgba(180,210,255,1)";
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function sampleVelocity(x, y) {
+        // Combine nearby blob node velocities (cheap approximation)
+        let vx = 0, vy = 0, wsum = 0;
+        for (const b of blobs) {
+          const dx = x - b.cx, dy = y - b.cy;
+          const d2 = dx * dx + dy * dy + 1;
+          const w = (b.size * b.size) / (d2 + b.size * 22);
+          // For modifiers: they "tilt" nearby flow subtly
+          const mod = b.modifier ? 1.18 : 1.0;
+          vx += (b.vx || 0) * w * mod;
+          vy += (b.vy || 0) * w * mod;
+          wsum += w;
+        }
+        if (wsum > 1e-6) { vx /= wsum; vy /= wsum; }
+        return { vx, vy };
+      }
+
+      // ---------- Simulation step ----------
+      function simulate(dt) {
+        // Global calm drift field
+        const t = performance.now() * 0.00008;
+        const gx = Math.cos(t) * 0.15 * dpr;
+        const gy = Math.sin(t * 1.13) * 0.12 * dpr;
+
+        // Update suction events
+        for (let i = suctionEvents.length - 1; i >= 0; i--) {
+          const e = suctionEvents[i];
+          e.t += dt;
+          if (e.t > 1.2) suctionEvents.splice(i, 1);
+        }
+
+        // Pointer currents and shear
+        const dragMag = pointer.down ? Math.hypot(pointer.vx, pointer.vy) : 0;
+        if (pointer.down && pointer.holdBlob) {
+          pointer.holdT = clamp(pointer.holdT + dt * 1.6, 0, 1);
+          // Pressure grows with hold time
+          pointer.holdBlob.pressure = lerp(pointer.holdBlob.pressure, 1.0, 0.08);
+        } else {
+          pointer.holdT = 0;
+          for (const b of blobs) b.pressure *= 0.95;
+        }
+
+        // Precompute blob centroid velocities
+        for (const b of blobs) {
+          let vx = 0, vy = 0;
+          for (const n of b.nodes) { vx += n.vx; vy += n.vy; }
+          vx /= b.nodes.length; vy /= b.nodes.length;
+          b.vx = vx; b.vy = vy;
+        }
+
+        // Inter-blob interactions (attraction/repulsion + vortices)
+        for (let i = 0; i < blobs.length; i++) {
+          const a = blobs[i];
+
+          // Evaporation over time (meaning may drift after interaction)
+          a.age += dt;
+          const evaporate = 0.0025 + 0.0020 * (1 - a.visc);
+          a.life = clamp(a.life - evaporate * dt * (0.7 + 0.3 * Math.sin(a.age * 0.6)), 0, 1);
+
+          // Repetition thickens over time: slow reinforcement when still alive
+          if (a.life > 0.2) {
+            a.internal = lerp(a.internal, 1.0, 0.004 * dt);
+          }
+
+          // Rare words "heavy droplets": a gentle gravity component
+          const heavy = (a.mass - 1.0) * 0.10 * dpr;
+
+          for (let j = i + 1; j < blobs.length; j++) {
+            const b = blobs[j];
+            const dx = b.cx - a.cx, dy = b.cy - a.cy;
+            const d2 = dx * dx + dy * dy + 1;
+            const d = Math.sqrt(d2);
+
+            // Compatibility proxy: sign mismatch creates contradiction
+            const signMix = a.sign * b.sign;
+            const baseRange = (a.size + b.size) * 0.65;
+            const influence = Math.exp(-d2 / (baseRange * baseRange + 1));
+
+            // Incompatible words repel and form unstable swirls
+            const repel = (signMix < 0 ? 1.0 : 0.0);
+            const attract = (signMix > 0 ? 1.0 : 0.0);
+
+            // Turbulence from ambiguity agitates boundary
+            const swirl = (a.turb + b.turb) * 0.5 * (0.35 + 0.65 * repel) * influence;
+
+            // Force direction
+            const ux = dx / d, uy = dy / d;
+            const px = -uy, py = ux;
+
+            const fAt = 0.12 * influence * attract;
+            const fRp = 0.18 * influence * repel;
+
+            // Apply to nodes (soft)
+            for (const n of a.nodes) {
+              n.vx -= ux * (fAt - fRp) * dt * 60;
+              n.vy -= uy * (fAt - fRp) * dt * 60;
+              // Vortex (contradiction)
+              n.vx -= px * swirl * dt * 60;
+              n.vy -= py * swirl * dt * 60;
+            }
+            for (const n of b.nodes) {
+              n.vx += ux * (fAt - fRp) * dt * 60;
+              n.vy += uy * (fAt - fRp) * dt * 60;
+              n.vx += px * swirl * dt * 60;
+              n.vy += py * swirl * dt * 60;
+            }
+          }
+
+          // Sentence links imply currents/pressure paths
+          if (a.prev && a.link) {
+            const p = a.prev;
+            const dx = a.cx - p.cx, dy = a.cy - p.cy;
+            const dist = Math.hypot(dx, dy) + 1e-6;
+            const over = dist - a.link.rest;
+            const k = a.link.k * (1.0 + 0.5 * (a.prev.visc + a.visc));
+            const fx = (dx / dist) * over * k;
+            const fy = (dy / dist) * over * k;
+
+            // If separated too much: meaning thins/distorts
+            if (dist > a.link.breakDist) {
+              a.visc = clamp(a.visc * 0.995, 0.05, 0.35);
+              a.internal *= 0.994;
+              p.internal *= 0.994;
+            }
+
+            for (const n of a.nodes) { n.vx -= fx * dt * 60; n.vy -= fy * dt * 60; }
+            for (const n of p.nodes) { n.vx += fx * dt * 60; n.vy += fy * dt * 60; }
+          }
+
+          // Modifiers subtly change nearby flow behavior
+          if (a.modifier) {
+            for (const b of blobs) {
+              if (b === a) continue;
+              const dx = b.cx - a.cx, dy = b.cy - a.cy;
+              const d2 = dx * dx + dy * dy;
+              const r2 = a.effectRadius * a.effectRadius;
+              if (d2 < r2) {
+                const w = (1 - d2 / r2);
+                // Slightly increase viscosity and cohesion nearby (gentle thickening)
+                b.visc = clamp(b.visc + 0.00018 * w * dt * 60, 0.05, 0.38);
+                b.internal = clamp(b.internal + 0.00012 * w * dt * 60, 0.75, 1.06);
+              }
+            }
+          }
+
+          // Apply forces to nodes: cohesion, pressure, pointer currents, suction, boundaries
+          const cohesion = 0.010 + 0.020 * a.internal;
+          const press = 0.008 + 0.020 * (a.pressure);
+          const damp = clamp(a.visc, 0.05, 0.40);
+
+          // Recompute centroid
+          let cx = 0, cy = 0;
+          for (const n of a.nodes) { cx += n.x; cy += n.y; }
+          cx /= a.nodes.length; cy /= a.nodes.length;
+          a.cx = cx; a.cy = cy;
+
+          for (const n of a.nodes) {
+            // Cohesion towards centroid
+            let dx = a.cx - n.x, dy = a.cy - n.y;
+            n.vx += dx * cohesion * dt * 60;
+            n.vy += dy * cohesion * dt * 60;
+
+            // Internal pressure: expand if being held; resist collapse
+            const r = a.size * (0.24 + 0.08 * a.internal);
+            const dist = Math.hypot(dx, dy) + 1e-6;
+            const target = r * (1.0 + 0.45 * a.pressure);
+            const push = (target - dist) * press;
+            n.vx -= (dx / dist) * push * dt * 60;
+            n.vy -= (dy / dist) * push * dt * 60;
+
+            // Turbulence (ambiguity): small rotational noise around centroid
+            const ang = Math.atan2(n.y - a.cy, n.x - a.cx);
+            const wob = (Math.sin(ang * 3 + a.age * 2.2) + Math.cos(ang * 2 - a.age * 1.7)) * 0.5;
+            n.vx += (-Math.sin(ang) * wob) * a.turb * 0.06 * dt * 60 * dpr;
+            n.vy += (Math.cos(ang) * wob) * a.turb * 0.06 * dt * 60 * dpr;
+
+            // Ambient drift
+            n.vx += gx * dt * 60;
+            n.vy += (gy + heavy) * dt * 60;
+
+            // Pointer drag creates currents and shear
+            if (pointer.down && dragMag > 0.5 * dpr) {
+              const pdx = n.x - pointer.x;
+              const pdy = n.y - pointer.y;
+              const pr2 = (180 * dpr) * (180 * dpr);
+              const d2 = pdx * pdx + pdy * pdy;
+              if (d2 < pr2) {
+                const w = (1 - d2 / pr2);
+                // shear-like: parallel to drag + slight perpendicular twist
+                const dvx = pointer.vx * 0.07 * w;
+                const dvy = pointer.vy * 0.07 * w;
+                const px = -pointer.vy, py = pointer.vx;
+                n.vx += dvx + px * 0.0009 * w * dragMag;
+                n.vy += dvy + py * 0.0009 * w * dragMag;
+              }
+            }
+
+            // Suction events pull fluid inward (collapse)
+            for (const sEv of suctionEvents) {
+              const age = sEv.t;
+              const w = Math.exp(-age * 2.3) * sEv.str;
+              if (w < 1e-4) continue;
+              const sx = sEv.x - n.x;
+              const sy = sEv.y - n.y;
+              const sd2 = sx * sx + sy * sy + 40 * dpr;
+              const pull = (1.0 / sd2) * 8500 * w * dt * 60;
+              n.vx += sx * pull;
+              n.vy += sy * pull;
+            }
+
+            // Viscosity damping (dense meaning resists change)
+            n.vx *= (1 - damp);
+            n.vy *= (1 - damp);
+
+            // Integrate
+            n.x += n.vx * dt * 60;
+            n.y += n.vy * dt * 60;
+
+            // Soft boundaries (silence regions at edges stay empty)
+            const pad = 26 * dpr;
+            if (n.x < pad) { n.x = pad; n.vx *= -0.45; }
+            if (n.x > W - pad) { n.x = W - pad; n.vx *= -0.45; }
+            if (n.y < pad) { n.y = pad; n.vy *= -0.45; }
+            if (n.y > H - pad) { n.y = H - pad; n.vy *= -0.45; }
+          }
+
+          // Fade based on life (evaporation)
+          a.fade = clamp(a.life * 1.05, 0, 1);
+
+          // If almost gone, dissolve nodes outward (evaporate)
+          if (a.life < 0.07) {
+            for (const n of a.nodes) {
+              n.vx += rand(0.9, -0.45) * dpr * 0.4;
+              n.vy += rand(0.9, -0.45) * dpr * 0.4;
+            }
+          }
+        }
+
+        // Remove dead blobs
+        for (let i = blobs.length - 1; i >= 0; i--) {
+          if (blobs[i].life <= 0.01) {
+            suctionEvents.push({ x: blobs[i].cx, y: blobs[i].cy, t: 0, str: 0.45 });
+            blobs.splice(i, 1);
+          }
+        }
+      }
+
+      // ---------- Rendering ----------
+      function render(dt) {
+        // Soft persistence (calm liquid memory)
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = `rgba(7,10,15,${quality.trailAlpha})`;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+
+        field.clear();
+
+        // Splat nodes into scalar field with blob color and fade
+        // Also cap total nodes for performance (graceful degradation)
+        let nodesTotal = 0;
+        for (const b of blobs) nodesTotal += b.nodes.length;
+
+        // If too many nodes, thin out splats (degrade gracefully)
+        const step = nodesTotal > quality.maxNodesTotal ? Math.ceil(nodesTotal / quality.maxNodesTotal) : 1;
+        let skip = 0;
+
+        for (const b of blobs) {
+          const sat = 0.56;
+          const lig = 0.52 + 0.08 * (1 - b.visc);
+          const [r, g, bb] = hslToRgb(b.hue, sat, lig);
+
+          // Dense meaning = higher splat strength (more viscosity -> higher opacity but slower)
+          const baseStrength = (0.85 + 0.75 * b.internal) * (0.40 + 0.9 * b.fade) * (0.75 + 0.55 * b.visc);
+          const pressureBoost = 1 + 0.40 * b.pressure;
+
+          for (let i = 0; i < b.nodes.length; i++) {
+            if (step > 1) {
+              if ((skip++ % step) !== 0) continue;
+            }
+            const n = b.nodes[i];
+            const s = baseStrength * pressureBoost * (0.75 + 0.25 * Math.sin(b.age * 0.7 + i));
+            field.splatNode(n.x, n.y, s, r, g, bb);
+          }
+        }
+
+        // Field image
+        field.render();
+
+        // Subtle flow traces (meaning drift)
+        drawFlowLines(dt);
+
+        // Optional: very faint vorticity blooms around contradictions (invisible logic)
+        // (kept extremely subtle by design)
+        if (blobs.length > 2) {
+          ctx.save();
+          ctx.globalCompositeOperation = "screen";
+          ctx.globalAlpha = 0.03;
+          for (let i = 0; i < blobs.length; i++) {
+            for (let j = i + 1; j < blobs.length; j++) {
+              const a = blobs[i], b = blobs[j];
+              if (a.sign * b.sign >= 0) continue;
+              const dx = b.cx - a.cx, dy = b.cy - a.cy;
+              const d = Math.hypot(dx, dy);
+              if (d > 360 * dpr) continue;
+              const x = (a.cx + b.cx) * 0.5, y = (a.cy + b.cy) * 0.5;
+              const rad = lerp(35, 120, clamp(1 - d / (360 * dpr), 0, 1)) * dpr;
+              const grad = ctx.createRadialGradient(x, y, 0, x, y, rad);
+              grad.addColorStop(0, "rgba(170,220,255,0.9)");
+              grad.addColorStop(1, "rgba(10,12,18,0)");
+              ctx.fillStyle = grad;
+              ctx.beginPath();
+              ctx.arc(x, y, rad, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          ctx.restore();
+        }
+      }
+
+      // ---------- Quality manager ----------
+      function updateQuality(dt) {
+        frameTimes.push(dt);
+        if (frameTimes.length > 40) frameTimes.shift();
+        if (frameTimes.length < 20) return;
+
+        const avg = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+
+        // If slow, reduce quality
+        if (avg > 0.020) {
+          quality.scale = clamp(quality.scale + 1, 6, 12);
+          quality.radiusCells = clamp(quality.radiusCells - 1, 12, 18);
+          quality.flowLines = clamp(quality.flowLines - 10, 70, 160);
+          quality.trailAlpha = clamp(quality.trailAlpha + 0.01, 0.08, 0.14);
+          quality.maxNodesTotal = clamp(quality.maxNodesTotal - 15, 140, 260);
+          field.init();
+          frameTimes.length = 0;
+        }
+        // If fast, gently improve
+        else if (avg < 0.013) {
+          quality.scale = clamp(quality.scale - 1, 5, 12);
+          quality.radiusCells = clamp(quality.radiusCells + 1, 12, 20);
+          quality.flowLines = clamp(quality.flowLines + 8, 70, 200);
+          quality.trailAlpha = clamp(quality.trailAlpha - 0.005, 0.06, 0.14);
+          quality.maxNodesTotal = clamp(quality.maxNodesTotal + 10, 140, 320);
+          field.init();
+          frameTimes.length = 0;
+        }
+      }
+
+      // ---------- Loop ----------
+      let last = performance.now();
+      function tick(now) {
+        const dt = clamp((now - last) / 1000, 0.001, 0.05);
+        last = now;
+
+        updateQuality(dt);
+        simulate(dt);
+        render(dt);
+
+        requestAnimationFrame(tick);
+      }
+
+      // ---------- Seed the space (silent language) ----------
+      function seed() {
+        const seeds = ["hush", "maybe", "and", "not", "blue", "almost", "still"];
+        for (let i = 0; i < seeds.length; i++) {
+          spawnWordBlob(seeds[i]);
+          // soften initial structure
+          blobs[blobs.length - 1].life = 0.75;
+        }
+      }
+
+      // Init
+      resize();
+      seed();
+      requestAnimationFrame(tick);
+
+    })();
+  </script>
+</body>
+
+</html>

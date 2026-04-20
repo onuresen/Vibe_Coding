@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Invisible Architecture</title>
+<style>
+  html,body{margin:0;height:100%;background:#0e0f10;overflow:hidden;}
+  canvas{display:block;width:100%;height:100%;}
+  .hud{position:fixed;left:16px;top:14px;pointer-events:none;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;letter-spacing:.02em;color:rgba(245,245,245,.72);transition:opacity 1.6s ease;opacity:.95}
+  .hud.hide{opacity:0}
+  .hud h1{margin:0;font-weight:500;font-size:14px;opacity:.9}
+  .hud p{margin:6px 0 0 0;font-size:12px;opacity:.55}
+  .hud .dim{opacity:.35}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud">
+  <h1>Invisible Architecture</h1>
+  <p class="dim">Move to listen. Click to send a pulse.</p>
+</div>
+<script>
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', { alpha: false });
+
+  // --- Utilities ---
+  const TAU = Math.PI * 2;
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp = (a,b,t)=>a+(b-a)*t;
+  const smoothstep = (a,b,t)=>{
+    t = clamp((t-a)/(b-a),0,1);
+    return t*t*(3-2*t);
+  };
+  const hypot2 = (x,y)=>Math.sqrt(x*x+y*y);
+
+  function mulberry32(seed){
+    return function(){
+      let t = seed += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+  }
+
+  // --- World + architecture (persistent, coherent, designed) ---
+  // We define walls as segments in "world" units. The plan is a small building:
+  // An outer shell, a central corridor spine, and a few rooms with door gaps.
+  // Nothing draws the segments directly—only indirect effects.
+
+  let W = 1400, H = 900; // world extents (rescaled on resize)
+
+  /** @type {{ax:number,ay:number,bx:number,by:number}[]} */
+  let walls = [];
+
+  function addWall(ax,ay,bx,by){
+    walls.push({ax,ay,bx,by});
+  }
+
+  // Helper: add rectangle perimeter, optionally with gaps on edges (doors)
+  // gaps: array of {edge:'top'|'bottom'|'left'|'right', t0,t1} where t is [0..1] along that edge.
+  function addRect(x0,y0,x1,y1,gaps=[]){
+    const gap = {top:[],bottom:[],left:[],right:[]};
+    for(const g of gaps) gap[g.edge].push(g);
+
+    function addEdge(edge, ax,ay,bx,by){
+      const gs = gap[edge];
+      if(!gs.length){ addWall(ax,ay,bx,by); return; }
+      // Sort gaps and emit segments around them
+      gs.sort((p,q)=>p.t0-q.t0);
+      const dx = bx-ax, dy = by-ay;
+      let t = 0;
+      for(const g of gs){
+        const t0 = clamp(g.t0,0,1), t1 = clamp(g.t1,0,1);
+        if(t0>t) addWall(ax+dx*t, ay+dy*t, ax+dx*t0, ay+dy*t0);
+        t = Math.max(t, t1);
+      }
+      if(t<1) addWall(ax+dx*t, ay+dy*t, bx,by);
+    }
+
+    addEdge('top',    x0,y0, x1,y0);
+    addEdge('right',  x1,y0, x1,y1);
+    addEdge('bottom', x1,y1, x0,y1);
+    addEdge('left',   x0,y1, x0,y0);
+  }
+
+  function buildArchitecture(){
+    walls.length = 0;
+
+    // Outer boundary
+    addRect(80,80, W-80, H-80, [
+      {edge:'bottom', t0:0.46, t1:0.54} // main entrance gap
+    ]);
+
+    // Central corridor spine (a long, intentional hallway)
+    // We form corridor walls with openings into rooms.
+    const cx0 = 0.28*W, cx1 = 0.72*W;
+    const cy0 = 0.22*H, cy1 = 0.78*H;
+
+    // Corridor width
+    const cw = 0.12*H;
+    const yA = (H/2) - cw/2;
+    const yB = (H/2) + cw/2;
+
+    // Top corridor wall with door gaps
+    addWall(cx0, yA, 0.41*W, yA);
+    addWall(0.46*W, yA, 0.58*W, yA);
+    addWall(0.63*W, yA, cx1, yA);
+
+    // Bottom corridor wall with door gaps
+    addWall(cx0, yB, 0.37*W, yB);
+    addWall(0.42*W, yB, 0.52*W, yB);
+    addWall(0.57*W, yB, 0.67*W, yB);
+    addWall(0.72*W, yB, cx1, yB);
+
+    // Corridor end caps (with slight offsets to suggest depth)
+    addWall(cx0, yA, cx0, yB);
+    addWall(cx1, yA, cx1, yB);
+
+    // Rooms on upper side
+    addRect(100, 100, cx0, yA, [
+      {edge:'bottom', t0:0.70, t1:0.82}
+    ]); // northwest room
+
+    addRect(cx0, 100, 0.50*W, yA, [
+      {edge:'bottom', t0:0.45, t1:0.55}
+    ]); // north mid room
+
+    addRect(0.50*W, 100, cx1, yA, [
+      {edge:'bottom', t0:0.18, t1:0.30}
+    ]); // northeast room
+
+    addRect(cx1, 100, W-100, yA, [
+      {edge:'bottom', t0:0.58, t1:0.70}
+    ]); // far east gallery
+
+    // Rooms on lower side
+    addRect(100, yB, 0.42*W, H-100, [
+      {edge:'top', t0:0.55, t1:0.65}
+    ]); // southwest room
+
+    addRect(0.42*W, yB, 0.62*W, H-100, [
+      {edge:'top', t0:0.42, t1:0.58}
+    ]); // south mid room
+
+    addRect(0.62*W, yB, W-100, H-100, [
+      {edge:'top', t0:0.18, t1:0.30}
+    ]); // southeast room
+
+    // A quiet "service" corridor on the far right, connecting gallery to southeast
+    const sx = 0.84*W;
+    addWall(sx, yA, sx, yB);
+    addWall(sx, yB, sx, 0.92*H);
+    addWall(sx, 0.92*H, 0.94*W, 0.92*H);
+
+    // Subtle internal partitions to create layered spaces
+    addWall(0.18*W, 0.30*H, 0.18*W, 0.46*H);
+    addWall(0.18*W, 0.54*H, 0.18*W, 0.70*H);
+
+    addWall(0.52*W, 0.16*H, 0.52*W, yA);
+    addWall(0.52*W, yB, 0.52*W, 0.86*H);
+
+    // The plan is intentionally not a maze: room blocks + a clear spine.
+  }
+
+  // --- Geometry: distances and intersections ---
+
+  function closestPointOnSegment(px,py, ax,ay,bx,by){
+    const vx = bx-ax, vy = by-ay;
+    const wx = px-ax, wy = py-ay;
+    const vv = vx*vx + vy*vy;
+    let t = vv>1e-8 ? (wx*vx + wy*vy)/vv : 0;
+    t = clamp(t,0,1);
+    return {x: ax + vx*t, y: ay + vy*t, t};
+  }
+
+  function distToSegment(px,py, s){
+    const p = closestPointOnSegment(px,py,s.ax,s.ay,s.bx,s.by);
+    const dx = px-p.x, dy = py-p.y;
+    return Math.sqrt(dx*dx + dy*dy);
+  }
+
+  // Ray (ox,oy) + dir (dx,dy) -> nearest intersection distance, and point.
+  // Returns null if none.
+  function raycast(ox,oy, dx,dy){
+    let bestT = Infinity;
+    let hx = 0, hy = 0;
+    for(const s of walls){
+      const ax = s.ax, ay = s.ay, bx = s.bx, by = s.by;
+      // Solve intersection between ray and segment using 2D cross products.
+      const rx = dx, ry = dy;
+      const sx = bx-ax, sy = by-ay;
+      const qpx = ax-ox, qpy = ay-oy;
+      const rxs = rx*sy - ry*sx;
+      if(Math.abs(rxs) < 1e-8) continue; // parallel
+      const t = (qpx*sy - qpy*sx)/rxs;
+      const u = (qpx*ry - qpy*rx)/rxs;
+      if(t > 0 && u >= 0 && u <= 1){
+        if(t < bestT){
+          bestT = t;
+          hx = ox + rx*t;
+          hy = oy + ry*t;
+        }
+      }
+    }
+    if(bestT !== Infinity) return {t: bestT, x: hx, y: hy};
+    return null;
+  }
+
+  // --- Simulation objects ---
+  const rand = mulberry32(1337);
+
+  const state = {
+    time: 0,
+    dt: 0,
+    // cursor in screen
+    mx: 0, my: 0,
+    pmx: 0, pmy: 0,
+    // cursor in world
+    wx: 0, wy: 0,
+    // camera
+    camx: 0, camy: 0,
+    // exploration certainty derived from motion (decays when still)
+    probe: 0,
+  };
+
+  const ripples = []; // {x,y,t,strength, speed, life, seed}
+
+  function emitRipple(x,y, strength){
+    ripples.push({
+      x,y,
+      t: 0,
+      strength,
+      speed: lerp(180, 260, rand()),
+      life: lerp(1.6, 2.4, rand()),
+      seed: rand()*1000
+    });
+    while(ripples.length > 5) ripples.shift();
+  }
+
+  // Dust / mist particles (collide with invisible walls)
+  const particles = [];
+  const MAX_PARTICLES = 1200;
+
+  function spawnParticles(n, aroundX=null, aroundY=null){
+    for(let i=0;i<n && particles.length<MAX_PARTICLES;i++){
+      const x = aroundX==null ? lerp(120, W-120, rand()) : aroundX + (rand()-0.5)*220;
+      const y = aroundY==null ? lerp(120, H-120, rand()) : aroundY + (rand()-0.5)*220;
+      const vx = (rand()-0.5)*30;
+      const vy = (rand()-0.5)*30;
+      particles.push({
+        x, y, vx, vy,
+        r: lerp(0.7, 1.8, rand()),
+        a: lerp(0.05, 0.18, rand()),
+        z: lerp(0.2, 1.0, rand()), // parallax layer
+      });
+    }
+  }
+
+  // --- Resize ---
+  function resize(){
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width  = Math.floor(innerWidth * dpr);
+    canvas.height = Math.floor(innerHeight * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    // Keep world aspect close to screen but slightly larger to encourage drift.
+    const ar = innerWidth / innerHeight;
+    W = Math.round(1400 * clamp(ar, 0.85, 1.6));
+    H = 900;
+    buildArchitecture();
+
+    // Re-seed particles on resize
+    particles.length = 0;
+    spawnParticles(Math.floor(MAX_PARTICLES*0.85));
+
+    // Place camera at center
+    state.camx = W/2;
+    state.camy = H/2;
+  }
+  addEventListener('resize', resize, {passive:true});
+  resize();
+
+  // --- Input ---
+  function setMouse(e){
+    const rect = canvas.getBoundingClientRect();
+    state.mx = e.clientX - rect.left;
+    state.my = e.clientY - rect.top;
+  }
+  addEventListener('pointermove', (e)=>{ setMouse(e); }, {passive:true});
+  addEventListener('pointerdown', (e)=>{
+    setMouse(e);
+    // Strong reveal pulse
+    // Convert to world coordinate at click time
+    const w = screenToWorld(state.mx, state.my);
+    emitRipple(w.x, w.y, 1.0);
+    spawnParticles(80, w.x, w.y);
+    // boost probe
+    state.probe = Math.min(1, state.probe + 0.45);
+  }, {passive:true});
+
+  // --- Coordinate transforms ---
+  function screenToWorld(sx,sy, parallax=1){
+    // Camera center maps to screen center.
+    const cx = innerWidth/2, cy = innerHeight/2;
+    return {
+      x: state.camx + (sx - cx) * parallax,
+      y: state.camy + (sy - cy) * parallax
+    };
+  }
+  function worldToScreen(wx,wy, parallax=1){
+    const cx = innerWidth/2, cy = innerHeight/2;
+    return {
+      x: cx + (wx - state.camx) / parallax,
+      y: cy + (wy - state.camy) / parallax
+    };
+  }
+
+  // --- Flow field influenced by walls (indirect cue) ---
+  function wallRepulsion(x,y){
+    // Sum of gentle repulsions from nearby walls.
+    let fx = 0, fy = 0;
+    const R = 46; // influence radius
+    for(const s of walls){
+      const p = closestPointOnSegment(x,y,s.ax,s.ay,s.bx,s.by);
+      const dx = x - p.x, dy = y - p.y;
+      const d = Math.sqrt(dx*dx + dy*dy) + 1e-6;
+      if(d < R){
+        // repulsion strength ramps up near wall
+        const k = (1 - d/R);
+        const mag = k*k * 80;
+        fx += (dx/d) * mag;
+        fy += (dy/d) * mag;
+      }
+    }
+    return {fx, fy};
+  }
+
+  // --- Collision ---
+  function resolveCollision(p){
+    // If particle penetrates near a wall, push out and reflect.
+    // We treat walls as thin segments with thickness.
+    const thickness = 3.0;
+    let hit = false;
+
+    for(const s of walls){
+      const cp = closestPointOnSegment(p.x,p.y,s.ax,s.ay,s.bx,s.by);
+      const dx = p.x - cp.x, dy = p.y - cp.y;
+      const d = Math.sqrt(dx*dx + dy*dy) + 1e-6;
+      if(d < thickness){
+        hit = true;
+        // Normal
+        const nx = dx/d, ny = dy/d;
+        // Push out
+        const push = (thickness - d);
+        p.x += nx * push;
+        p.y += ny * push;
+        // Reflect velocity
+        const vn = p.vx*nx + p.vy*ny;
+        if(vn < 0){
+          p.vx -= (1.65) * vn * nx;
+          p.vy -= (1.65) * vn * ny;
+        }
+        // Slight damping
+        p.vx *= 0.97;
+        p.vy *= 0.97;
+      }
+    }
+    return hit;
+  }
+
+  // --- Rendering helpers (subtle cues) ---
+
+  function drawBackground(){
+    // A calm, architectural tone: soft concrete-like gradient.
+    const w = innerWidth, h = innerHeight;
+    const g = ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0, '#0f1012');
+    g.addColorStop(1, '#0c0d0e');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,w,h);
+
+    // Very subtle vignetting
+    const rg = ctx.createRadialGradient(w*0.5,h*0.52, Math.min(w,h)*0.2, w*0.5,h*0.52, Math.max(w,h)*0.75);
+    rg.addColorStop(0, 'rgba(255,255,255,0.025)');
+    rg.addColorStop(1, 'rgba(0,0,0,0.22)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0,0,w,h);
+  }
+
+  function drawProbeLight(worldX, worldY){
+    // A soft illumination centered at the probe; discontinuities appear when rays terminate.
+    const s = worldToScreen(worldX, worldY, 1);
+    const w = innerWidth, h = innerHeight;
+
+    const certainty = state.probe;
+    const baseR = lerp(120, 200, certainty);
+
+    // Light gradient
+    const g = ctx.createRadialGradient(s.x,s.y, 0, s.x,s.y, baseR);
+    g.addColorStop(0, `rgba(240,240,240,${0.06 + 0.06*certainty})`);
+    g.addColorStop(1, `rgba(240,240,240,0)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,w,h);
+
+    // Shadow terminations: sample some rays and paint tiny "abrupt fades" at hits.
+    const RAYS = 48;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for(let i=0;i<RAYS;i++){
+      const a = (i/RAYS)*TAU + 0.06*Math.sin(state.time*0.7 + i*2.1);
+      const dx = Math.cos(a), dy = Math.sin(a);
+      const hit = raycast(worldX, worldY, dx, dy);
+      if(!hit) continue;
+      // Only nearby hits contribute to cue
+      const d = hit.t;
+      if(d > baseR*1.9) continue;
+      const hp = worldToScreen(hit.x, hit.y, 1);
+      const k = 1 - clamp(d/(baseR*1.9), 0, 1);
+      const rr = lerp(10, 26, k) * (0.6 + 0.8*certainty);
+      const gg = ctx.createRadialGradient(hp.x,hp.y, 0, hp.x,hp.y, rr);
+      gg.addColorStop(0, `rgba(255,255,255,${0.03*k})`);
+      gg.addColorStop(0.55, `rgba(255,255,255,${0.012*k})`);
+      gg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gg;
+      ctx.beginPath();
+      ctx.arc(hp.x, hp.y, rr, 0, TAU);
+      ctx.fill();
+
+      // A small dark notch *behind* the wall to hint abrupt termination
+      const back = worldToScreen(hit.x + dx*8, hit.y + dy*8, 1);
+      const dd = ctx.createRadialGradient(back.x,back.y, 0, back.x,back.y, rr*0.9);
+      dd.addColorStop(0, `rgba(0,0,0,${0.04*k})`);
+      dd.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = dd;
+      ctx.beginPath();
+      ctx.arc(back.x, back.y, rr*0.9, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawRipples(){
+    if(!ripples.length) return;
+
+    const certainty = state.probe;
+    const ANG = 112;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    for(const r of ripples){
+      const t = r.t;
+      const age = t / r.life;
+      if(age >= 1) continue;
+
+      // Ring radius and alpha
+      const base = r.speed * t;
+      const fade = Math.exp(-2.2*age);
+      const alpha = (0.10 + 0.18*r.strength) * fade * (0.35 + 0.9*certainty);
+      if(alpha < 0.002) continue;
+
+      // Build truncated ring polygon: each direction stops at the first wall.
+      const pts = [];
+      for(let i=0;i<ANG;i++){
+        const a = (i/ANG)*TAU;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        const hit = raycast(r.x, r.y, dx, dy);
+        const limit = hit ? hit.t : 99999;
+        // Subtle irregularity so it's not a perfect instrument
+        const jitter = 1 + 0.012*Math.sin(r.seed + i*0.55 + state.time*1.3);
+        const rr = Math.min(base*jitter, limit - 1.5);
+        const wx = r.x + dx*rr;
+        const wy = r.y + dy*rr;
+        const sp = worldToScreen(wx, wy, 1);
+        pts.push(sp);
+      }
+
+      // Stroke style: restrained, architectural.
+      ctx.lineWidth = 1.0;
+      ctx.strokeStyle = `rgba(235,235,235,${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+      ctx.stroke();
+
+      // A second faint ring offset to suggest echoes
+      if(r.strength > 0.6){
+        ctx.lineWidth = 1.0;
+        ctx.strokeStyle = `rgba(235,235,235,${alpha*0.55})`;
+        const off = 5 + 6*(1-age);
+        ctx.beginPath();
+        for(let i=0;i<pts.length;i++){
+          // push points outward slightly
+          const a = (i/ANG)*TAU;
+          const px = pts[i].x + Math.cos(a)*off;
+          const py = pts[i].y + Math.sin(a)*off;
+          if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  function drawParticles(){
+    const certainty = state.probe;
+
+    // Particles are the main indirect cue: they collide and flow around unseen structure.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    for(const p of particles){
+      const sp = worldToScreen(p.x, p.y, lerp(1.25, 0.85, p.z));
+      // Fade with distance from screen center slightly (quiet tone)
+      const dx = (sp.x-innerWidth/2)/innerWidth;
+      const dy = (sp.y-innerHeight/2)/innerHeight;
+      const v = 1 - clamp(Math.sqrt(dx*dx+dy*dy)*1.1,0,1);
+
+      const a = p.a * (0.55 + 0.9*certainty) * (0.25 + 0.75*v);
+      if(a<0.002) continue;
+
+      ctx.fillStyle = `rgba(230,230,230,${a})`;
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, p.r, 0, TAU);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // --- Update loop ---
+  let last = performance.now();
+
+  function step(now){
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    state.time += dt;
+    state.dt = dt;
+
+    // Cursor default to center if no movement
+    if(state.mx === 0 && state.my === 0){
+      state.mx = innerWidth/2;
+      state.my = innerHeight/2;
+      state.pmx = state.mx;
+      state.pmy = state.my;
+    }
+
+    // Motion-based probe strength: decays when still
+    const vx = (state.mx - state.pmx)/Math.max(1e-6, dt);
+    const vy = (state.my - state.pmy)/Math.max(1e-6, dt);
+    const speed = hypot2(vx,vy);
+
+    // Build probe certainty: move -> clarity; still -> ambiguity
+    const gain = smoothstep(10, 420, speed);
+    state.probe = clamp(state.probe + (gain*0.9 - 0.22)*dt, 0, 1);
+
+    // Camera follows cursor in world space with slight lag (parallax cues)
+    const targetW = screenToWorld(state.mx, state.my, 1);
+    // Keep within world bounds gently
+    const tx = clamp(targetW.x, 120, W-120);
+    const ty = clamp(targetW.y, 120, H-120);
+    state.camx = lerp(state.camx, tx, 1 - Math.pow(0.001, dt));
+    state.camy = lerp(state.camy, ty, 1 - Math.pow(0.001, dt));
+
+    // Probe world position is the world point under cursor
+    const probeW = screenToWorld(state.mx, state.my, 1);
+    state.wx = clamp(probeW.x, 80, W-80);
+    state.wy = clamp(probeW.y, 80, H-80);
+
+    // Auto emit faint ripples while moving (wind/sonar as probe)
+    if(state.probe > 0.12 && speed > 40){
+      // Emit with a low rate
+      if((state.time*1000 | 0) % 140 < 16){
+        emitRipple(state.wx, state.wy, 0.25 + 0.35*state.probe);
+      }
+    }
+
+    // Update ripples
+    for(let i=ripples.length-1;i>=0;i--){
+      ripples[i].t += dt;
+      if(ripples[i].t > ripples[i].life) ripples.splice(i,1);
+    }
+
+    // Update particles
+    const baseDriftX = 8*Math.sin(state.time*0.21);
+    const baseDriftY = 8*Math.cos(state.time*0.17);
+
+    // Cursor acts like wind disturbance
+    const wind = {
+      x: 0.0,
+      y: 0.0
+    };
+    // Wind direction follows cursor velocity, but subdued
+    if(speed > 1){
+      wind.x = clamp(vx/900, -0.9, 0.9);
+      wind.y = clamp(vy/900, -0.9, 0.9);
+    }
+
+    // Only a subset gets close-wall repulsion each frame for performance.
+    const stride = 2;
+
+    for(let i=0;i<particles.length;i++){
+      const p = particles[i];
+
+      // Gentle turbulence + drift
+      const n = Math.sin(0.004*p.x + 0.006*p.y + state.time*0.7);
+      const turb = 10 + 14*p.z;
+      p.vx += (baseDriftX + turb*n) * dt * 0.20;
+      p.vy += (baseDriftY + turb*Math.cos(n+1.1)) * dt * 0.20;
+
+      // Wind from cursor, decays with distance
+      const dx = p.x - state.wx;
+      const dy = p.y - state.wy;
+      const d = Math.sqrt(dx*dx+dy*dy) + 1e-6;
+      const wFall = Math.exp(-d/220);
+      const wStr = (0.9 + 1.3*state.probe) * wFall;
+      p.vx += wind.x * 120 * wStr * dt;
+      p.vy += wind.y * 120 * wStr * dt;
+
+      // Repulsion from walls (flow lines bend, stagnate)
+      if((i % stride) === ((state.time*60)|0) % stride){
+        const rep = wallRepulsion(p.x,p.y);
+        p.vx += rep.fx * dt;
+        p.vy += rep.fy * dt;
+      }
+
+      // Damping (quiet)
+      const damp = lerp(0.994, 0.985, state.probe);
+      p.vx *= Math.pow(damp, dt*60);
+      p.vy *= Math.pow(damp, dt*60);
+
+      // Integrate
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+
+      // Keep within outer bounds softly
+      if(p.x < 90){ p.x = 90; p.vx = Math.abs(p.vx)*0.6; }
+      if(p.x > W-90){ p.x = W-90; p.vx = -Math.abs(p.vx)*0.6; }
+      if(p.y < 90){ p.y = 90; p.vy = Math.abs(p.vy)*0.6; }
+      if(p.y > H-90){ p.y = H-90; p.vy = -Math.abs(p.vy)*0.6; }
+
+      // Collide with invisible walls
+      resolveCollision(p);
+    }
+
+    // Occasionally replenish particles near the probe to keep mist alive
+    if(particles.length < MAX_PARTICLES*0.8) spawnParticles(12, state.wx, state.wy);
+
+    // Remember previous mouse
+    state.pmx = state.mx;
+    state.pmy = state.my;
+
+    // Render
+    drawBackground();
+
+    // The "world" is never drawn; only indirect phenomena.
+    drawProbeLight(state.wx, state.wy);
+    drawRipples();
+    drawParticles();
+
+    // Subtle grain (procedural) for material feel
+    drawGrain(0.035);
+
+    requestAnimationFrame(step);
+  }
+
+  function drawGrain(strength){
+    // Very lightweight grain: a few random pixels per frame.
+    const n = Math.floor(innerWidth*innerHeight*0.00005);
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = `rgba(255,255,255,${strength})`;
+    for(let i=0;i<n;i++){
+      const x = (rand()*innerWidth)|0;
+      const y = (rand()*innerHeight)|0;
+      ctx.fillRect(x,y,1,1);
+    }
+    ctx.restore();
+  }
+
+    // Fade the minimal HUD away after the first moments (keep the space quiet)
+  const hud = document.querySelector('.hud');
+  let hudTimer = setTimeout(()=>hud && hud.classList.add('hide'), 8000);
+  addEventListener('pointerdown', ()=>{ if(hud){hud.classList.add('hide'); clearTimeout(hudTimer);} }, {passive:true});
+
+requestAnimationFrame(step);
+
+})();
+</script>
+</body>
+</html>

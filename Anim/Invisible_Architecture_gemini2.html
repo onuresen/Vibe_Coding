@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invisible Architecture</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0a0a0a;
+            cursor: none;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        /**
+         * INVISIBLE ARCHITECTURE
+         * A study in indirect perception.
+         */
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        let width, height;
+        let walls = [];
+        const particles = [];
+        const pulses = [];
+        const PARTICLE_COUNT = 1800;
+        const GRID_SIZE = 40;
+
+        const mouse = { x: -1000, y: -1000, active: false };
+
+        // --- Initialization ---
+
+        function init() {
+            resize();
+            createArchitecture();
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particles.push(new Particle());
+            }
+            animate();
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            createArchitecture(); // Rebuild for new scale
+        }
+
+        // --- World Building ---
+        // We define a series of Rects, but we never draw them. 
+        // They act as collision bounds for particles and light.
+        function createArchitecture() {
+            walls = [];
+            const unit = Math.min(width, height) / 10;
+
+            // Create a central hall with branching rooms
+            // Outer Bounds
+            addWall(0, 0, width, 20);
+            addWall(0, height - 20, width, 20);
+            addWall(0, 0, 20, height);
+            addWall(width - 20, 0, 20, height);
+
+            // Interior - A structured layout
+            const midX = width / 2;
+            const midY = height / 2;
+
+            // Main Corridor
+            addWall(midX - unit * 2, midY - unit * 0.5, unit * 4, 15);
+            addWall(midX - unit * 2, midY + unit * 0.5, unit * 4, 15);
+
+            // West Room
+            addWall(midX - unit * 2, midY - unit * 2, 15, unit * 1.5);
+            addWall(midX - unit * 2, midY + unit * 0.5, 15, unit * 1.5);
+
+            // East Room
+            addWall(midX + unit * 2, midY - unit * 2, 15, unit * 4);
+
+            // Central Pillar
+            addWall(midX - 10, midY - 10, 20, 20);
+        }
+
+        function addWall(x, y, w, h) {
+            walls.push({ x, y, w, h });
+        }
+
+        // --- Entities ---
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.life = Math.random() * 0.5 + 0.5;
+                this.size = Math.random() * 1.5;
+            }
+
+            update() {
+                // Subtle drift
+                this.vx += (Math.random() - 0.5) * 0.02;
+                this.vy += (Math.random() - 0.5) * 0.02;
+
+                // Interaction with mouse "wind"
+                const dx = this.x - mouse.x;
+                const dy = this.y - mouse.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 150) {
+                    const force = (150 - dist) / 1500;
+                    this.vx += dx * force;
+                    this.vy += dy * force;
+                }
+
+                const nextX = this.x + this.vx;
+                const nextY = this.y + this.vy;
+
+                // Wall Collision
+                let collided = false;
+                for (const wall of walls) {
+                    if (nextX > wall.x && nextX < wall.x + wall.w &&
+                        nextY > wall.y && nextY < wall.y + wall.h) {
+                        this.vx *= -0.2;
+                        this.vy *= -0.2;
+                        collided = true;
+                        break;
+                    }
+                }
+
+                if (!collided) {
+                    this.x = nextX;
+                    this.y = nextY;
+                }
+
+                // Screen wrap
+                if (this.x < 0) this.x = width;
+                if (this.x > width) this.x = 0;
+                if (this.y < 0) this.y = height;
+                if (this.y > height) this.y = 0;
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(200, 210, 220, ${this.life * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Pulse {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.r = 0;
+                this.maxR = 400;
+                this.life = 1.0;
+            }
+
+            update() {
+                this.r += 4;
+                this.life -= 0.01;
+            }
+
+            draw() {
+                // The sonar ring: Only visible where it hits NOTHING (empty space)
+                // This is a subtle inversion of logic.
+                ctx.strokeStyle = `rgba(255, 255, 255, ${this.life * 0.15})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+
+                // We draw the arc in segments to check for wall collisions
+                for (let a = 0; a < Math.PI * 2; a += 0.1) {
+                    const px = this.x + Math.cos(a) * this.r;
+                    const py = this.y + Math.sin(a) * this.r;
+
+                    let hit = false;
+                    for (const wall of walls) {
+                        if (px > wall.x && px < wall.x + wall.w && py > wall.y && py < wall.y + wall.h) {
+                            hit = true; break;
+                        }
+                    }
+
+                    if (!hit) {
+                        if (a === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    } else {
+                        ctx.moveTo(px, py);
+                    }
+                }
+                ctx.stroke();
+            }
+        }
+
+        // --- Loop ---
+
+        function animate() {
+            // Trails for motion feel
+            ctx.fillStyle = 'rgba(10, 10, 12, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Subtle Vignette/Ambient Light centered on mouse
+            const grad = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 300);
+            grad.addColorStop(0, 'rgba(30, 35, 45, 0.2)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Update & Draw Pulses
+            for (let i = pulses.length - 1; i >= 0; i--) {
+                pulses[i].update();
+                pulses[i].draw();
+                if (pulses[i].life <= 0) pulses.splice(i, 1);
+            }
+
+            // Update & Draw Particles
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            // Subtle "Shadow Cast"
+            // We sample points around the mouse to see if they hit walls
+            // Creating "breaks" in the atmosphere
+            drawAtmosphericBreaks();
+
+            requestAnimationFrame(animate);
+        }
+
+        function drawAtmosphericBreaks() {
+            ctx.save();
+            // Only reveal wall edges when mouse is near
+            walls.forEach(w => {
+                const dx = (w.x + w.w / 2) - mouse.x;
+                const dy = (w.y + w.h / 2) - mouse.y;
+                const d = Math.sqrt(dx * dx + dy * dy);
+
+                if (d < 250) {
+                    ctx.fillStyle = `rgba(0, 0, 0, ${0.4 * (1 - d / 250)})`;
+                    ctx.fillRect(w.x, w.y, w.w, w.h);
+                }
+            });
+            ctx.restore();
+        }
+
+        // --- Listeners ---
+
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            mouse.active = true;
+        });
+
+        window.addEventListener('mousedown', e => {
+            pulses.push(new Pulse(e.clientX, e.clientY));
+        });
+
+        window.addEventListener('resize', resize);
+
+        init();
+
+    </script>
+</body>
+
+</html>
