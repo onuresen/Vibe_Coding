@@ -23,6 +23,7 @@
   <script src="hub-tutorial.js"></script>
   <script src="hub-links.js"></script>
   <script src="hub-search.js"></script>
+  <script src="hub-toast.js"></script>
   <style>
     *,
     *::before,
@@ -1301,6 +1302,7 @@
       a.download = `thinking-hub-backup-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
+      showToast('Backup exported', 'success');
     }
 
     function triggerImport() {
@@ -1321,10 +1323,10 @@
               localStorage.setItem(k, db[k]);
             }
           }
-          alert('Import successful! The hub will now reload.');
-          location.reload();
+          showToast('Import successful — reloading…', 'success');
+          setTimeout(() => location.reload(), 1000);
         } catch (err) {
-          alert('Failed to parse backup file: ' + err.message);
+          showToast('Failed to parse backup file: ' + err.message, 'error');
         }
       };
       reader.readAsText(file);

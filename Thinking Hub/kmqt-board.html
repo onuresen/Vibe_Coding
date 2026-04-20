@@ -435,6 +435,14 @@
       border-radius: 99px;
     }
 
+    .col-empty {
+      padding: 24px 12px;
+      text-align: center;
+      color: var(--text3);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
     .item {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -1253,6 +1261,11 @@
       for (const col of ['K', 'M', 'Q', 'T']) {
         const container = document.getElementById('items-' + col);
         container.innerHTML = '';
+
+        if (!state.columns[col].length) {
+          const label = (state.labels && state.labels[col]) || col;
+          container.innerHTML = `<div class="col-empty">No ${label} items yet.<br>Click <b>+</b> to add one.</div>`;
+        }
 
         state.columns[col].forEach(it => {
           const div = document.createElement('div');

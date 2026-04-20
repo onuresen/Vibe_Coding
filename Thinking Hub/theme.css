@@ -27,6 +27,48 @@
     /* Fonts */
     --font-display: 'Syne', sans-serif;
     --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Mono', monospace;
+
+    /* Short-form aliases used across tools */
+    --font-d: var(--font-display);
+    --font-b: var(--font-body);
+    --font-m: var(--font-mono);
+
+    /* Border radius */
+    --r-sm: 8px;
+}
+
+/* ── Toast notifications ─────────────────────────────────────────────────── */
+.hub-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 9px 18px;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.hub-toast.hub-toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.hub-toast.hub-toast-success {
+  border-color: rgba(184, 240, 51, 0.4);
+  color: var(--accent);
+}
+.hub-toast.hub-toast-error {
+  border-color: rgba(240, 67, 107, 0.4);
+  color: #f0436b;
 }
 
 /* Base resets to apply the theme globally */
