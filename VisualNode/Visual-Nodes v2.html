@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Node Prototype (Type Ports + Business UI)</title>
+    <!-- Drawflow CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css">
+    <style>
+        :root {
+            --bg: #f6f8fb;
+            --grid: rgba(15, 23, 42, 0.06);
+            --panel: #0b1220;
+            --panel2: #0f172a;
+            --text: #0f172a;
+            --muted: #64748b;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --shadow: 0 10px 30px rgba(15, 23, 42, 0.10);
+            --shadow2: 0 6px 18px rgba(15, 23, 42, 0.08);
+            --accent: #2563eb;
+            --accent2: #0ea5e9;
+            --t-number: #f59e0b;
+            --t-string: #10b981;
+            --t-bool: #a855f7;
+            --t-any: #94a3b8;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        #toolbar {
+            height: 44px;
+            padding: 0 10px;
+            background: linear-gradient(90deg, var(--panel), var(--panel2));
+            color: #fff;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            user-select: none;
+        }
+
+        #toolbar button {
+            padding: 7px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.2px;
+            transition: transform 80ms ease, background 120ms ease, filter 120ms ease;
+        }
+
+        #toolbar button:hover {
+            background: rgba(255, 255, 255, 0.10);
+        }
+
+        #toolbar button:active {
+            transform: translateY(1px);
+        }
+
+        #toolbar .primary {
+            border: 1px solid rgba(255, 255, 255, 0.0);
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+        }
+
+        #toolbar .primary:hover {
+            filter: brightness(1.05);
+        }
+
+        #toolbar .spacer {
+            flex: 1;
+        }
+
+        #status {
+            font-size: 12px;
+            opacity: 0.95;
+            color: rgba(255, 255, 255, 0.9);
+            margin-left: 6px;
+            white-space: nowrap;
+        }
+
+        #drawflow {
+            width: 100vw;
+            height: calc(100vh - 44px);
+            background: linear-gradient(to right, var(--grid) 1px, transparent 1px), linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+            background-size: 24px 24px;
+            background-color: var(--bg);
+        }
+
+        .drawflow .drawflow-node {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow2);
+            min-width: 190px;
+        }
+
+        .drawflow .drawflow-node.selected {
+            border-color: rgba(37, 99, 235, 0.65);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), var(--shadow);
+        }
+
+        .node {
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        .node .title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        .badge {
+            font-weight: 700;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            background: #f8fafc;
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: -6px;
+            margin-bottom: 8px;
+        }
+
+        .node .row {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .node input[type="number"] {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            outline: none;
+            background: #fbfdff;
+            color: var(--text);
+        }
+
+        .node input[type="number"]:focus {
+            border-color: rgba(37, 99, 235, 0.45);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .out {
+            font-weight: 800;
+            padding: 8px 10px;
+            background: #fbfdff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            min-height: 18px;
+            flex: 1;
+        }
+
+        .error {
+            color: #b00020;
+        }
+
+        .drawflow .connection .main-path {
+            stroke: rgba(37, 99, 235, 0.70);
+            stroke-width: 3.2px;
+        }
+
+        .drawflow .connection .main-path:hover {
+            stroke: rgba(14, 165, 233, 0.90);
+        }
+
+        .drawflow .drawflow-node .inputs .input,
+        .drawflow .drawflow-node .outputs .output {
+            width: 12px !important;
+            height: 12px !important;
+            border-radius: 999px !important;
+            border: 2px solid #fff !important;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.18);
+        }
+
+        .port-any {
+            background: var(--t-any) !important;
+        }
+
+        .port-number {
+            background: var(--t-number) !important;
+        }
+
+        .port-string {
+            background: var(--t-string) !important;
+        }
+
+        .port-bool {
+            background: var(--t-bool) !important;
+        }
+
+        .drawflow .drawflow-node .outputs .output {
+            outline: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        .drawflow .drawflow-node .inputs {
+            left: -6px;
+        }
+
+        .drawflow .drawflow-node .outputs {
+            right: -6px;
+        }
+
+        #drawflow {
+            background: radial-gradient(circle at 20px 20px, rgba(15, 23, 42, 0.06) 1px, transparent 1px), linear-gradient(to right, rgba(15, 23, 42, 0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+            background-size: 24px 24px, 24px 24px, 24px 24px;
+        }
+
+        .drawflow .drawflow-node {
+            transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+        }
+
+        .drawflow .drawflow-node:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+            border-color: rgba(148, 163, 184, 0.9);
+        }
+
+        .drawflow .drawflow-node.selected {
+            border-color: rgba(37, 99, 235, 0.85);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14), 0 18px 44px rgba(15, 23, 42, 0.16);
+        }
+
+        .node .title {
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .badge {
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
+            box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+        }
+
+        .port-number {
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18), 0 2px 10px rgba(15, 23, 42, 0.18) !important;
+        }
+
+        .port-string {
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18), 0 2px 10px rgba(15, 23, 42, 0.18) !important;
+        }
+
+        .port-bool {
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18), 0 2px 10px rgba(15, 23, 42, 0.18) !important;
+        }
+
+        .port-any {
+            box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.18), 0 2px 10px rgba(15, 23, 42, 0.18) !important;
+        }
+
+        .drawflow .connection .main-path {
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        #drawflow.running .drawflow .connection .main-path {
+            stroke-dasharray: 8 10;
+            animation: dashmove 900ms linear infinite;
+        }
+
+        @keyframes dashmove {
+            to {
+                stroke-dashoffset: -36;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="toolbar">
+        <button onclick="addValueNode()">Value</button>
+        <button onclick="addAddNode()">Add</button>
+        <button onclick="addDisplayNode()">Display</button>
+        <div class="spacer"></div>
+        <button class="primary" onclick="runGraphWithPulse()">Run ▶</button>
+        <button onclick="exportGraph()">Export JSON</button>
+        <button onclick="zoomOut()">−</button>
+        <button onclick="zoomReset()">100%</button>
+        <button onclick="zoomIn()">+</button>
+        <button onclick="toggleTheme()">Theme</button>
+        <span id="status">Ready</span>
+    </div>
+    <div id="drawflow"></div>
+    <!-- Drawflow JS -->
+    <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
+
+    <script>
+        // --------------------------
+        // 1) Initialize editor
+        // --------------------------
+        const editor = new Drawflow(document.getElementById("drawflow"));
+        editor.start();
+
+        const statusEl = document.getElementById("status");
+        const setStatus = (msg, isError = false) => {
+            statusEl.textContent = msg;
+            statusEl.style.color = isError ? "rgba(255,180,180,0.95)" : "rgba(255,255,255,0.9)";
+        };
+
+        // --------------------------
+        // 2) Port typing helper (FIXED)
+        // --------------------------
+        function tagPort(nodeId, kind, portKey, type) {
+            const nodeEl = document.getElementById(`node-${nodeId}`);
+            if (!nodeEl) return;
+
+            const selector =
+                kind === "input"
+                    ? `.inputs .input.${portKey}`
+                    : `.outputs .output.${portKey}`;
+
+            const portEl = nodeEl.querySelector(selector);
+            if (!portEl) return;
+
+            portEl.classList.remove("port-number", "port-string", "port-bool", "port-any");
+
+            const safeType = (type || "any").toLowerCase();
+            portEl.classList.add(`port-${safeType}`);
+        }
+
+        function applyPortTypes(nodeId, spec) {
+            const inputs = spec.inputs || {};
+            const outputs = spec.outputs || {};
+            for (const key in inputs) tagPort(nodeId, "input", key, inputs[key]);
+            for (const key in outputs) tagPort(nodeId, "output", key, outputs[key]);
+        }
+
+        // --------------------------
+        // 3) Node creators
+        // --------------------------
+        function addValueNode() {
+            const html = `
+        <div class="node">
+          <div class="title">
+            <span>Value</span>
+            <span class="badge">number</span>
+          </div>
+          <div class="sub">Constant</div>
+          <input class="value-input" type="number" value="1" step="1"/>
+        </div>
+      `;
+
+            const id = editor.addNode(
+                "Value",
+                0, 1,
+                160, 120,
+                "value",
+                { value: 1 },
+                html
+            );
+
+            applyPortTypes(id, { outputs: { output_1: "number" } });
+        }
+
+        function addAddNode() {
+            const html = `
+        <div class="node">
+          <div class="title">
+            <span>Add</span>
+            <span class="badge">number → number</span>
+          </div>
+          <div class="sub">x + y</div>
+          <div class="row">
+            <span class="badge">in1</span>
+            <span class="badge">in2</span>
+            <span class="badge">out</span>
+          </div>
+        </div>
+      `;
+
+            const id = editor.addNode(
+                "Add",
+                2, 1,
+                420, 140,
+                "add",
+                {},
+                html
+            );
+
+            applyPortTypes(id, {
+                inputs: { input_1: "number", input_2: "number" },
+                outputs: { output_1: "number" }
+            });
+        }
+
+        function addDisplayNode() {
+            const html = `
+        <div class="node">
+          <div class="title">
+            <span>Display</span>
+            <span class="badge">number</span>
+          </div>
+          <div class="sub">Shows computed value</div>
+          <div class="row">
+            <div class="out display-output">—</div>
+          </div>
+        </div>
+      `;
+
+            const id = editor.addNode(
+                "Display",
+                1, 0,
+                720, 160,
+                "display",
+                { last: null },
+                html
+            );
+
+            applyPortTypes(id, { inputs: { input_1: "number" } });
+        }
+
+        // Keep Value node data synced
+        document.getElementById("drawflow").addEventListener("input", (e) => {
+            const target = e.target;
+            if (!target.classList.contains("value-input")) return;
+
+            const nodeEl = target.closest(".drawflow-node");
+            if (!nodeEl) return;
+
+            const nodeId = Number(nodeEl.id?.replace("node-", ""));
+            if (!Number.isFinite(nodeId)) return;
+
+            const value = Number(target.value);
+            editor.updateNodeDataFromId(nodeId, { value });
+        });
+
+        // Re-apply port types after import / create (Drawflow can re-render)
+        editor.on("import", () => setTimeout(reapplyAllPortTypes, 0));
+        editor.on("nodeCreated", (id) => setTimeout(() => reapplyPortTypesForNode(id), 0));
+
+        function reapplyAllPortTypes() {
+            const nodes = editor.export()?.drawflow?.Home?.data || {};
+            for (const idStr of Object.keys(nodes)) reapplyPortTypesForNode(Number(idStr));
+        }
+
+        function reapplyPortTypesForNode(nodeId) {
+            const nodes = editor.export()?.drawflow?.Home?.data || {};
+            const node = nodes[nodeId];
+            if (!node) return;
+
+            if (node.name === "Value") {
+                applyPortTypes(nodeId, { outputs: { output_1: "number" } });
+            } else if (node.name === "Add") {
+                applyPortTypes(nodeId, {
+                    inputs: { input_1: "number", input_2: "number" },
+                    outputs: { output_1: "number" }
+                });
+            } else if (node.name === "Display") {
+                applyPortTypes(nodeId, { inputs: { input_1: "number" } });
+            }
+        }
+
+        // --------------------------
+        // 4) Executor (robust per-Display run)
+        // --------------------------
+        function runGraph() {
+            const exported = editor.export();
+            const nodes = exported?.drawflow?.Home?.data || {};
+            const memo = new Map();
+            const visiting = new Set();
+
+            const displayIds = Object.keys(nodes)
+                .map(Number)
+                .filter((id) => nodes[id]?.name === "Display");
+
+            if (displayIds.length === 0) {
+                setStatus("No Display node found. Add one to see results.", true);
+                return;
+            }
+
+            let ok = 0;
+            const errors = [];
+
+            for (const id of displayIds) {
+                try {
+                    const value = evalNode(id, nodes, memo, visiting);
+                    writeDisplayValue(id, value);
+                    ok++;
+                } catch (err) {
+                    writeDisplayValue(id, undefined);
+                    errors.push(`Display ${id}: ${err.message}`);
+                }
+            }
+
+            if (errors.length) {
+                console.warn("Run errors:", errors);
+                setStatus(`Run partial: ${ok}/${displayIds.length} updated. (See console)`, true);
+            } else {
+                setStatus(`Run OK. Updated ${displayIds.length} Display node(s).`);
+            }
+        }
+
+        function evalNode(nodeId, nodes, memo, visiting) {
+            if (memo.has(nodeId)) return memo.get(nodeId);
+            if (visiting.has(nodeId)) throw new Error(`Cycle detected at node ${nodeId}. DAG only.`);
+
+            const node = nodes[nodeId];
+            if (!node) throw new Error(`Node ${nodeId} not found.`);
+
+            visiting.add(nodeId);
+
+            let out;
+            switch (node.name) {
+                case "Value": {
+                    const v = (node.data && node.data.value !== undefined)
+                        ? Number(node.data.value)
+                        : readValueFromDOM(nodeId);
+
+                    if (!Number.isFinite(v)) throw new Error(`Value node ${nodeId} is not a valid number.`);
+                    out = v;
+                    break;
+                }
+
+                case "Add": {
+                    const a = getInputValue(node, "input_1", nodes, memo, visiting, nodeId);
+                    const b = getInputValue(node, "input_2", nodes, memo, visiting, nodeId);
+
+                    // FIXED: proper boolean
+                    if (!Number.isFinite(a) || !Number.isFinite(b))
+                        throw new Error(`Add node ${nodeId} requires numeric inputs.`);
+
+                    out = a + b;
+                    break;
+                }
+
+                case "Display": {
+                    out = getInputValue(node, "input_1", nodes, memo, visiting, nodeId);
+                    break;
+                }
+
+                default:
+                    throw new Error(`Unknown node type "${node.name}" at node ${nodeId}.`);
+            }
+
+            visiting.delete(nodeId);
+            memo.set(nodeId, out);
+            return out;
+        }
+
+        function getInputValue(node, inputKey, nodes, memo, visiting, currentId) {
+            const conns = node.inputs?.[inputKey]?.connections || [];
+            if (conns.length === 0) throw new Error(`Node ${currentId} missing connection on ${inputKey}.`);
+
+            const upstreamId = Number(conns[0].node);
+            if (!Number.isFinite(upstreamId)) throw new Error(`Invalid connection on node ${currentId} (${inputKey}).`);
+
+            return evalNode(upstreamId, nodes, memo, visiting);
+        }
+
+        function readValueFromDOM(nodeId) {
+            const nodeEl = document.getElementById(`node-${nodeId}`);
+            const input = nodeEl?.querySelector("input.value-input");
+            return input ? Number(input.value) : NaN;
+        }
+
+        function writeDisplayValue(nodeId, value) {
+            const nodeEl = document.getElementById(`node-${nodeId}`);
+            const outEl = nodeEl?.querySelector(".display-output");
+            if (!outEl) return;
+
+            // FIXED: proper boolean
+            if (value === undefined || (typeof value === "number" && !Number.isFinite(value))) {
+                outEl.textContent = "Error";
+                outEl.classList.add("error");
+            } else {
+                outEl.textContent = String(value);
+                outEl.classList.remove("error");
+            }
+
+            editor.updateNodeDataFromId(nodeId, { last: value });
+        }
+
+        // --------------------------
+        // 5) Export
+        // --------------------------
+        function exportGraph() {
+            const data = editor.export();
+            console.log("Exported graph:", data);
+            alert("Graph JSON dumped to console (DevTools).");
+        }
+
+        // --------------------------
+        // Pro UX: zoom + theme + shortcuts + run pulse
+        // --------------------------
+        let currentZoom = 1;
+
+        function applyZoom(z) {
+            currentZoom = Math.min(1.8, Math.max(0.35, z));
+
+            // Preferred: Drawflow zoom API (if available)
+            if (typeof editor.zoom === "function") {
+                editor.zoom(currentZoom);
+            } else {
+                // Fallback: scale the canvas
+                const df = document.getElementById("drawflow");
+                df.style.transformOrigin = "0 0";
+                df.style.transform = `scale(${currentZoom})`;
+            }
+            setStatus(`Zoom ${Math.round(currentZoom * 100)}%`);
+        }
+
+        function zoomIn() { applyZoom(currentZoom + 0.1); }
+        function zoomOut() { applyZoom(currentZoom - 0.1); }
+        function zoomReset() { applyZoom(1); }
+
+        // Theme toggle: light <-> dark (simple token swap)
+        let isDark = false;
+        function toggleTheme() {
+            isDark = !isDark;
+            const r = document.documentElement;
+
+            if (isDark) {
+                r.style.setProperty("--bg", "#0b1220");
+                r.style.setProperty("--grid", "rgba(226,232,240,0.05)");
+                r.style.setProperty("--text", "#e5e7eb");
+                r.style.setProperty("--muted", "#94a3b8");
+                r.style.setProperty("--surface", "#0f172a");
+                r.style.setProperty("--border", "rgba(148,163,184,0.18)");
+                setStatus("Theme: Dark");
+            } else {
+                r.style.setProperty("--bg", "#f6f8fb");
+                r.style.setProperty("--grid", "rgba(15, 23, 42, 0.06)");
+                r.style.setProperty("--text", "#0f172a");
+                r.style.setProperty("--muted", "#64748b");
+                r.style.setProperty("--surface", "#ffffff");
+                r.style.setProperty("--border", "#e5e7eb");
+                setStatus("Theme: Light");
+            }
+        }
+
+        // Keyboard shortcuts:
+        // - Delete/Backspace: delete selected (when not typing)
+        // - Ctrl/Cmd + D: duplicate selected
+        // - Ctrl/Cmd + Enter: run (with pulse)
+        document.addEventListener("keydown", (e) => {
+            const key = e.key.toLowerCase();
+            const meta = e.metaKey || e.ctrlKey;
+
+            if (key === "delete" || key === "backspace") {
+                const tag = (document.activeElement?.tagName || "").toLowerCase();
+                if (tag === "input" || tag === "textarea") return;
+
+                const selectedId = editor.node_selected?.id;
+                if (selectedId) {
+                    editor.removeNodeId(`node-${selectedId}`);
+                    setStatus(`Deleted node ${selectedId}`);
+                }
+            }
+
+            if (meta && key === "d") {
+                e.preventDefault();
+                duplicateSelectedNode();
+            }
+
+            if (meta && key === "enter") {
+                e.preventDefault();
+                runGraphWithPulse();
+            }
+        });
+
+        function duplicateSelectedNode() {
+            const selectedId = editor.node_selected?.id;
+            if (!selectedId) return;
+
+            const exported = editor.export();
+            const node = exported?.drawflow?.Home?.data?.[selectedId];
+            if (!node) return;
+
+            // Capture original position
+            const ox = node.pos_x ?? 200;
+            const oy = node.pos_y ?? 200;
+
+            // Create same type
+            let newId = null;
+            if (node.name === "Value") {
+                // keep same value
+                const html = `
+          <div class="node">
+            <div class="title">
+              <span>Value</span>
+              <span class="badge">number</span>
+            </div>
+            <div class="sub">Constant</div>
+            <input class="value-input" type="number" value="${Number(node.data?.value ?? 1)}" step="1"/>
+          </div>
+        `;
+                newId = editor.addNode("Value", 0, 1, ox + 40, oy + 40, "value", { value: Number(node.data?.value ?? 1) }, html);
+                applyPortTypes(newId, { outputs: { output_1: "number" } });
+            } else if (node.name === "Add") {
+                addAddNode();
+                // try to move newest node
+                newId = editor.node_selected?.id;
+                if (newId) editor.moveNodeTo(newId, ox + 40, oy + 40);
+            } else if (node.name === "Display") {
+                addDisplayNode();
+                newId = editor.node_selected?.id;
+                if (newId) editor.moveNodeTo(newId, ox + 40, oy + 40);
+            }
+
+            setStatus(`Duplicated node ${selectedId}`);
+        }
+
+        function runGraphWithPulse() {
+            const df = document.getElementById("drawflow");
+            df.classList.add("running");
+            try {
+                runGraph();
+            } finally {
+                setTimeout(() => df.classList.remove("running"), 900);
+            }
+        }
+
+        // Nice default: create a small starter graph
+        // (Comment out if you want empty canvas on load)
+        setTimeout(() => {
+            addValueNode();
+            addValueNode();
+            addAddNode();
+            addDisplayNode();
+            setStatus("Tip: connect Value → Add → Display. Ctrl/Cmd+Enter to Run.");
+        }, 50);
+    </script>
+</body>
+
+</html>

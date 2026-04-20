@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Node Orchestrator | Enterprise DX</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css">
+    <style>
+        :root {
+            /* Refined Slate Palette */
+            --bg: #0f172a;
+            --grid: rgba(148, 163, 184, 0.05);
+            --panel-bg: #1e293b;
+            --node-bg: rgba(30, 41, 59, 0.8);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(148, 163, 184, 0.2);
+            --accent: #38bdf8;
+            /* Soft Sky Blue instead of Neon */
+            --accent-glow: rgba(56, 189, 248, 0.2);
+            --success: #10b981;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: var(--text-main);
+            background: var(--bg);
+            overflow: hidden;
+        }
+
+        /* Executive Header */
+        #toolbar {
+            height: 60px;
+            padding: 0 24px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: 1px;
+            color: var(--accent);
+            margin-right: 30px;
+            text-transform: uppercase;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-main);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .btn-run {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            font-weight: 700;
+        }
+
+        .btn-run:hover {
+            background: #7dd3fc;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Canvas Style */
+        #drawflow {
+            width: 100vw;
+            height: calc(100vh - 60px);
+            background-color: var(--bg);
+            background-image: radial-gradient(var(--grid) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        /* Balanced Node Styling */
+        .drawflow .drawflow-node {
+            background: var(--node-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            min-width: 220px;
+            transition: border-color 0.3s ease;
+        }
+
+        .drawflow .drawflow-node.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent), 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .node-wrapper {
+            padding: 16px;
+        }
+
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .node-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .node-body input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: white;
+            padding: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .display-value {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Monaco', monospace;
+            color: var(--success);
+            text-align: right;
+            font-size: 20px;
+        }
+
+        /* Connection Styling: Elegant but technical */
+        .drawflow .connection .main-path {
+            stroke: var(--accent);
+            stroke-width: 2.5px;
+            opacity: 0.6;
+        }
+
+        .drawflow .drawflow-node .input,
+        .drawflow .drawflow-node .output {
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--bg);
+            background: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+
+        .drawflow .drawflow-node .input:hover,
+        .drawflow .drawflow-node .output:hover {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        /* Pulse Animation for Executive Run */
+        #drawflow.running .main-path {
+            stroke-dasharray: 5;
+            animation: dash 1s linear infinite;
+            opacity: 1;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="toolbar">
+        <div class="logo">Site-First AI</div>
+        <button onclick="addNode('Value')">+ Input</button>
+        <button onclick="addNode('Add')">+ Add</button>
+        <button onclick="addNode('Multiply')">+ Multiply</button>
+        <button onclick="addNode('Display')">+ Output</button>
+        <div style="flex:1"></div>
+        <button class="btn-run" onclick="runPipeline()">EXECUTE SYSTEM ▶</button>
+        <button onclick="editor.clearModuleSelected()">Reset</button>
+    </div>
+
+    <div id="drawflow"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
+    <script>
+        const editor = new Drawflow(document.getElementById("drawflow"));
+        editor.start();
+
+        const nodeTemplates = {
+            Value: {
+                html: `<div class="node-wrapper"><div class="node-header"><span class="node-title">Parameter</span></div><div class="node-body"><input type="number" class="val" value="10"></div></div>`,
+                inputs: 0, outputs: 1
+            },
+            Add: {
+                html: `<div class="node-wrapper"><div class="node-header"><span class="node-title">Summation</span></div><div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted)"><span>IN A</span><span>IN B</span><span>RESULT</span></div></div>`,
+                inputs: 2, outputs: 1
+            },
+            Multiply: {
+                html: `<div class="node-wrapper"><div class="node-header"><span class="node-title">Product</span></div><div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted)"><span>IN A</span><span>IN B</span><span>RESULT</span></div></div>`,
+                inputs: 2, outputs: 1
+            },
+            Display: {
+                html: `<div class="node-wrapper"><div class="node-header"><span class="node-title">System Output</span></div><div class="display-value" id="res-_ID_">0.00</div></div>`,
+                inputs: 1, outputs: 0
+            }
+        };
+
+        function addNode(name) {
+            const t = nodeTemplates[name];
+            const id = editor.addNode(name, t.inputs, t.outputs, 150, 150, name.toLowerCase(), {}, t.html.replace('_ID_', ''));
+            if (name === 'Display') {
+                setTimeout(() => document.getElementById(`res-`).id = `res-${id}`, 10);
+            }
+        }
+
+        async function runPipeline() {
+            const df = document.getElementById('drawflow');
+            df.classList.add('running');
+            const data = editor.export().drawflow.Home.data;
+            const cache = new Map();
+
+            function evalNode(id) {
+                if (cache.has(id)) return cache.get(id);
+                const n = data[id];
+                let res = 0;
+                if (n.name === 'Value') res = parseFloat(document.querySelector(`#node-${id} .val`).value) || 0;
+                else if (n.name === 'Add' || n.name === 'Multiply') {
+                    const a = evalNode(n.inputs.input_1.connections[0]?.node);
+                    const b = evalNode(n.inputs.input_2.connections[0]?.node);
+                    res = n.name === 'Add' ? a + b : a * b;
+                } else if (n.name === 'Display') {
+                    res = evalNode(n.inputs.input_1.connections[0]?.node);
+                    document.getElementById(`res-${id}`).textContent = res.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                }
+                cache.set(id, res);
+                return res;
+            }
+
+            Object.keys(data).forEach(id => { if (data[id].name === 'Display') evalNode(id); });
+            setTimeout(() => df.classList.remove('running'), 1200);
+        }
+
+        // Default starter
+        addNode('Value'); addNode('Display');
+    </script>
+</body>
+
+</html>

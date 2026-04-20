@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>NODE_PRO v4 | Logic Engine</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css">
+    <style>
+        :root {
+            --bg: #05070a;
+            --panel: #111827;
+            --accent: #6366f1;
+            --node-bg: rgba(31, 41, 55, 0.9);
+            --text-main: #f9fafb;
+            --success: #10b981;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* Sidebar UI */
+        #ui-wrapper {
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 260px;
+            background: var(--panel);
+            border-right: 1px solid #374151;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .category-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #6b7280;
+            letter-spacing: 1px;
+            margin-top: 15px;
+        }
+
+        .drag-item {
+            padding: 10px;
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            cursor: grab;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        .drag-item:hover {
+            border-color: var(--accent);
+            background: #2d3748;
+        }
+
+        #drawflow {
+            flex-grow: 1;
+            position: relative;
+            background-image: radial-gradient(#2d3748 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        /* Node Customization */
+        .drawflow-node {
+            background: var(--node-bg) !important;
+            border: 1px solid #374151 !important;
+            border-radius: 8px !important;
+            min-width: 160px !important;
+        }
+
+        .drawflow-node.selected {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3) !important;
+        }
+
+        .node-title {
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            font-size: 12px;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 1px solid #374151;
+        }
+
+        .node-content {
+            padding: 12px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            background: #0b0f1a;
+            border: 1px solid #374151;
+            color: white;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Status Colors */
+        .status-true {
+            color: var(--success);
+            text-shadow: 0 0 5px var(--success);
+        }
+
+        .status-false {
+            color: #ef4444;
+        }
+
+        .btn-execute {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui-wrapper">
+        <div id="sidebar">
+            <h2 style="color:var(--accent); margin:0 0 20px 0;">NODE_PRO <span
+                    style="font-size:12px; opacity:0.5;">v4</span></h2>
+
+            <div class="category-label">Input / Output</div>
+            <div class="drag-item" draggable="true" ondragstart="drag(event)" data-node="Value">Number Input</div>
+            <div class="drag-item" draggable="true" ondragstart="drag(event)" data-node="Display">Data Monitor</div>
+
+            <div class="category-label">Math Operators</div>
+            <div class="drag-item" draggable="true" ondragstart="drag(event)" data-node="Math">Advanced Math</div>
+
+            <div class="category-label">Logic & Flow</div>
+            <div class="drag-item" draggable="true" ondragstart="drag(event)" data-node="Logic">Compare (A > B)</div>
+            <div class="drag-item" draggable="true" ondragstart="drag(event)" data-node="Switch">Switch (If/Else)</div>
+
+            <button class="btn-execute" onclick="runEngine()">FORCED RECALC</button>
+        </div>
+
+        <div id="drawflow" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
+    <script>
+        const editor = new Drawflow(document.getElementById("drawflow"));
+        editor.start();
+
+        // Node Definitions with enhanced flexibility
+        const nodeTemplates = {
+            Value: {
+                title: "Source",
+                html: `<div class="node-content"><input type="number" class="val" value="5" df-value onchange="runEngine()"></div>`,
+                in: 0, out: 1
+            },
+            Math: {
+                title: "Math Op",
+                html: `<div class="node-content">
+                    <select class="op" onchange="runEngine()">
+                        <option value="add">+</option><option value="sub">-</option>
+                        <option value="mul">×</option><option value="div">÷</option>
+                    </select>
+                   </div>`,
+                in: 2, out: 1
+            },
+            Logic: {
+                title: "Comparator",
+                html: `<div class="node-content">
+                    <select class="comp" onchange="runEngine()">
+                        <option value="gt">A > B</option><option value="lt">A < B</option>
+                        <option value="eq">A == B</option>
+                    </select>
+                   </div>`,
+                in: 2, out: 1
+            },
+            Switch: {
+                title: "Branch (If)",
+                html: `<div class="node-content" style="font-size:10px; color:#9ca3af;">
+                    IN (A) | COND (B)
+                   </div>`,
+                in: 2, out: 2
+            },
+            Display: {
+                title: "Monitor",
+                html: `<div class="node-content"><div id="res-_ID_" style="font-family:monospace; font-size:18px; text-align:center;">0.00</div></div>`,
+                in: 1, out: 0
+            }
+        };
+
+        // Drag and Drop Logic
+        function allowDrop(ev) { ev.preventDefault(); }
+        function drag(ev) { ev.dataTransfer.setData("node", ev.target.getAttribute('data-node')); }
+        function drop(ev) {
+            ev.preventDefault();
+            const data = ev.dataTransfer.getData("node");
+            const t = nodeTemplates[data];
+            const id = editor.addNode(data, t.in, t.out, ev.clientX - 260, ev.clientY, data, {},
+                `<div class="node-title">${t.title}</div>` + t.html.replace('_ID_', ''));
+
+            if (data === 'Display') setTimeout(() => document.querySelector(`#node-${id} [id^="res-"]`).id = `res-${id}`, 10);
+            runEngine();
+        }
+
+        // Reactive Recalculation Engine
+        async function runEngine() {
+            const data = editor.export().drawflow.Home.data;
+            const cache = new Map();
+
+            function solve(id) {
+                if (!id || !data[id]) return 0;
+                if (cache.has(id)) return cache.get(id);
+
+                const node = data[id];
+                const nodeEl = document.getElementById(`node-${id}`);
+                let val = 0;
+
+                try {
+                    if (node.name === 'Value') {
+                        val = parseFloat(nodeEl.querySelector('.val').value) || 0;
+                    } else if (node.name === 'Math') {
+                        const a = solve(node.inputs.input_1.connections[0]?.node);
+                        const b = solve(node.inputs.input_2.connections[0]?.node);
+                        const op = nodeEl.querySelector('.op').value;
+                        val = op === 'add' ? a + b : op === 'sub' ? a - b : op === 'mul' ? a * b : a / b;
+                    } else if (node.name === 'Logic') {
+                        const a = solve(node.inputs.input_1.connections[0]?.node);
+                        const b = solve(node.inputs.input_2.connections[0]?.node);
+                        const comp = nodeEl.querySelector('.comp').value;
+                        val = comp === 'gt' ? (a > b) : comp === 'lt' ? (a < b) : (a == b);
+                    } else if (node.name === 'Display') {
+                        val = solve(node.inputs.input_1.connections[0]?.node);
+                        const resEl = document.getElementById(`res-${id}`);
+                        resEl.innerText = typeof val === 'boolean' ? val.toString().toUpperCase() : val.toFixed(2);
+                        resEl.className = typeof val === 'boolean' ? (val ? 'status-true' : 'status-false') : '';
+                    }
+                } catch (e) { val = 0; }
+
+                cache.set(id, val);
+                return val;
+            }
+
+            Object.keys(data).forEach(solve);
+        }
+
+        // Auto-update on connection
+        editor.on('connectionCreated', runEngine);
+        editor.on('nodeRemoved', runEngine);
+    </script>
+</body>
+
+</html>

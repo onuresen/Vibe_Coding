@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Visual Nodes Pro | Experience Edition</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --grid: rgba(255, 255, 255, 0.03);
+            --panel: #1e293b;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --surface: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --t-number: #fbbf24;
+            --t-bool: #a855f7;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            overflow: hidden;
+        }
+
+        /* Glassmorphism Header */
+        #toolbar {
+            height: 56px;
+            padding: 0 20px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+            position: relative;
+        }
+
+        button {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background: #334155;
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .primary {
+            background: var(--accent);
+            border: none;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .primary:hover {
+            background: #2563eb;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        #drawflow {
+            width: 100vw;
+            height: calc(100vh - 56px);
+            background-color: var(--bg);
+            background-image:
+                radial-gradient(var(--grid) 1px, transparent 1px),
+                linear-gradient(to right, var(--grid) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+            background-size: 40px 40px, 40px 40px, 40px 40px;
+        }
+
+        /* Node Styling */
+        .drawflow .drawflow-node {
+            background: var(--surface);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            padding: 0;
+            /* Handled by internal div */
+            min-width: 200px;
+        }
+
+        .drawflow .drawflow-node.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow), 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .node-content {
+            padding: 14px;
+        }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        .node-title {
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .node-label {
+            font-size: 11px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--muted);
+        }
+
+        .node-body input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: white;
+            padding: 6px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .display-box {
+            background: #000;
+            color: #10b981;
+            font-family: 'Courier New', monospace;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 18px;
+            border: 1px solid #10b98133;
+        }
+
+        /* Connections */
+        .drawflow .connection .main-path {
+            stroke: var(--accent);
+            stroke-width: 3px;
+            filter: drop-shadow(0 0 5px var(--accent-glow));
+        }
+
+        .drawflow .drawflow-node .input,
+        .drawflow .drawflow-node .output {
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--bg);
+        }
+
+        .port-number {
+            background: var(--t-number) !important;
+            box-shadow: 0 0 8px var(--t-number);
+        }
+
+        .port-bool {
+            background: var(--t-bool) !important;
+            box-shadow: 0 0 8px var(--t-bool);
+        }
+
+        /* Running Animation */
+        #drawflow.running .main-path {
+            stroke-dasharray: 10;
+            animation: flow 0.5s linear infinite;
+        }
+
+        @keyframes flow {
+            from {
+                stroke-dashoffset: 20;
+            }
+
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="toolbar">
+        <div style="font-weight: 800; color: var(--accent); margin-right: 20px;">NODE_PRO v3</div>
+        <button onclick="addNode('Value')">+ Value</button>
+        <button onclick="addNode('Add')">+ Add</button>
+        <button onclick="addNode('Multiply')">+ Multiply</button>
+        <button onclick="addNode('Display')">+ Display</button>
+        <div style="flex:1"></div>
+        <button class="primary" onclick="runPipeline()">EXECUTE ▶</button>
+        <button onclick="editor.clearModuleSelected()">Clear Canvas</button>
+        <button onclick="toggleTheme()">🌓</button>
+    </div>
+
+    <div id="drawflow"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
+    <script>
+        const editor = new Drawflow(document.getElementById("drawflow"));
+        editor.start();
+
+        // Node Definitions
+        const nodeTemplates = {
+            Value: {
+                html: `
+                <div class="node-content">
+                    <div class="node-header"><span class="node-title">Value</span><span class="node-label">NUM</span></div>
+                    <div class="node-body"><input type="number" class="val" value="10" df-value></div>
+                </div>`,
+                inputs: 0, outputs: 1, type: 'number'
+            },
+            Add: {
+                html: `
+                <div class="node-content">
+                    <div class="node-header"><span class="node-title">Add</span><span class="node-label">MATH</span></div>
+                    <div style="display:flex; justify-content: space-between; font-size:10px; color:var(--muted)">
+                        <span>A</span><span>B</span><span>OUT</span>
+                    </div>
+                </div>`,
+                inputs: 2, outputs: 1, type: 'number'
+            },
+            Multiply: {
+                html: `
+                <div class="node-content">
+                    <div class="node-header"><span class="node-title">Multiply</span><span class="node-label">MATH</span></div>
+                    <div style="display:flex; justify-content: space-between; font-size:10px; color:var(--muted)">
+                        <span>A</span><span>B</span><span>OUT</span>
+                    </div>
+                </div>`,
+                inputs: 2, outputs: 1, type: 'number'
+            },
+            Display: {
+                html: `
+                <div class="node-content">
+                    <div class="node-header"><span class="node-title">Display</span><span class="node-label">OUT</span></div>
+                    <div class="display-box" id="res-node-_ID_">0.00</div>
+                </div>`,
+                inputs: 1, outputs: 0, type: 'number'
+            }
+        };
+
+        function addNode(name) {
+            const temp = nodeTemplates[name];
+            const id = editor.addNode(name, temp.inputs, temp.outputs, 150, 150, name.toLowerCase(), {}, temp.html.replace('_ID_', ''));
+            // Tag ports visually
+            setTimeout(() => {
+                const nodeEl = document.getElementById(`node-${id}`);
+                nodeEl.querySelectorAll('.input, .output').forEach(p => p.classList.add('port-number'));
+                if (name === 'Display') nodeEl.querySelector('.display-box').id = `res-node-${id}`;
+            }, 10);
+        }
+
+        // Execution Engine
+        async function runPipeline() {
+            const container = document.getElementById('drawflow');
+            container.classList.add('running');
+
+            const data = editor.export().drawflow.Home.data;
+            const cache = new Map();
+
+            function evaluate(nodeId) {
+                if (cache.has(nodeId)) return cache.get(nodeId);
+                const node = data[nodeId];
+                let result = 0;
+
+                if (node.name === 'Value') {
+                    const inputEl = document.querySelector(`#node-${nodeId} .val`);
+                    result = parseFloat(inputEl.value) || 0;
+                } else if (node.name === 'Add' || node.name === 'Multiply') {
+                    const valA = evaluate(node.inputs.input_1.connections[0]?.node);
+                    const valB = evaluate(node.inputs.input_2.connections[0]?.node);
+                    result = node.name === 'Add' ? valA + valB : valA * valB;
+                } else if (node.name === 'Display') {
+                    result = evaluate(node.inputs.input_1.connections[0]?.node);
+                    document.getElementById(`res-node-${nodeId}`).textContent = result.toFixed(2);
+                }
+
+                cache.set(nodeId, result);
+                return result;
+            }
+
+            Object.keys(data).forEach(id => {
+                if (data[id].name === 'Display') try { evaluate(id); } catch (e) { console.error("Link missing"); }
+            });
+
+            setTimeout(() => container.classList.remove('running'), 1000);
+        }
+
+        // Initial setup
+        addNode('Value');
+        addNode('Display');
+    </script>
+</body>
+
+</html>

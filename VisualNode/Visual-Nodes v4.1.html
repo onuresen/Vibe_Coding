@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>NODE_PRO v4 | Stable Edition</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css">
+    <style>
+        :root {
+            --bg: #0b0f1a;
+            --panel: #161e2e;
+            --accent: #3b82f6;
+            --text: #f1f5f9;
+            --border: #334155;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+        }
+
+        #layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar Styling */
+        #sidebar {
+            width: 280px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 5;
+        }
+
+        .category {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+
+        .node-item {
+            padding: 12px;
+            background: #1e293b;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: grab;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .node-item:hover {
+            border-color: var(--accent);
+            background: #243146;
+        }
+
+        /* Canvas Area */
+        #drawflow-container {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        #drawflow {
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(#1e293b 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Node Visuals */
+        .drawflow-node {
+            background: #1e293b !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 10px !important;
+            min-width: 170px !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .drawflow-node.selected {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+        }
+
+        .node-title {
+            padding: 10px;
+            font-weight: bold;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px 10px 0 0;
+            border-bottom: 1px solid var(--border);
+            color: var(--accent);
+        }
+
+        .node-body {
+            padding: 15px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        .display-box {
+            background: #000;
+            color: #10b981;
+            font-family: monospace;
+            font-size: 20px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #064e3b;
+        }
+
+        /* Toolbar */
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="layout">
+        <div id="sidebar">
+            <h2 style="margin: 0 0 20px 0;">NODE_PRO <span style="font-size:12px; color:var(--accent);">v4</span></h2>
+
+            <div class="category">Inputs</div>
+            <div class="node-item" draggable="true" ondragstart="drag(event)" data-node="value">Number Input</div>
+
+            <div class="category">Operations</div>
+            <div class="node-item" draggable="true" ondragstart="drag(event)" data-node="math">Math Operator</div>
+            <div class="node-item" draggable="true" ondragstart="drag(event)" data-node="compare">Comparator</div>
+
+            <div class="category">Outputs</div>
+            <div class="node-item" draggable="true" ondragstart="drag(event)" data-node="display">Monitor</div>
+        </div>
+
+        <div id="drawflow-container">
+            <div class="controls">
+                <button class="primary" onclick="execute()">RUN ENGINE</button>
+                <button onclick="editor.clear()">Clear</button>
+            </div>
+            <div id="drawflow" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
+    <script>
+        const editor = new Drawflow(document.getElementById("drawflow"));
+        editor.start();
+
+        // Template HTML mappings
+        const templates = {
+            value: {
+                title: "Number Source",
+                html: `<div class="node-body"><input type="number" class="val-input" value="10" oninput="execute()"></div>`,
+                inputs: 0, outputs: 1
+            },
+            math: {
+                title: "Arithmetic",
+                html: `<div class="node-body">
+                <select class="op-select" onchange="execute()">
+                    <option value="add">Add (+)</option>
+                    <option value="sub">Subtract (-)</option>
+                    <option value="mul">Multiply (×)</option>
+                    <option value="div">Divide (÷)</option>
+                </select>
+            </div>`,
+                inputs: 2, outputs: 1
+            },
+            compare: {
+                title: "Comparison",
+                html: `<div class="node-body">
+                <select class="comp-select" onchange="execute()">
+                    <option value="gt">A > B</option>
+                    <option value="lt">A < B</option>
+                    <option value="eq">A == B</option>
+                </select>
+            </div>`,
+                inputs: 2, outputs: 1
+            },
+            display: {
+                title: "Monitor",
+                html: `<div class="node-body"><div class="display-box" id="node-disp-_ID_">0.00</div></div>`,
+                inputs: 1, outputs: 0
+            }
+        };
+
+        // Drag & Drop Handlers
+        function allowDrop(ev) { ev.preventDefault(); }
+        function drag(ev) { ev.dataTransfer.setData("node", ev.target.getAttribute('data-node')); }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const nodeType = ev.dataTransfer.getData("node");
+            const template = templates[nodeType];
+
+            // Calculate canvas position
+            const x = ev.clientX - 280;
+            const y = ev.clientY;
+
+            const id = editor.addNode(
+                nodeType,
+                template.inputs,
+                template.outputs,
+                x, y,
+                nodeType,
+                {},
+                `<div class="node-title">${template.title}</div>${template.html.replace('_ID_', '')}`
+            );
+
+            // After adding, ensure the display ID is unique
+            if (nodeType === 'display') {
+                const el = document.querySelector(`#node-${id} .display-box`);
+                el.id = `node-disp-${id}`;
+            }
+            execute();
+        }
+
+        // The Logic Engine
+        function execute() {
+            const data = editor.export().drawflow.Home.data;
+            const results = new Map();
+
+            function resolve(nodeId) {
+                if (results.has(nodeId)) return results.get(nodeId);
+
+                const node = data[nodeId];
+                const nodeEl = document.getElementById(`node-${nodeId}`);
+                let val = 0;
+
+                try {
+                    if (node.name === 'value') {
+                        val = parseFloat(nodeEl.querySelector('.val-input').value) || 0;
+                    }
+                    else if (node.name === 'math') {
+                        const a = resolve(node.inputs.input_1.connections[0]?.node);
+                        const b = resolve(node.inputs.input_2.connections[0]?.node);
+                        const op = nodeEl.querySelector('.op-select').value;
+                        if (op === 'add') val = a + b;
+                        if (op === 'sub') val = a - b;
+                        if (op === 'mul') val = a * b;
+                        if (op === 'div') val = b !== 0 ? a / b : 0;
+                    }
+                    else if (node.name === 'compare') {
+                        const a = resolve(node.inputs.input_1.connections[0]?.node);
+                        const b = resolve(node.inputs.input_2.connections[0]?.node);
+                        const mode = nodeEl.querySelector('.comp-select').value;
+                        if (mode === 'gt') val = a > b ? 1 : 0;
+                        if (mode === 'lt') val = a < b ? 1 : 0;
+                        if (mode === 'eq') val = a == b ? 1 : 0;
+                    }
+                    else if (node.name === 'display') {
+                        val = resolve(node.inputs.input_1.connections[0]?.node);
+                        const display = document.getElementById(`node-disp-${nodeId}`);
+                        if (display) display.innerText = typeof val === 'number' ? val.toFixed(2) : val;
+                    }
+                } catch (e) {
+                    val = 0;
+                }
+
+                results.set(nodeId, val);
+                return val;
+            }
+
+            // Run resolution for every node in the workspace
+            Object.keys(data).forEach(id => resolve(id));
+        }
+
+        // Events for live updating
+        editor.on('connectionCreated', execute);
+        editor.on('connectionRemoved', execute);
+        editor.on('nodeRemoved', execute);
+
+    </script>
+</body>
+
+</html>
