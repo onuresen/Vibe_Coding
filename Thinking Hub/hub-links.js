@@ -14,9 +14,9 @@
 // Fallback shim: keep working if hub-storage.js failed to load.
 if (typeof window.HubStorage === 'undefined') {
   window.HubStorage = {
-    get:       k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-    set:       (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-    subscribe: () => (() => {}),
+    get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } },
+    subscribe: () => (() => { }),
   };
 }
 
@@ -25,11 +25,11 @@ const HubLinks = (() => {
   const STORAGE_KEY = 'hub-links-v1';
 
   const TOOL_NAMES = {
-    'project-hub':        'Project Hub',
-    'schedule':           'Schedule',
-    'idea-swiper':        'Idea Swiper',
-    'kmqt-board':         'KMQT Board',
-    'decision-hub':       'Decision Hub'
+    'project-hub': 'Project Hub',
+    'schedule': 'Schedule',
+    'idea-swiper': 'Idea Swiper',
+    'kmqt-board': 'KMQT Board',
+    'decision-hub': 'Decision Hub'
   };
 
   let _currentTool = null;
@@ -58,7 +58,7 @@ const HubLinks = (() => {
       (l.a.tool === b.tool && l.a.itemId === b.itemId && l.b.tool === a.tool && l.b.itemId === a.itemId)
     );
     if (dupe) return false;
-    links.push({ id: 'lk-' + Date.now() + '-' + Math.random().toString(36).slice(2,6), a, b, createdAt: new Date().toISOString() });
+    links.push({ id: 'lk-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), a, b, createdAt: new Date().toISOString() });
     _saveAll(links);
     return true;
   }
@@ -128,7 +128,7 @@ const HubLinks = (() => {
         }
         return items;
       }
-    } catch {}
+    } catch { }
     return [];
   }
 
@@ -137,7 +137,7 @@ const HubLinks = (() => {
   function navigateTo(toolId, itemId) {
     try {
       window.parent.postMessage({ type: 'hub-navigate', tool: toolId, itemId }, '*');
-    } catch {}
+    } catch { }
   }
 
   // ── Utilities ──────────────────────────────────────────────────────────────
@@ -511,8 +511,8 @@ const HubLinks = (() => {
 
     const alreadyLinkedIds = _modalCtx
       ? getLinksFor(_modalCtx.fromTool, _modalCtx.fromItemId).map(l =>
-          l.a.tool === toolId ? l.a.itemId : l.b.tool === toolId ? l.b.itemId : null
-        ).filter(Boolean)
+        l.a.tool === toolId ? l.a.itemId : l.b.tool === toolId ? l.b.itemId : null
+      ).filter(Boolean)
       : [];
 
     list.innerHTML = '';
