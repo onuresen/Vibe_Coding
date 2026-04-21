@@ -141,6 +141,8 @@
     };
 
     let network = null;
+    let nodesDS = null;
+    let edgesDS = null;
     let nodesMap = new Map();
     let hiddenTools = new Set();
     let physicsEnabled = true;
@@ -162,18 +164,18 @@
     // ── Filtering ─────────────────────────────────────────────
 
     function applyFilters() {
-      if (!network) return;
+      if (!nodesDS) return;
       const updates = [];
       nodesMap.forEach((node, id) => {
         updates.push({ id, hidden: hiddenTools.has(node.tool) });
       });
-      network.body.data.nodes.update(updates);
+      nodesDS.update(updates);
       updateStats();
     }
 
     function updateStats() {
       const visible = Array.from(nodesMap.values()).filter(n => !hiddenTools.has(n.tool)).length;
-      const totalEdges = network ? network.body.data.edges.length : 0;
+      const totalEdges = edgesDS ? edgesDS.length : 0;
       document.getElementById('stats').textContent = `${visible} nodes · ${totalEdges} links`;
     }
 
@@ -238,6 +240,7 @@
       if (!links || links.length === 0) {
         document.getElementById('empty').classList.add('visible');
         if (network) { network.destroy(); network = null; }
+        nodesDS = null; edgesDS = null;
         nodesMap.clear();
         document.getElementById('stats').textContent = '0 nodes · 0 links';
         document.getElementById('filter-bar').innerHTML = '';
@@ -296,11 +299,14 @@
       buildFilterBar(tools);
       buildLegend(tools);
 
-      if (network) network.destroy();
+      if (network) { network.destroy(); network = null; }
+
+      nodesDS = new vis.DataSet(nodes);
+      edgesDS = new vis.DataSet(edges);
 
       network = new vis.Network(
         document.getElementById('mynetwork'),
-        { nodes, edges },
+        { nodes: nodesDS, edges: edgesDS },
         {
           physics: {
             enabled: physicsEnabled,
@@ -330,6 +336,12 @@
       });
 
       network.on('stabilized', updateStats);
+      setTimeout(() => {
+        if (!network) return;
+        network.setSize('100%', document.getElementById('mynetwork').offsetHeight + 'px');
+        network.redraw();
+        network.fit({ animation: false });
+      }, 0);
       updateStats();
     }
 
