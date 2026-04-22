@@ -635,29 +635,112 @@
       border: none;
       display: none;
     }
+
     /* ── Data Modal ─────────────────────────────────── */
     .data-modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-      display: none; align-items: center; justify-content: center; z-index: 9999;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
     }
+
     .data-modal {
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
-      width: 400px; max-width: 90vw; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      width: 400px;
+      max-width: 90vw;
+      padding: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     }
-    .data-modal-title { font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
-    .data-modal-desc { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.5; }
-    .data-size { font-family: var(--font-m); font-size: 11px; color: var(--accent); margin-bottom: 20px; padding: 6px 12px; background: var(--accent-dim); border-radius: 6px; display:inline-block; }
-    .data-btn-row { display: flex; gap: 10px; margin-bottom: 20px; }
+
+    .data-modal-title {
+      font-family: var(--font-d);
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .data-modal-desc {
+      font-size: 13px;
+      color: var(--text2);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .data-size {
+      font-family: var(--font-m);
+      font-size: 11px;
+      color: var(--accent);
+      margin-bottom: 20px;
+      padding: 6px 12px;
+      background: var(--accent-dim);
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .data-btn-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
     .data-btn {
-      flex: 1; padding: 10px 0; border-radius: 8px; font-family: var(--font-b); font-size: 13px; font-weight: 500; cursor: pointer; text-align: center; border: 1px solid transparent; transition: all 0.15s;
+      flex: 1;
+      padding: 10px 0;
+      border-radius: 8px;
+      font-family: var(--font-b);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      border: 1px solid transparent;
+      transition: all 0.15s;
     }
-    .data-btn.primary { background: var(--accent); color: #111; }
-    .data-btn.primary:hover { opacity: 0.9; }
-    .data-btn.secondary { background: var(--surface2); color: var(--text2); border-color: var(--border2); }
-    .data-btn.secondary:hover { background: var(--surface); color: var(--text); border-color: var(--border); }
-    .data-modal-footer { border-top: 1px solid var(--border); padding-top: 14px; text-align: right; }
-    .close-modal-btn { background: none; border: none; font-size: 13px; color: var(--text3); cursor: pointer; font-family: var(--font-b); }
-    .close-modal-btn:hover { color: var(--text); }
+
+    .data-btn.primary {
+      background: var(--accent);
+      color: #111;
+    }
+
+    .data-btn.primary:hover {
+      opacity: 0.9;
+    }
+
+    .data-btn.secondary {
+      background: var(--surface2);
+      color: var(--text2);
+      border-color: var(--border2);
+    }
+
+    .data-btn.secondary:hover {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .data-modal-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      text-align: right;
+    }
+
+    .close-modal-btn {
+      background: none;
+      border: none;
+      font-size: 13px;
+      color: var(--text3);
+      cursor: pointer;
+      font-family: var(--font-b);
+    }
+
+    .close-modal-btn:hover {
+      color: var(--text);
+    }
   </style>
 </head>
 
@@ -695,8 +778,12 @@
       <span class="session-label">Session</span>
       <input id="session-name" type="text" placeholder="Name this session…" autocomplete="off" spellcheck="false">
       <div class="session-spacer"></div>
-      <button style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:8px;font-family:var(--font-m);" onclick="openDataModal()" title="Data & Backup" aria-label="Data &amp; Backup">⚙️</button>
-      <button style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:10px;font-family:var(--font-m);" onclick="startTour()" title="Interactive Tour" aria-label="Interactive Tour">?</button>
+      <button
+        style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:8px;font-family:var(--font-m);"
+        onclick="openDataModal()" title="Data & Backup" aria-label="Data &amp; Backup">⚙️</button>
+      <button
+        style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:10px;font-family:var(--font-m);"
+        onclick="startTour()" title="Interactive Tour" aria-label="Interactive Tour">?</button>
       <span id="breadcrumb"></span>
     </div>
 
@@ -726,18 +813,20 @@
   </div>
 
   <!-- Data Backup Modal -->
-  <div id="data-modal" class="data-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="data-modal-title" onclick="if(event.target===this) closeDataModal()">
+  <div id="data-modal" class="data-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="data-modal-title"
+    onclick="if(event.target===this) closeDataModal()">
     <div class="data-modal">
       <div class="data-modal-title" id="data-modal-title">Data & Backup</div>
-      <div class="data-modal-desc">Download a complete snapshot of all your local Thinking Hub data (projects, tasks, ideas, decisions, schedule).</div>
+      <div class="data-modal-desc">Download a complete snapshot of all your local Thinking Hub data (projects, tasks,
+        ideas, decisions, schedule).</div>
       <div class="data-size" id="data-size-str">0 KB in local storage</div>
-      
+
       <div class="data-btn-row">
         <button class="data-btn primary" onclick="exportHubData()">Export Backup (.json)</button>
         <button class="data-btn secondary" onclick="triggerImport()">Import Backup</button>
       </div>
       <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleImportFile(event)">
-      
+
       <div class="data-modal-footer">
         <button class="close-modal-btn" onclick="closeDataModal()">Close</button>
       </div>
@@ -802,6 +891,14 @@
         icon: '✏️',
         file: 'canvas-hub.html',
         desc: 'Unstructured spatial notes for limitless ideation'
+      },
+      {
+        id: 'tool-portfolio',
+        label: 'Tool Portfolio',
+        group: 'SENSE',
+        icon: '🧰',
+        file: 'tool-portfolio.html',
+        desc: 'Curated map of tools, platforms, and vendors'
       }
     ];
 
@@ -1281,7 +1378,7 @@
       // Move focus inside the modal
       const firstBtn = document.querySelector('#data-modal .data-btn');
       if (firstBtn) setTimeout(() => firstBtn.focus(), 50);
-      
+
       let kb = 0;
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -1326,7 +1423,7 @@
         try {
           const db = JSON.parse(ev.target.result);
           if (!confirm('This will OVERWRITE your current local data with the backup.\\nAre you sure you want to proceed?')) return;
-          
+
           for (const k in db) {
             if (db.hasOwnProperty(k)) {
               localStorage.setItem(k, db[k]);
@@ -1351,7 +1448,7 @@
     setGreeting();
     initCloudPanel();
     HubSearch.init();
-    
+
     // Auto-start tutorial on first run
     if (!HubStorage.get('tutorial-seen-v1')) {
       HubStorage.set('tutorial-seen-v1', true);

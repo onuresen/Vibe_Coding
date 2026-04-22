@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Portfolio Hub</title>
+    <script src="hub-storage.js"></script>
+    <script src="hub-links.js"></script>
+    <script src="hub-data.js"></script>
+    <link rel="stylesheet" href="theme.css">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-b);
+            overflow: hidden;
+        }
+
+        /* ── Sidebar ───────────────────────────── */
+        .sidebar {
+            width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 14px;
+            gap: 10px;
+        }
+
+        .sidebar-title {
+            font-family: var(--font-d);
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .btn.primary {
+            background: var(--accent);
+            color: #111;
+            border-color: var(--accent);
+        }
+
+        .tool-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .tool-item {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tool-item.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .tool-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: var(--surface3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .tool-name {
+            font-size: 12.5px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ── Main ───────────────────────────── */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .topbar {
+            height: 52px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border);
+            gap: 10px;
+        }
+
+        .topbar-title {
+            font-family: var(--font-d);
+            font-weight: 800;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .label {
+            font-size: 10px;
+            font-family: var(--font-m);
+            color: var(--text3);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .input,
+        .select,
+        .textarea {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 8px 10px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn.danger {
+            background: rgba(240, 67, 107, 0.12);
+            border-color: rgba(240, 67, 107, 0.3);
+            color: #e8455a;
+        }
+
+        .empty {
+            margin: auto;
+            text-align: center;
+            color: var(--text3);
+            font-size: 13px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .field-label {
+            font-size: 10px;
+            font-family: var(--font-m);
+            color: var(--text3);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .field-hint {
+            font-size: 11px;
+            color: var(--text3);
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="sidebar-title">Tool Portfolio</div>
+        <button class="btn primary" onclick="createTool()">＋ Add Tool</button>
+        <div class="tool-list" id="tool-list"></div>
+    </div>
+
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-title" id="topbar-title">Select a tool</div>
+        </div>
+
+        <div class="content" id="content">
+            <div class="empty">Select a tool or add a new one.</div>
+        </div>
+    </div>
+
+    <script>
+        HubLinks.init('tool-portfolio');
+
+        const STORAGE_KEY = 'tool-portfolio-v1';
+        let tools = [];
+        let currentId = null;
+
+        function load() {
+            tools = HubStorage.get(STORAGE_KEY) || [];
+            renderList();
+        }
+
+        function save() {
+            HubStorage.set(STORAGE_KEY, tools);
+            renderList();
+        }
+
+        function createTool() {
+            const t = {
+                id: 'tool-' + Date.now().toString(36),
+                name: 'New Tool',
+                icon: '🛠',
+                url: '',
+                status: 'exploring',
+                category: '',
+                note: ''
+            };
+            tools.push(t);
+            save();
+            openTool(t.id);
+        }
+
+        function openTool(id) {
+            currentId = id;
+            renderList();
+            renderDetail();
+        }
+
+        function deleteTool() {
+            if (!currentId) return;
+            if (!confirm('Delete this tool?')) return;
+            tools = tools.filter(t => t.id !== currentId);
+            currentId = null;
+            save();
+            renderDetail();
+        }
+
+        function updateField(key, value) {
+            const t = tools.find(x => x.id === currentId);
+            if (!t) return;
+            t[key] = value;
+            save();
+            document.getElementById('topbar-title').textContent = t.name;
+        }
+
+        function renderList() {
+            const list = document.getElementById('tool-list');
+            list.innerHTML = '';
+            tools.forEach(t => {
+                const el = document.createElement('div');
+                el.className = 'tool-item' + (t.id === currentId ? ' active' : '');
+                el.onclick = () => openTool(t.id);
+                el.innerHTML = `
+                    <div class="tool-icon">${t.icon || '🛠'}</div>
+                    <div class="tool-name">${t.name}</div>
+                    `;
+                list.appendChild(el);
+            });
+        }
+
+        function renderDetail() {
+            const c = document.getElementById('content');
+            const title = document.getElementById('topbar-title');
+
+            if (!currentId) {
+                title.textContent = 'Select a tool';
+                c.innerHTML = '<div class="empty">Select a tool or add a new one.</div>';
+                return;
+            }
+
+            const t = tools.find(x => x.id === currentId);
+            if (!t) return;
+
+            title.textContent = t.name;
+
+            const openBtn = t.url
+                ? '<a class="btn" href="' + t.url + '" target="_blank">Open</a>'
+                : '';
+
+            c.innerHTML = `
+                <div class="card">
+                    <div class="label">Basic</div>
+
+                    <div class="row">
+                        <div class="field">
+                            <div class="field-label">Tool name</div>
+                                <input class="input"
+                                    value="${t.name}"
+                                    placeholder="e.g. Autodesk Revit"
+                                    oninput="updateField('name', this.value)"
+                                />
+                                <div class="field-hint">Human-readable product or platform name</div>
+                                </div>
+                                    <div class="field">
+                                    <div class="field-label">Icon</div>
+                                    <input class="input"
+                                        value="${t.icon}"
+                                        placeholder="e.g. 🏗️ 🤖 🧰"
+                                        oninput="updateField('icon', this.value)"
+                                />
+                            <div class="field-hint">Emoji works best for now</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="label">Details</div>
+
+                    <div class="row">
+                        <div class="field">
+                        <div class="field-label">Status</div>
+                        <select class="select"
+                            onchange="updateField('status', this.value)">
+                            <option ${t.status === 'exploring' ? 'selected' : ''}>exploring</option>
+                            <option ${t.status === 'piloting' ? 'selected' : ''}>piloting</option>
+                            <option ${t.status === 'using' ? 'selected' : ''}>using</option>
+                            <option ${t.status === 'retired' ? 'selected' : ''}>retired</option>
+                        </select>
+                        <div class="field-hint">Current lifecycle stage</div>
+                        </div>
+
+                        <div class="field">
+                        <div class="field-label">Category</div>
+                        <input class="input"
+                            value="${t.category}"
+                            placeholder="BIM / AI / Platform / Infra"
+                            oninput="updateField('category', this.value)"
+                        />
+                        <div class="field-hint">Used for filtering and grouping</div>
+                        </div>
+                    </div>
+
+                    <div class="field" style="margin-top:12px">
+                        <div class="field-label">URL</div>
+                        <input class="input"
+                        value="${t.url}"
+                        placeholder="https://..."
+                        oninput="updateField('url', this.value)"
+                        />
+                        <div class="field-hint">Official site, docs, or landing page</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="label">Why it matters</div>
+                    <textarea class="textarea"
+                        oninput="updateField('note', this.value)">${t.note || ''}</textarea>
+                </div>
+
+                <div class="actions">
+                    ${openBtn}
+                    <button class="btn danger" onclick="deleteTool()">Delete</button>
+                </div>
+            `;
+        }
+
+        HubLinks.resolveItems = (function (orig) {
+            return function (toolId) {
+                if (toolId === 'tool-portfolio') {
+                    const data = HubStorage.get(STORAGE_KEY) || [];
+                    return data.map(t => ({
+                        id: t.id,
+                        label: t.name,
+                        subtitle: t.status || 'tool'
+                    }));
+                }
+                return orig(toolId);
+            };
+        })(HubLinks.resolveItems);
+
+        load();
+    </script>
+</body>
+
+</html>
