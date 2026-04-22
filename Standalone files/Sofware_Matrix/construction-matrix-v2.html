@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Construction Software Portfolio Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --grid-line: #1e293b;
+            --text: #e2e8f0;
+            --accent: #38bdf8;
+            --node-bg: #1e293b;
+            --node-border: #334155;
+            --header-bg: #111827;
+            --wire-color: #64748b;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            user-select: none;
+        }
+
+        header {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 50px;
+            background: var(--header-bg);
+            border-bottom: 1px solid var(--node-border);
+            z-index: 1000;
+            display: flex; align-items: center; padding: 0 20px; gap: 15px;
+        }
+
+        .controls { display: flex; align-items: center; gap: 10px; }
+        .btn {
+            background: #334155; border: 1px solid #475569; color: white;
+            padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+        }
+        .btn:hover { background: #475569; }
+        .btn.active { background: var(--accent); border-color: var(--accent); }
+
+        #viewport {
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            overflow: hidden;
+            cursor: grab;
+        }
+        #viewport:active { cursor: grabbing; }
+
+        #canvas {
+            position: absolute;
+            transform-origin: 0 0;
+            width: 5000px; height: 5000px;
+            background-image:
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 100px 100px;
+            pointer-events: none; /* Nodes will re-enable pointer events */
+        }
+
+        .axis-label-x {
+            position: fixed; top: 50px; left: 200px; right: 0; height: 40px;
+            display: flex; background: var(--header-bg); z-index: 900;
+            border-bottom: 1px solid var(--accent);
+            overflow: hidden;
+        }
+        .phase-header {
+            min-width: 400px; text-align: center; line-height: 40px;
+            font-weight: bold; border-right: 1px solid var(--grid-line);
+            font-size: 0.8rem; text-transform: uppercase;
+        }
+
+        .axis-label-y {
+            position: fixed; top: 90px; left: 0; bottom: 0; width: 200px;
+            background: var(--header-bg); z-index: 900;
+            border-right: 1px solid var(--accent);
+            overflow: hidden;
+        }
+        .category-header {
+            height: 300px; display: flex; align-items: center; justify-content: center;
+            writing-mode: vertical-rl; transform: rotate(180deg);
+            border-bottom: 1px solid var(--grid-line);
+            font-weight: bold; font-size: 0.8rem;
+        }
+
+        .node {
+            position: absolute; width: 120px; background: var(--node-bg);
+            border: 1px solid var(--node-border); border-radius: 8px; padding: 8px;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            cursor: grab; pointer-events: auto; z-index: 10;
+        }
+        .node:hover { border-color: var(--accent); }
+        .node.selected { border-color: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .node img { width: 32px; height: 32px; background: white; border-radius: 4px; pointer-events: none; }
+        .node .name { font-size: 0.7rem; text-align: center; font-weight: 600; }
+
+        #wire-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+        }
+        .wire { stroke: var(--wire-color); stroke-width: 2; fill: none; }
+
+        .group-frame {
+            position: absolute; border: 2px dashed #f59e0b; background: rgba(245, 158, 11, 0.05);
+            pointer-events: none; z-index: 5;
+        }
+        .group-label {
+            position: absolute; top: -25px; left: 0; color: #f59e0b;
+            font-size: 0.8rem; font-weight: bold;
+        }
+
+        #context-menu {
+            position: fixed; display: none; background: #1e293b; border: 1px solid #334155;
+            border-radius: 4px; padding: 10px; z-index: 2000; font-size: 0.8rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); min-width: 150px;
+        }
+        #context-menu div { margin-bottom: 5px; border-bottom: 1px solid #334155; padding-bottom: 5px; }
+        #context-menu div:last-child { margin-bottom: 0; border-bottom: none; }
+    </style>
+</head>
+<body>
+    <header>
+        <span style="font-weight:bold; color:var(--accent)">Construct Portfolio v2</span>
+        <input type="file" id="csvFile" accept=".csv" />
+        <div class="controls">
+            <button class="btn" id="btnConnect">Wire Tool</button>
+            <button class="btn" id="btnGroup">Stack Tool</button>
+            <button class="btn" id="btnExport">Export Layout</button>
+        </div>
+        <small id="status" style="color:#94a3b8">Scroll to Zoom. Drag Background to Pan.</small>
+    </header>
+
+    <div class="axis-label-x"><div id="phaseLabelsInner"></div></div>
+    <div class="axis-label-y"><div id="categoryLabelsInner"></div></div>
+
+    <div id="viewport">
+        <div id="canvas">
+            <svg id="wire-layer"></svg>
+            <div id="nodes-container"></div>
+            <div id="groups-container"></div>
+        </div>
+    </div>
+
+    <div id="context-menu"></div>
+
+    <script>
+        let state = {
+            transform: { x: 0, y: 0, scale: 1 },
+            mode: 'drag', // 'drag', 'connect', 'group'
+            tools: [],
+            wires: [],
+            groups: [],
+            selectedNode: null,
+            phases: [],
+            categories: []
+        };
+
+        const viewport = document.getElementById('viewport');
+        const canvas = document.getElementById('canvas');
+        const wireLayer = document.getElementById('wire-layer');
+        const nodesContainer = document.getElementById('nodes-container');
+        const pLabels = document.getElementById('phaseLabelsInner');
+        const cLabels = document.getElementById('categoryLabelsInner');
+        const ctxMenu = document.getElementById('context-menu');
+
+        // --- Init & UI ---
+        function updateTransform() {
+            canvas.style.transform = `translate(${state.transform.x}px, ${state.transform.y}px) scale(${state.transform.scale})`;
+            pLabels.style.transform = `translateX(${state.transform.x}px)`;
+            cLabels.style.transform = `translateY(${state.transform.y}px)`;
+        }
+
+        // --- Pan & Zoom ---
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = -e.deltaY;
+            const factor = Math.pow(1.1, delta / 100);
+            
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const wx = (mouseX - state.transform.x) / state.transform.scale;
+            const wy = (mouseY - state.transform.y) / state.transform.scale;
+
+            state.transform.scale *= factor;
+            state.transform.scale = Math.max(0.1, Math.min(5, state.transform.scale));
+
+            state.transform.x = mouseX - wx * state.transform.scale;
+            state.transform.y = mouseY - wy * state.transform.scale;
+
+            updateTransform();
+        });
+
+        let isPanning = false;
+        viewport.addEventListener('mousedown', (e) => {
+            if (e.target === viewport || e.target === canvas) {
+                isPanning = true;
+            }
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                state.transform.x += e.movementX;
+                state.transform.y += e.movementY;
+                updateTransform();
+            }
+        });
+        window.addEventListener('mouseup', () => isPanning = false);
+
+        // --- CSV Handling ---
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            return lines.slice(1).filter(l => l.trim()).map((line, idx) => {
+                const values = line.split(',');
+                const obj = { id: `node-${idx}` };
+                headers.forEach((h, i) => obj[h] = values[i] ? values[i].trim() : '');
+                return obj;
+            });
+        }
+
+        function initMatrix(data) {
+            state.phases = [...new Set(data.map(t => t.phase || 'Other'))].sort();
+            state.categories = [...new Set(data.map(t => t.category || 'Other'))].sort();
+
+            pLabels.innerHTML = '';
+            cLabels.innerHTML = '';
+            pLabels.style.display = 'flex';
+            state.phases.forEach(p => pLabels.innerHTML += `<div class="phase-header">${p}</div>`);
+            state.categories.forEach(c => cLabels.innerHTML += `<div class="category-header">${c}</div>`);
+
+            nodesContainer.innerHTML = '';
+            const cellWidth = 400;
+            const cellHeight = 300;
+            const cellCounts = {};
+
+            data.forEach((t, index) => {
+                const pIdx = state.phases.indexOf(t.phase || 'Other');
+                const cIdx = state.categories.indexOf(t.category || 'Other');
+                const cellKey = `${pIdx}-${cIdx}`;
+                cellCounts[cellKey] = (cellCounts[cellKey] || 0) + 1;
+
+                const node = document.createElement('div');
+                node.className = 'node';
+                node.id = t.id;
+                
+                const xBase = pIdx * cellWidth + 220; // 200 is label width
+                const yBase = cIdx * cellHeight + 110; // 50 header + 40 label + 20 gap
+                const staggerX = ((cellCounts[cellKey] - 1) % 3) * 130;
+                const staggerY = Math.floor((cellCounts[cellKey] - 1) / 3) * 70;
+
+                const posX = xBase + staggerX;
+                const posY = yBase + staggerY;
+
+                node.style.left = posX + 'px';
+                node.style.top = posY + 'px';
+                node.setAttribute('data-x', 0);
+                node.setAttribute('data-y', 0);
+
+                const domain = t.url ? t.url.replace(/^https?:\/\//, '').split('/')[0] : '';
+                const logo = t.url ? `https://www.google.com/s2/favicons?sz=64&domain=${domain}` : 'https://via.placeholder.com/32';
+
+                node.innerHTML = `
+                    <img src="${logo}" onerror="this.src='https://via.placeholder.com/32'">
+                    <div class="name">${t.name}</div>
+                `;
+
+                node.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContextMenu(e, t);
+                });
+
+                node.addEventListener('click', (e) => {
+                    if (state.mode === 'connect') handleConnect(t.id);
+                });
+
+                nodesContainer.appendChild(node);
+            });
+            setupDragging();
+        }
+
+        // --- Dragging ---
+        function setupDragging() {
+            interact('.node').draggable({
+                listeners: {
+                    move(event) {
+                        const target = event.target;
+                        const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx / state.transform.scale;
+                        const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy / state.transform.scale;
+
+                        target.style.transform = `translate(${x}px, ${y}px)`;
+                        target.setAttribute('data-x', x);
+                        target.setAttribute('data-y', y);
+                        drawWires();
+                    }
+                }
+            });
+        }
+
+        // --- Connection Logic ---
+        function handleConnect(nodeId) {
+            if (!state.selectedNode) {
+                state.selectedNode = nodeId;
+                document.getElementById(nodeId).classList.add('selected');
+            } else {
+                if (state.selectedNode !== nodeId) {
+                    state.wires.push({ from: state.selectedNode, to: nodeId });
+                    drawWires();
+                }
+                document.getElementById(state.selectedNode).classList.remove('selected');
+                state.selectedNode = null;
+            }
+        }
+
+        function drawWires() {
+            wireLayer.innerHTML = '';
+            state.wires.forEach(w => {
+                const el1 = document.getElementById(w.from);
+                const el2 = document.getElementById(w.to);
+                if (!el1 || !el2) return;
+
+                const r1 = el1.getBoundingClientRect();
+                const r2 = el2.getBoundingClientRect();
+
+                // Convert client coords to canvas coords
+                const x1 = (r1.left + r1.width/2 - state.transform.x) / state.transform.scale;
+                const y1 = (r1.top + r1.height/2 - state.transform.y) / state.transform.scale;
+                const x2 = (r2.left + r2.width/2 - state.transform.x) / state.transform.scale;
+                const y2 = (r2.top + r2.height/2 - state.transform.y) / state.transform.scale;
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const midY = (y1 + y2) / 2;
+                line.setAttribute('d', `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+                line.setAttribute('class', 'wire');
+                wireLayer.appendChild(line);
+            });
+        }
+
+        // --- Detail View (Context Menu) ---
+        function showContextMenu(e, tool) {
+            ctxMenu.style.display = 'block';
+            ctxMenu.style.left = e.clientX + 'px';
+            ctxMenu.style.top = e.clientY + 'px';
+            ctxMenu.innerHTML = `
+                <div style="font-weight:bold; color:var(--accent)">${tool.name}</div>
+                <div><b>Status:</b> ${tool.status || 'N/A'}</div>
+                <div><b>Owner:</b> ${tool.owner || 'N/A'}</div>
+                <div><b>Phase:</b> ${tool.phase}</div>
+                <div style="border:none"><a href="https://${tool.url}" target="_blank" style="color:var(--accent)">Visit Website</a></div>
+            `;
+        }
+        window.addEventListener('click', () => ctxMenu.style.display = 'none');
+
+        // --- Grouping ---
+        document.getElementById('btnGroup').addEventListener('click', () => {
+            state.mode = (state.mode === 'group') ? 'drag' : 'group';
+            updateModeUI();
+        });
+
+        // Simple grouping logic: manual rectangle for now
+        viewport.addEventListener('mousedown', (e) => {
+            if (state.mode !== 'group') return;
+            const startX = (e.clientX - state.transform.x) / state.transform.scale;
+            const startY = (e.clientY - state.transform.y) / state.transform.scale;
+            
+            const frame = document.createElement('div');
+            frame.className = 'group-frame';
+            document.getElementById('groups-container').appendChild(frame);
+
+            const onMove = (em) => {
+                const curX = (em.clientX - state.transform.x) / state.transform.scale;
+                const curY = (em.clientY - state.transform.y) / state.transform.scale;
+                const x = Math.min(startX, curX);
+                const y = Math.min(startY, curY);
+                const w = Math.abs(startX - curX);
+                const h = Math.abs(startY - curY);
+                frame.style.left = x + 'px';
+                frame.style.top = y + 'px';
+                frame.style.width = w + 'px';
+                frame.style.height = h + 'px';
+            };
+            const onUp = () => {
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onUp);
+                const name = prompt("Name this stack:");
+                if (name) {
+                    const label = document.createElement('div');
+                    label.className = 'group-label';
+                    label.innerText = name;
+                    frame.appendChild(label);
+                    state.groups.push({ name, style: frame.style.cssText });
+                } else {
+                    frame.remove();
+                }
+            };
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+        });
+
+        // --- Export ---
+        document.getElementById('btnExport').addEventListener('click', () => {
+            const layout = {
+                nodes: state.tools.map(t => {
+                    const el = document.getElementById(t.id);
+                    return {
+                        id: t.id,
+                        name: t.name,
+                        dx: el.getAttribute('data-x'),
+                        dy: el.getAttribute('data-y')
+                    };
+                }),
+                wires: state.wires,
+                groups: state.groups
+            };
+            const blob = new Blob([JSON.stringify(layout, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'portfolio-layout.json';
+            a.click();
+        });
+
+        // --- Wiring Mode ---
+        document.getElementById('btnConnect').addEventListener('click', () => {
+            state.mode = (state.mode === 'connect') ? 'drag' : 'connect';
+            updateModeUI();
+        });
+
+        function updateModeUI() {
+            document.getElementById('btnConnect').classList.toggle('active', state.mode === 'connect');
+            document.getElementById('btnGroup').classList.toggle('active', state.mode === 'group');
+            document.getElementById('status').innerText = 
+                state.mode === 'connect' ? 'Click two nodes to wire them.' : 
+                state.mode === 'group' ? 'Drag on canvas to group nodes.' : 'Scroll to Zoom. Drag BG to Pan.';
+        }
+
+        document.getElementById('csvFile').addEventListener('change', async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const text = await file.text();
+            state.tools = parseCSV(text);
+            initMatrix(state.tools);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Software Landscape Portfolio</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --card: #334155;
+            --border: #475569;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --accent: #38bdf8;
+            --hover: #0ea5e9;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            flex-grow: 1;
+        }
+
+        input,
+        select {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        input:focus {
+            outline: 2px solid var(--accent);
+            border-color: transparent;
+        }
+
+        .container {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .phase-section {
+            margin-bottom: 3rem;
+        }
+
+        .phase-title {
+            font-size: 1.5rem;
+            color: var(--accent);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+            box-shadow: 0 10px 20px -10px rgba(56, 189, 248, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            width: 48px;
+            height: 48px;
+            background: #ffffff;
+            border-radius: 8px;
+            object-fit: contain;
+            padding: 6px;
+            flex-shrink: 0;
+            border: 1px solid var(--border);
+        }
+
+        .name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .category-tag {
+            font-size: 0.75rem;
+            background: var(--card);
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            color: var(--muted);
+            width: fit-content;
+        }
+
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            font-size: 0.8rem;
+        }
+
+        .status {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .url-hint {
+            color: var(--muted);
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem;
+            color: var(--muted);
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div style="font-weight: 800; font-size: 1.2rem; margin-right: 1rem;">Solutions Portolio</div>
+        <div class="controls">
+            <input type="file" id="csvFile" accept=".csv" />
+            <input type="text" id="searchInput" placeholder="Search software..." style="flex-grow: 1;" />
+            <select id="phaseFilter">
+                <option value="all">All Phases</option>
+            </select>
+            <select id="categoryFilter">
+                <option value="all">All Categories</option>
+            </select>
+        </div>
+    </header>
+
+    <div class="container" id="mainContainer">
+        <div class="empty-state">Please upload your cleaned CSV file to view the portfolio.</div>
+    </div>
+
+    <script>
+        let tools = [];
+
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            return lines.slice(1).filter(l => l.trim()).map(line => {
+                const values = line.split(',');
+                const obj = {};
+                headers.forEach((h, i) => obj[h.toLowerCase()] = values[i] ? values[i].trim() : '');
+                return obj;
+            });
+        }
+
+        function getLogoUrl(url) {
+            if (!url) return 'https://via.placeholder.com/48?text=SW';
+            const domain = url.replace(/^https?:\/\//, '').split('/')[0];
+            // Try Google's service instead of Clearbit
+            return `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
+        }
+
+        function populateFilters() {
+            const phases = [...new Set(tools.map(t => t.phase))].filter(Boolean).sort();
+            const categories = [...new Set(tools.map(t => t.category))].filter(Boolean).sort();
+
+            const pFilter = document.getElementById('phaseFilter');
+            const cFilter = document.getElementById('categoryFilter');
+
+            phases.forEach(p => pFilter.innerHTML += `<option value="${p}">${p}</option>`);
+            categories.forEach(c => cFilter.innerHTML += `<option value="${c}">${c}</option>`);
+        }
+
+        function render() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const phaseF = document.getElementById('phaseFilter').value;
+            const catF = document.getElementById('categoryFilter').value;
+            const container = document.getElementById('mainContainer');
+
+            const filtered = tools.filter(t => {
+                const matchQ = (t.name || '').toLowerCase().includes(q) || (t.category || '').toLowerCase().includes(q);
+                const matchP = phaseF === 'all' || t.phase === phaseF;
+                const matchC = catF === 'all' || t.category === catF;
+                return matchQ && matchP && matchC;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty-state">No software matches your filters.</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+
+            // Group by Phase
+            const grouped = filtered.reduce((acc, t) => {
+                const p = t.phase || 'General';
+                if (!acc[p]) acc[p] = [];
+                acc[p].push(t);
+                return acc;
+            }, {});
+
+            Object.keys(grouped).sort().forEach(phase => {
+                const section = document.createElement('div');
+                section.className = 'phase-section';
+                section.innerHTML = `<div class="phase-title">${phase}</div>`;
+
+                const grid = document.createElement('div');
+                grid.className = 'grid';
+
+                grouped[phase].forEach(t => {
+                    const card = document.createElement('a');
+                    card.className = 'card';
+                    card.href = t.url ? (t.url.startsWith('http') ? t.url : 'https://' + t.url) : '#';
+                    card.target = '_blank';
+
+                    const logo = getLogoUrl(t.url);
+
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <img class="logo" src="${logo}" onerror="this.src='https://via.placeholder.com/48?text=${(t.name || 'S')[0]}'">
+                            <div class="name">${t.name || 'Unnamed'}</div>
+                        </div>
+                        <div class="category-tag">${t.category || 'Utility'}</div>
+                        <div class="meta">
+                            <span class="status">${t.status || ''}</span>
+                            <span class="url-hint">${t.url || ''}</span>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+        }
+
+        document.getElementById('csvFile').addEventListener('change', async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const text = await file.text();
+            tools = parseCSV(text);
+            populateFilters();
+            render();
+        });
+
+        ['searchInput', 'phaseFilter', 'categoryFilter'].forEach(id => {
+            document.getElementById(id).addEventListener('input', render);
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Construction Tech Portfolio v4</title>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --grid-line: #1e293b;
+            --text: #e2e8f0;
+            --accent: #38bdf8;
+            --node-bg: rgba(30, 41, 59, 0.7);
+            --node-border: rgba(51, 65, 85, 0.8);
+            --header-bg: #111827;
+            --wire-color: #64748b;
+            --lane-alt: rgba(255, 255, 255, 0.02);
+        }
+
+        body {
+            margin: 0; overflow: hidden;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg); color: var(--text);
+            user-select: none;
+        }
+
+        header {
+            position: fixed; top: 0; left: 0; width: 100%; height: 50px;
+            background: var(--header-bg); border-bottom: 1px solid #334155;
+            z-index: 1100; display: flex; align-items: center; padding: 0 20px; gap: 15px;
+        }
+
+        #viewport {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            overflow: hidden; cursor: grab;
+        }
+
+        #canvas {
+            position: absolute; transform-origin: 0 0;
+            width: 8000px; height: 8000px;
+            background-color: var(--bg);
+            pointer-events: none;
+        }
+
+        /* Fixed Headers Container */
+        #fixed-x-axis {
+            position: fixed; top: 50px; left: 160px; right: 0; height: 40px;
+            z-index: 1000; background: var(--header-bg);
+            border-bottom: 2px solid var(--accent); overflow: hidden;
+        }
+        #fixed-y-axis {
+            position: fixed; top: 90px; left: 0; bottom: 0; width: 160px;
+            z-index: 1000; background: var(--header-bg);
+            border-right: 2px solid var(--accent); overflow: hidden;
+        }
+
+        .axis-content { position: absolute; display: flex; transform-origin: 0 0; }
+        .axis-content.vertical { flex-direction: column; }
+
+        .phase-header {
+            min-width: 300px; text-align: center; line-height: 40px;
+            font-weight: bold; border-right: 1px solid var(--grid-line);
+            font-size: 0.75rem; text-transform: uppercase; color: var(--accent);
+        }
+
+        .category-header {
+            height: 220px; width: 160px; display: flex; align-items: center; justify-content: center;
+            writing-mode: vertical-rl; transform: rotate(180deg);
+            border-bottom: 1px solid var(--grid-line);
+            font-weight: bold; font-size: 0.75rem; color: #94a3b8;
+        }
+
+        /* Lane Visuals */
+        .lane-x {
+            position: absolute; top: 0; bottom: 0;
+            border-right: 1px solid rgba(56, 189, 248, 0.1);
+        }
+        .lane-y {
+            position: absolute; left: 0; right: 0;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+        }
+        .lane-y:nth-child(even) { background: var(--lane-alt); }
+
+        .node {
+            position: absolute; width: 75px; padding: 12px;
+            background: var(--node-bg); backdrop-filter: blur(10px);
+            border: 1px solid var(--node-border); border-radius: 16px;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            cursor: grab; pointer-events: auto; z-index: 10;
+        }
+        .node:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); }
+        .node img {
+            width: 44px; height: 44px; background: #fff;
+            border-radius: 12px; padding: 4px; object-fit: contain;
+        }
+        .node .name { font-size: 0.7rem; text-align: center; font-weight: 500; width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+        .btn {
+            background: #334155; border: 1px solid #475569; color: white;
+            padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
+        }
+        .btn.active { background: var(--accent); color: #000; font-weight: bold; }
+
+        #wire-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .wire { stroke: var(--wire-color); stroke-width: 2; fill: none; stroke-dasharray: 5; }
+
+        #context-menu {
+            position: fixed; display: none; background: #1e293b; border: 1px solid #475569;
+            border-radius: 8px; padding: 12px; z-index: 2000; font-size: 0.85rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6); min-width: 180px;
+        }
+        .menu-item { padding: 8px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
+        .menu-item:hover { background: var(--accent); color: #000; }
+    </style>
+</head>
+<body>
+    <header>
+        <span style="font-weight:bold; color:var(--accent);">Portfolio Matrix v4</span>
+        <input type="file" id="csvFile" accept=".csv" />
+        <button class="btn" id="btnConnect">Connect Mode</button>
+        <button class="btn" id="btnExport">Export JSON</button>
+        <small style="color:#64748b; font-size: 0.7rem;">Ctrl+Click: Open Site | Right-Click: Details</small>
+    </header>
+
+    <div id="fixed-x-axis"><div id="x-content" class="axis-content"></div></div>
+    <div id="fixed-y-axis"><div id="y-content" class="axis-content vertical"></div></div>
+
+    <div id="viewport">
+        <div id="canvas">
+            <div id="grid-lanes"></div>
+            <svg id="wire-layer"></svg>
+            <div id="nodes-container"></div>
+        </div>
+    </div>
+
+    <div id="context-menu"></div>
+
+    <script>
+        let state = {
+            transform: { x: 0, y: 0, scale: 0.8 },
+            mode: 'drag',
+            tools: [],
+            wires: [],
+            selectedNode: null,
+            cellW: 300,
+            cellH: 220
+        };
+
+        const canvas = document.getElementById('canvas');
+        const viewport = document.getElementById('viewport');
+        const xContent = document.getElementById('x-content');
+        const yContent = document.getElementById('y-content');
+        const lanes = document.getElementById('grid-lanes');
+        const nodesContainer = document.getElementById('nodes-container');
+        const ctxMenu = document.getElementById('context-menu');
+
+        function updateTransform() {
+            canvas.style.transform = `translate(${state.transform.x}px, ${state.transform.y}px) scale(${state.transform.scale})`;
+            // Fix axis labels logic: only translate, don't scale font so they stay readable
+            xContent.style.transform = `translateX(${state.transform.x}px) scaleX(${state.transform.scale})`;
+            yContent.style.transform = `translateY(${state.transform.y}px) scaleY(${state.transform.scale})`;
+            
+            // To prevent text distortion during axis scale, we counter-scale the children
+            Array.from(xContent.children).forEach(child => child.style.transform = `scaleX(${1/state.transform.scale})`);
+            Array.from(yContent.children).forEach(child => child.style.transform = `rotate(180deg) scaleY(${1/state.transform.scale})`);
+        }
+
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const factor = Math.pow(1.1, -e.deltaY / 200);
+            const rect = viewport.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const wx = (mx - state.transform.x) / state.transform.scale;
+            const wy = (my - state.transform.y) / state.transform.scale;
+            state.transform.scale = Math.max(0.15, Math.min(3, state.transform.scale * factor));
+            state.transform.x = mx - wx * state.transform.scale;
+            state.transform.y = my - wy * state.transform.scale;
+            updateTransform();
+        });
+
+        let isPanning = false;
+        viewport.onmousedown = (e) => { if(e.target === viewport || e.target === canvas) isPanning = true; };
+        window.onmousemove = (e) => { if(isPanning) { state.transform.x += e.movementX; state.transform.y += e.movementY; updateTransform(); } };
+        window.onmouseup = () => isPanning = false;
+
+        function initMatrix(data) {
+            const phases = [...new Set(data.map(t => t.phase || 'Other'))].sort();
+            const categories = [...new Set(data.map(t => t.category || 'Other'))].sort();
+
+            xContent.innerHTML = phases.map(p => `<div class="phase-header">${p}</div>`).join('');
+            yContent.innerHTML = categories.map(c => `<div class="category-header">${c}</div>`).join('');
+
+            // Draw Lanes
+            lanes.innerHTML = '';
+            phases.forEach((_, i) => {
+                const l = document.createElement('div');
+                l.className = 'lane-x';
+                l.style.left = (i * state.cellW + 160) + 'px';
+                l.style.width = state.cellW + 'px';
+                lanes.appendChild(l);
+            });
+            categories.forEach((_, i) => {
+                const l = document.createElement('div');
+                l.className = 'lane-y';
+                l.style.top = (i * state.cellH + 90) + 'px';
+                l.style.height = state.cellH + 'px';
+                lanes.appendChild(l);
+            });
+
+            nodesContainer.innerHTML = '';
+            const counts = {};
+            data.forEach((t, i) => {
+                const px = phases.indexOf(t.phase || 'Other');
+                const py = categories.indexOf(t.category || 'Other');
+                const key = `${px}-${py}`;
+                counts[key] = (counts[key] || 0) + 1;
+
+                const node = document.createElement('div');
+                node.className = 'node';
+                node.id = `n-${i}`;
+                
+                const offX = 160 + (px * state.cellW) + 25 + ((counts[key]-1) % 3) * 90;
+                const offY = 90 + (py * state.cellH) + 25 + Math.floor((counts[key]-1) / 3) * 95;
+
+                node.style.left = offX + 'px';
+                node.style.top = offY + 'px';
+                node.setAttribute('data-x', 0); node.setAttribute('data-y', 0);
+
+                const domain = t.url ? t.url.replace(/^https?:\/\//, '').split('/')[0] : '';
+                node.innerHTML = `
+                    <img src="https://www.google.com/s2/favicons?sz=128&domain=${domain}" onerror="this.src='https://via.placeholder.com/64'">
+                    <div class="name">${t.name}</div>
+                `;
+
+                node.addEventListener('click', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        window.open(t.url.startsWith('http') ? t.url : 'https://'+t.url, '_blank');
+                    } else if (state.mode === 'connect') {
+                        handleConnect(node.id);
+                    }
+                });
+
+                node.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    ctxMenu.style.display = 'block';
+                    ctxMenu.style.left = e.clientX + 'px'; ctxMenu.style.top = e.clientY + 'px';
+                    ctxMenu.innerHTML = `
+                        <div style="font-weight:bold; margin-bottom:10px; color:var(--accent)">${t.name}</div>
+                        <div class="menu-item" onclick="window.open('https://${t.url}','_blank')">🌐 Open Website</div>
+                        <div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">
+                            Owner: ${t.owner || '-'}<br>Status: ${t.status || '-'}
+                        </div>
+                    `;
+                };
+
+                nodesContainer.appendChild(node);
+            });
+            setupInteract();
+            updateTransform();
+        }
+
+        function handleConnect(id) {
+            if(!state.selectedNode) {
+                state.selectedNode = id;
+                document.getElementById(id).style.borderColor = '#f59e0b';
+            } else {
+                if(state.selectedNode !== id) {
+                    state.wires.push({f: state.selectedNode, t: id});
+                    drawWires();
+                }
+                document.getElementById(state.selectedNode).style.borderColor = '';
+                state.selectedNode = null;
+            }
+        }
+
+        function drawWires() {
+            const wireLayer = document.getElementById('wire-layer');
+            wireLayer.innerHTML = '';
+            state.wires.forEach(w => {
+                const f = document.getElementById(w.f), t = document.getElementById(w.t);
+                const rF = f.getBoundingClientRect(), rT = t.getBoundingClientRect();
+                const x1 = (rF.left + rF.width/2 - state.transform.x)/state.transform.scale;
+                const y1 = (rF.top + rF.height/2 - state.transform.y)/state.transform.scale;
+                const x2 = (rT.left + rT.width/2 - state.transform.x)/state.transform.scale;
+                const y2 = (rT.top + rT.height/2 - state.transform.y)/state.transform.scale;
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${(y1+y2)/2}, ${x2} ${(y1+y2)/2}, ${x2} ${y2}`);
+                path.setAttribute('class', 'wire');
+                wireLayer.appendChild(path);
+            });
+        }
+
+        function setupInteract() {
+            interact('.node').draggable({
+                listeners: { move(e) {
+                    const t = e.target;
+                    const x = (parseFloat(t.getAttribute('data-x')) || 0) + e.dx/state.transform.scale;
+                    const y = (parseFloat(t.getAttribute('data-y')) || 0) + e.dy/state.transform.scale;
+                    t.style.transform = `translate(${x}px, ${y}px)`;
+                    t.setAttribute('data-x', x); t.setAttribute('data-y', y);
+                    drawWires();
+                }}
+            });
+        }
+
+        window.addEventListener('click', () => ctxMenu.style.display = 'none');
+        document.getElementById('btnConnect').onclick = () => {
+            state.mode = state.mode === 'connect' ? 'drag' : 'connect';
+            document.getElementById('btnConnect').classList.toggle('active');
+        };
+
+        document.getElementById('csvFile').onchange = async (e) => {
+            const text = await e.target.files[0].text();
+            const lines = text.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            state.tools = lines.slice(1).filter(l => l.trim()).map(line => {
+                const v = line.split(',');
+                const obj = {}; headers.forEach((h, i) => obj[h] = v[i]?.trim());
+                return obj;
+            });
+            initMatrix(state.tools);
+        };
+    </script>
+</body>
+</html>

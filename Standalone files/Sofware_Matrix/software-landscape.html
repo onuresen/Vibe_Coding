@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Software Landscape</title>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --panel: #111826;
+            --card: #0f172a;
+            --border: #243047;
+            --text: #e7eefc;
+            --muted: #9fb0cc;
+            --accent: #4ea1ff;
+            --chip: #17223a;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            background: linear-gradient(180deg, var(--bg), rgba(11, 15, 20, .85));
+            backdrop-filter: blur(6px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        header h1 {
+            font-size: 16px;
+            margin: 0 12px 0 0;
+            color: var(--text);
+            font-weight: 650;
+        }
+
+        .ctrl {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            color: var(--muted);
+        }
+
+        input[type="text"],
+        select {
+            background: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            min-width: 220px;
+        }
+
+        select {
+            min-width: 180px;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        main {
+            padding: 14px 16px 28px;
+        }
+
+        .gridWrap {
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(17, 24, 38, .35);
+        }
+
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: max-content;
+            min-width: 100%;
+        }
+
+        th,
+        td {
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: rgba(17, 24, 38, .95);
+            backdrop-filter: blur(6px);
+            z-index: 3;
+        }
+
+        th:first-child {
+            left: 0;
+            z-index: 4;
+        }
+
+        td:first-child {
+            position: sticky;
+            left: 0;
+            background: rgba(17, 24, 38, .95);
+            z-index: 2;
+            min-width: 180px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            min-width: 260px;
+        }
+
+        .rowHdr {
+            color: var(--text);
+            font-weight: 650;
+        }
+
+        .colHdr {
+            color: var(--text);
+            font-weight: 700;
+            letter-spacing: .2px;
+        }
+
+        .cell {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 100px;
+        }
+
+        .card {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 10px;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--text);
+            transition: transform .05s ease, border-color .1s ease;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .logo {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: #0b1220;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #0b1220;
+        }
+
+        .meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .name {
+            font-weight: 650;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 12px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            background: var(--chip);
+            border: 1px solid var(--border);
+            padding: 2px 6px;
+            border-radius: 999px;
+        }
+
+        .empty {
+            color: var(--muted);
+            font-size: 12px;
+            padding: 8px;
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+        }
+
+        .footer {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 12px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .toggle {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .toggle input {
+            accent-color: var(--accent);
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Software Landscape</h1>
+
+        <div class="ctrl">
+            <input id="csvFile" type="file" accept=".csv" />
+            <span class="hint">Upload CSV exported from Excel</span>
+        </div>
+
+        <div class="ctrl">
+            <input id="q" type="text" placeholder="Search name / notes / owner…" />
+            <select id="statusFilter">
+                <option value="">All status</option>
+            </select>
+            <select id="ownerFilter">
+                <option value="">All owners</option>
+            </select>
+        </div>
+
+        <label class="toggle" title="When off, only logo_url is used (no external calls).">
+            <input id="autoLogo" type="checkbox" checked />
+            Auto-fetch logos by domain
+        </label>
+    </header>
+
+    <main>
+        <div class="gridWrap" id="gridWrap">
+            <div style="padding:16px;" class="hint">
+                1) Prepare Excel with columns: <b>name, category, domain, url</b> (optional: logo_url, notes, status,
+                owner).<br />
+                2) Export as CSV (UTF-8).<br />
+                3) Upload the CSV here.
+            </div>
+        </div>
+
+        <div class="footer">
+            <div>Tips: Use <b>category</b> as columns and <b>domain</b> as rows (like your poster).</div>
+            <div>Manual logos: set <b>logo_url</b> to SharePoint image URL or relative path like <b>logos/tool.png</b>.
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ---------- Minimal CSV parser (handles quotes) ----------
+        function parseCSV(text) {
+            const rows = [];
+            let row = [], cur = "", inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i], n = text[i + 1];
+                if (c === '"') {
+                    if (inQuotes && n === '"') { cur += '"'; i++; }
+                    else inQuotes = !inQuotes;
+                } else if (c === ',' && !inQuotes) {
+                    row.push(cur); cur = "";
+                } else if ((c === '\n' || c === '\r') && !inQuotes) {
+                    if (c === '\r' && n === '\n') i++;
+                    row.push(cur); cur = "";
+                    if (row.some(x => x.trim().length)) rows.push(row);
+                    row = [];
+                } else {
+                    cur += c;
+                }
+            }
+            row.push(cur);
+            if (row.some(x => x.trim().length)) rows.push(row);
+            if (!rows.length) return [];
+            const headers = rows[0].map(h => h.trim());
+            return rows.slice(1).map(r => {
+                const obj = {};
+                headers.forEach((h, idx) => obj[h] = (r[idx] ?? "").trim());
+                return obj;
+            });
+        }
+
+        function uniq(arr) { return [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b)); }
+
+        function domainFromUrl(url) {
+            try { return new URL(url).hostname.replace(/^www\./, ''); }
+            catch { return ""; }
+        }
+
+        function buildLogoCandidates(tool, autoLogoEnabled) {
+            // 1) manual override wins
+            if (tool.logo_url) return [tool.logo_url];
+
+            if (!autoLogoEnabled) return [];
+
+            const d = domainFromUrl(tool.url);
+            if (!d) return [];
+
+            // 2) Clearbit logo (often best)
+            const clearbit = `https://logo.clearbit.com/${d}`;
+
+            // 3) Favicon fallback (reliable-ish)
+            const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(d)}&sz=128`;
+
+            return [clearbit, favicon];
+        }
+
+        function createLogoEl(candidates, altText) {
+            const wrap = document.createElement('div');
+            wrap.className = 'logo';
+
+            const img = document.createElement('img');
+            img.alt = altText || "logo";
+            img.referrerPolicy = "no-referrer"; // helps some endpoints
+            wrap.appendChild(img);
+
+            let idx = 0;
+            const setNext = () => {
+                if (idx >= candidates.length) {
+                    // fallback: first letter
+                    wrap.innerHTML = `<span style="color:#9fb0cc;font-weight:700">${(altText || "?").slice(0, 1).toUpperCase()}</span>`;
+                    return;
+                }
+                img.src = candidates[idx++];
+            };
+            img.onerror = setNext;
+            setNext();
+
+            return wrap;
+        }
+
+        function normalizeTool(t) {
+            return {
+                name: t.name || t.Name || "",
+                category: t.category || t.Category || "",
+                domain: t.domain || t.Domain || "",
+                url: t.url || t.URL || "",
+                logo_url: t.logo_url || t.logo || t.Logo || "",
+                notes: t.notes || t.Notes || "",
+                status: t.status || t.Status || "",
+                owner: t.owner || t.Owner || ""
+            };
+        }
+
+        let tools = [];
+
+        function populateFilters() {
+            const statusSel = document.getElementById('statusFilter');
+            const ownerSel = document.getElementById('ownerFilter');
+
+            const statuses = uniq(tools.map(t => t.status));
+            const owners = uniq(tools.map(t => t.owner));
+
+            statusSel.innerHTML = `<option value="">All status</option>` + statuses.map(s => `<option>${escapeHtml(s)}</option>`).join('');
+            ownerSel.innerHTML = `<option value="">All owners</option>` + owners.map(o => `<option>${escapeHtml(o)}</option>`).join('');
+        }
+
+        function escapeHtml(s) {
+            return (s || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        }
+
+        function render() {
+            const q = document.getElementById('q').value.trim().toLowerCase();
+            const statusF = document.getElementById('statusFilter').value;
+            const ownerF = document.getElementById('ownerFilter').value;
+            const autoLogoEnabled = document.getElementById('autoLogo').checked;
+
+            let filtered = tools.filter(t => {
+                if (statusF && t.status !== statusF) return false;
+                if (ownerF && t.owner !== ownerF) return false;
+                if (!q) return true;
+                const hay = `${t.name} ${t.notes} ${t.owner} ${t.status} ${t.category} ${t.domain}`.toLowerCase();
+                return hay.includes(q);
+            });
+
+            const categories = uniq(filtered.map(t => t.category));
+            const domains = uniq(filtered.map(t => t.domain));
+
+            // build table
+            const wrap = document.getElementById('gridWrap');
+            wrap.innerHTML = '';
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const trh = document.createElement('tr');
+
+            const th0 = document.createElement('th');
+            th0.className = 'colHdr';
+            th0.textContent = 'Domain / Phase';
+            trh.appendChild(th0);
+
+            categories.forEach(cat => {
+                const th = document.createElement('th');
+                th.className = 'colHdr';
+                th.textContent = cat || '(Uncategorized)';
+                trh.appendChild(th);
+            });
+
+            thead.appendChild(trh);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+
+            domains.forEach(dom => {
+                const tr = document.createElement('tr');
+
+                const tdHdr = document.createElement('td');
+                tdHdr.className = 'rowHdr';
+                tdHdr.textContent = dom || '(No domain)';
+                tr.appendChild(tdHdr);
+
+                categories.forEach(cat => {
+                    const td = document.createElement('td');
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+
+                    const items = filtered.filter(t => (t.domain || '') === (dom || '') && (t.category || '') === (cat || ''));
+                    if (!items.length) {
+                        const empty = document.createElement('div');
+                        empty.className = 'empty';
+                        empty.textContent = '—';
+                        cell.appendChild(empty);
+                    } else {
+                        items.forEach(t => {
+                            const a = document.createElement('a');
+                            a.className = 'card';
+                            a.href = t.url || '#';
+                            a.target = '_blank';
+                            a.rel = 'noopener';
+
+                            const candidates = buildLogoCandidates(t, autoLogoEnabled);
+                            a.appendChild(createLogoEl(candidates, t.name));
+
+                            const meta = document.createElement('div');
+                            meta.className = 'meta';
+
+                            const name = document.createElement('div');
+                            name.className = 'name';
+                            name.title = t.name;
+                            name.textContent = t.name || '(No name)';
+                            meta.appendChild(name);
+
+                            const sub = document.createElement('div');
+                            sub.className = 'sub';
+                            if (t.status) sub.innerHTML += `<span class="chip">${escapeHtml(t.status)}</span>`;
+                            if (t.owner) sub.innerHTML += `<span class="chip">${escapeHtml(t.owner)}</span>`;
+                            meta.appendChild(sub);
+
+                            if (t.notes) a.title = t.notes;
+
+                            a.appendChild(meta);
+                            cell.appendChild(a);
+                        });
+                    }
+
+                    td.appendChild(cell);
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            wrap.appendChild(table);
+        }
+
+        document.getElementById('csvFile').addEventListener('change', async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const text = await file.text();
+            tools = parseCSV(text).map(normalizeTool).filter(t => t.name || t.url);
+            populateFilters();
+            render();
+        });
+
+        ['q', 'statusFilter', 'ownerFilter', 'autoLogo'].forEach(id => {
+            document.getElementById(id).addEventListener('input', render);
+            document.getElementById(id).addEventListener('change', render);
+        });
+    </script>
+</body>
+
+</html>

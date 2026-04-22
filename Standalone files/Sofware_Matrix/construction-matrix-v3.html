@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Construction Tech Portfolio v3</title>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --grid-line: #1e293b;
+            --text: #e2e8f0;
+            --accent: #38bdf8;
+            --node-bg: rgba(30, 41, 59, 0.7);
+            --node-border: rgba(51, 65, 85, 0.8);
+            --header-bg: #111827;
+            --wire-color: #64748b;
+        }
+
+        body {
+            margin: 0; overflow: hidden;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg); color: var(--text);
+            user-select: none;
+        }
+
+        header {
+            position: fixed; top: 0; left: 0; width: 100%; height: 50px;
+            background: var(--header-bg); border-bottom: 1px solid #334155;
+            z-index: 1000; display: flex; align-items: center; padding: 0 20px; gap: 15px;
+        }
+
+        #viewport {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            overflow: hidden; cursor: grab;
+        }
+
+        #canvas {
+            position: absolute; transform-origin: 0 0;
+            width: 5000px; height: 5000px;
+            background-image:
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 80px 80px;
+            pointer-events: none;
+        }
+
+        /* Tighter Matrix Axis */
+        .axis-label-x {
+            position: fixed; top: 50px; left: 160px; right: 0; height: 35px;
+            display: flex; background: var(--header-bg); z-index: 900;
+            border-bottom: 1px solid var(--accent); overflow: hidden;
+        }
+        .phase-header {
+            min-width: 250px; text-align: center; line-height: 35px;
+            font-weight: bold; border-right: 1px solid var(--grid-line);
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+
+        .axis-label-y {
+            position: fixed; top: 85px; left: 0; bottom: 0; width: 160px;
+            background: var(--header-bg); z-index: 900;
+            border-right: 1px solid var(--accent); overflow: hidden;
+        }
+        .category-header {
+            height: 180px; display: flex; align-items: center; justify-content: center;
+            writing-mode: vertical-rl; transform: rotate(180deg);
+            border-bottom: 1px solid var(--grid-line);
+            font-weight: bold; font-size: 0.7rem; color: #94a3b8;
+        }
+
+        /* Organic Node Design */
+        .node {
+            position: absolute;
+            width: 70px; /* Smaller footprint */
+            padding: 10px;
+            background: var(--node-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--node-border);
+            border-radius: 14px; /* More organic/rounded */
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            cursor: grab; pointer-events: auto; z-index: 10;
+            transition: background 0.2s, border-color 0.2s, transform 0.1s ease-out;
+        }
+        .node:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent);
+            z-index: 100;
+        }
+        .node img {
+            width: 42px; height: 42px; /* Larger icon ratio */
+            background: #fff;
+            border-radius: 10px;
+            padding: 4px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            object-fit: contain;
+        }
+        .node .name {
+            font-size: 0.65rem;
+            text-align: center;
+            font-weight: 500;
+            color: #f1f5f9;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn {
+            background: #334155; border: 1px solid #475569; color: white;
+            padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
+        }
+        .btn.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: bold; }
+
+        #wire-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .wire { stroke: var(--wire-color); stroke-width: 1.5; fill: none; stroke-dasharray: 4; animation: flow 20s linear infinite; }
+        @keyframes flow { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+
+        #context-menu {
+            position: fixed; display: none; background: #1e293b; border: 1px solid #334155;
+            border-radius: 8px; padding: 12px; z-index: 2000; font-size: 0.8rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <span style="font-weight:bold; color:var(--accent); font-size: 0.9rem;">Portfolio Matrix v3</span>
+        <input type="file" id="csvFile" accept=".csv" style="font-size: 0.7rem;" />
+        <button class="btn" id="btnConnect">Connect</button>
+        <button class="btn" id="btnExport">Export</button>
+        <small id="status" style="color:#64748b; font-size: 0.7rem;">Wheel to Zoom | Right-Click for Details</small>
+    </header>
+
+    <div class="axis-label-x"><div id="pLabels"></div></div>
+    <div class="axis-label-y"><div id="cLabels"></div></div>
+
+    <div id="viewport">
+        <div id="canvas">
+            <svg id="wire-layer"></svg>
+            <div id="nodes-container"></div>
+        </div>
+    </div>
+
+    <div id="context-menu"></div>
+
+    <script>
+        let state = {
+            transform: { x: 0, y: 0, scale: 0.85 },
+            mode: 'drag',
+            tools: [],
+            wires: [],
+            selectedNode: null
+        };
+
+        const canvas = document.getElementById('canvas');
+        const viewport = document.getElementById('viewport');
+        const nodesContainer = document.getElementById('nodes-container');
+        const wireLayer = document.getElementById('wire-layer');
+
+        function updateTransform() {
+            canvas.style.transform = `translate(${state.transform.x}px, ${state.transform.y}px) scale(${state.transform.scale})`;
+            document.getElementById('pLabels').style.transform = `translateX(${state.transform.x}px) scaleX(${state.transform.scale})`;
+            document.getElementById('cLabels').style.transform = `translateY(${state.transform.y}px) scaleY(${state.transform.scale})`;
+        }
+
+        // --- Optimized Zoom/Pan ---
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const factor = Math.pow(1.1, -e.deltaY / 200);
+            const rect = viewport.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const wx = (mx - state.transform.x) / state.transform.scale;
+            const wy = (my - state.transform.y) / state.transform.scale;
+            state.transform.scale = Math.max(0.2, Math.min(2, state.transform.scale * factor));
+            state.transform.x = mx - wx * state.transform.scale;
+            state.transform.y = my - wy * state.transform.scale;
+            updateTransform();
+        });
+
+        let isPanning = false;
+        viewport.onmousedown = (e) => { if(e.target === viewport || e.target === canvas) isPanning = true; };
+        window.onmousemove = (e) => { if(isPanning) { state.transform.x += e.movementX; state.transform.y += e.movementY; updateTransform(); } };
+        window.onmouseup = () => isPanning = false;
+
+        // --- Placement & Parsing ---
+        function initMatrix(data) {
+            const phases = [...new Set(data.map(t => t.phase || 'Other'))].sort();
+            const categories = [...new Set(data.map(t => t.category || 'Other'))].sort();
+
+            const pl = document.getElementById('pLabels');
+            const cl = document.getElementById('cLabels');
+            pl.innerHTML = phases.map(p => `<div class="phase-header">${p}</div>`).join('');
+            cl.innerHTML = categories.map(c => `<div class="category-header">${c}</div>`).join('');
+
+            nodesContainer.innerHTML = '';
+            const cellW = 250, cellH = 180; // Tighter grid
+            const counts = {};
+
+            data.forEach((t, i) => {
+                const px = phases.indexOf(t.phase || 'Other');
+                const py = categories.indexOf(t.category || 'Other');
+                const key = `${px}-${py}`;
+                counts[key] = (counts[key] || 0) + 1;
+
+                const node = document.createElement('div');
+                node.className = 'node';
+                node.id = `n-${i}`;
+                
+                // Pack nodes tighter within cells
+                const offsetX = 160 + (px * cellW) + 20 + ((counts[key]-1) % 2) * 90;
+                const offsetY = 85 + (py * cellH) + 20 + Math.floor((counts[key]-1) / 2) * 90;
+
+                node.style.left = offsetX + 'px';
+                node.style.top = offsetY + 'px';
+                node.setAttribute('data-x', 0); node.setAttribute('data-y', 0);
+
+                const domain = t.url ? t.url.replace(/^https?:\/\//, '').split('/')[0] : '';
+                node.innerHTML = `
+                    <img src="https://www.google.com/s2/favicons?sz=128&domain=${domain}" onerror="this.src='https://via.placeholder.com/64'">
+                    <div class="name">${t.name}</div>
+                `;
+
+                node.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    const menu = document.getElementById('context-menu');
+                    menu.style.display = 'block';
+                    menu.style.left = e.clientX + 'px'; menu.style.top = e.clientY + 'px';
+                    menu.innerHTML = `<b>${t.name}</b><hr style="border:0;border-top:1px solid #334155;margin:8px 0">
+                                      Owner: ${t.owner || '-'}<br>Status: ${t.status || '-'}`;
+                };
+
+                node.onclick = () => { if(state.mode==='connect') handleConnect(node.id); };
+                nodesContainer.appendChild(node);
+            });
+            setupInteract();
+            updateTransform();
+        }
+
+        function handleConnect(id) {
+            if(!state.selectedNode) {
+                state.selectedNode = id;
+                document.getElementById(id).style.borderColor = 'orange';
+            } else {
+                if(state.selectedNode !== id) {
+                    state.wires.push({f: state.selectedNode, t: id});
+                    drawWires();
+                }
+                document.getElementById(state.selectedNode).style.borderColor = '';
+                state.selectedNode = null;
+            }
+        }
+
+        function drawWires() {
+            wireLayer.innerHTML = '';
+            state.wires.forEach(w => {
+                const f = document.getElementById(w.f), t = document.getElementById(w.t);
+                const rF = f.getBoundingClientRect(), rT = t.getBoundingClientRect();
+                const x1 = (rF.left + rF.width/2 - state.transform.x)/state.transform.scale;
+                const y1 = (rF.top + rF.height/2 - state.transform.y)/state.transform.scale;
+                const x2 = (rT.left + rT.width/2 - state.transform.x)/state.transform.scale;
+                const y2 = (rT.top + rT.height/2 - state.transform.y)/state.transform.scale;
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
+                path.setAttribute('class', 'wire');
+                wireLayer.appendChild(path);
+            });
+        }
+
+        function setupInteract() {
+            interact('.node').draggable({
+                listeners: { move(e) {
+                    const t = e.target;
+                    const x = (parseFloat(t.getAttribute('data-x')) || 0) + e.dx/state.transform.scale;
+                    const y = (parseFloat(t.getAttribute('data-y')) || 0) + e.dy/state.transform.scale;
+                    t.style.transform = `translate(${x}px, ${y}px)`;
+                    t.setAttribute('data-x', x); t.setAttribute('data-y', y);
+                    drawWires();
+                }}
+            });
+        }
+
+        window.onclick = () => document.getElementById('context-menu').style.display = 'none';
+        document.getElementById('btnConnect').onclick = () => {
+            state.mode = state.mode === 'connect' ? 'drag' : 'connect';
+            document.getElementById('btnConnect').classList.toggle('active');
+        };
+
+        document.getElementById('csvFile').onchange = async (e) => {
+            const text = await e.target.files[0].text();
+            const lines = text.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            state.tools = lines.slice(1).filter(l => l.trim()).map(line => {
+                const v = line.split(',');
+                const obj = {}; headers.forEach((h, i) => obj[h] = v[i]?.trim());
+                return obj;
+            });
+            initMatrix(state.tools);
+        };
+    </script>
+</body>
+</html>
