@@ -784,6 +784,17 @@
       <button
         style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;margin-right:10px;font-family:var(--font-m);"
         onclick="startTour()" title="Interactive Tour" aria-label="Interactive Tour">?</button>
+      <button id="theme-toggle-btn" style="
+    background:transparent;
+    border:none;
+    color:var(--text3);
+    cursor:pointer;
+    font-size:15px;
+    margin-right:8px;
+    font-family:var(--font-m);
+  " title="Toggle theme" aria-label="Toggle theme">
+        🌙
+      </button>
       <span id="breadcrumb"></span>
     </div>
 
@@ -1021,6 +1032,11 @@
         if (_pendingHighlight) {
           frame.contentWindow.postMessage({ type: 'hub-highlight', itemId: _pendingHighlight }, '*');
           _pendingHighlight = null;
+        }
+        // Sync theme into iframe
+        const theme = document.documentElement.getAttribute('data-theme');
+        if (theme) {
+          frame.contentDocument.documentElement.setAttribute('data-theme', theme);
         }
       };
 
@@ -1454,6 +1470,35 @@
       HubStorage.set('tutorial-seen-v1', true);
       setTimeout(startTour, 300);
     }
+  </script>
+  <script>
+    /* =========================
+       THEME TOGGLE (GLOBAL)
+       ========================= */
+
+    const THEME_KEY = 'th-theme';
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem(THEME_KEY, theme);
+
+      const btn = document.getElementById('theme-toggle-btn');
+      if (btn) {
+        btn.textContent = theme === 'light' ? '🌞' : '🌙';
+      }
+    }
+
+    // Load persisted theme
+    (function initTheme() {
+      const saved = localStorage.getItem(THEME_KEY) || 'dark';
+      applyTheme(saved);
+    })();
+
+    // Toggle handler
+    document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
   </script>
 </body>
 
