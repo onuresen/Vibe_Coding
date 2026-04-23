@@ -3,68 +3,64 @@
   "category": "Windows",
   "families": [
     {
-      "familyName": "_AW_ECP_...",
+      "familyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
       "types": [
         {
           "typeName": "TWC_ver3-1",
-          "parameters": [
-            {
-              "name": "Width",
-              "spec": {
-                "kind": "length",
-                "unit": "mm"
-              },
-              "value": 1200.0
-            }
-          ],
-          "components": [
-            {
-              "componentId": "E12345",
-              "familyName": "WPUv_2段_ver3-3",
-              "typeName": "Panel-F/BP_AW3-4_mpc",
-              "slotId": "P1",
-              "slotPath": "0"
+          "composition": {
+            "nodeId": "root",
+            "role": "Sash",
+            "component": {
+              "familyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+              "typeName": "TWC_ver3-1"
             },
-            {
-              "componentId": "E12346",
-              "familyName": "WPUv_2段_ver3-3",
-              "typeName": "Panel-Sr/BP_AW3-4_mpc",
-              "slotId": "P2",
-              "slotPath": "1.0"
-            }
-          ],
-          "layout": {
-            "kind": "split",
-            "axis": "V",
-            "parts": [
+            "selectors": [
               {
-                "weight": 3,
+                "selectorId": "panel_main",
+                "paramName": "PanelTypeWin<窓>",
+                "paramKind": "FamilyType",
+                "selected": {
+                  "familyName": "WPUv_2段_..._ver3-5",
+                  "typeName": "Frame-ZH-OH-L"
+                },
+                "candidates": [
+                  {
+                    "familyName": "WPS_嵌め殺し_ver1-0-0",
+                    "typeName": "FF"
+                  },
+                  {
+                    "familyName": "WPM_2段",
+                    "typeName": "..."
+                  },
+                  {
+                    "familyName": "WPM_3連",
+                    "typeName": "..."
+                  }
+                ],
                 "child": {
-                  "kind": "leaf",
-                  "slotId": "P1",
-                  "slotPath": "0"
-                }
-              },
-              {
-                "weight": 1,
-                "child": {
-                  "kind": "split",
-                  "axis": "H",
-                  "parts": [
+                  "nodeId": "n1",
+                  "role": "Panel",
+                  "component": {
+                    "familyName": "WPUv_2段_..._ver3-5",
+                    "typeName": "Frame-ZH-OH-L"
+                  },
+                  "selectors": [
                     {
-                      "weight": 1,
-                      "child": {
-                        "kind": "leaf",
-                        "slotId": "P2",
-                        "slotPath": "1.0"
+                      "selectorId": "panel_left",
+                      "paramName": "Panel1Type",
+                      "paramKind": "FamilyType",
+                      "selected": {
+                        "familyName": "WPUv_2段_ver3-3",
+                        "typeName": "Panel-F/BP_AW3-4_mpc"
                       }
                     },
                     {
-                      "weight": 1,
-                      "child": {
-                        "kind": "leaf",
-                        "slotId": "P3",
-                        "slotPath": "1.1"
+                      "selectorId": "panel_right",
+                      "paramName": "Panel2Type",
+                      "paramKind": "FamilyType",
+                      "selected": {
+                        "familyName": "WPUv_2段_ver3-3",
+                        "typeName": "Panel-Sr/BP_AW3-4_mpc"
                       }
                     }
                   ]

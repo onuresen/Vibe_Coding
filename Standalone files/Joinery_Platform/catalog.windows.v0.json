@@ -1,0 +1,108 @@
+{
+    "catalogVersion": "0.1",
+    "categories": [
+        {
+            "categoryId": "windows_ob",
+            "label": "ob Windows",
+            "rootTemplates": [
+                {
+                    "templateId": "sash_aw_ecp_twc",
+                    "label": "AW_ECP / TWC (Sash)",
+                    "description": "Base sash that selects a panel family type.",
+                    "rootRole": "Sash",
+                    "selectors": [
+                        {
+                            "selectorId": "panel_main",
+                            "label": "Main Panel",
+                            "paramName": "PanelTypeWin<窓>",
+                            "options": [
+                                {
+                                    "optionId": "wpuv_2dan_frame",
+                                    "label": "2段 Frame (ZH-OH-L)",
+                                    "componentRef": {
+                                        "familyName": "WPUv_2段_ver3-5",
+                                        "typeName": "Frame-ZH-OH-L"
+                                    }
+                                },
+                                {
+                                    "optionId": "wps_fixed",
+                                    "label": "WPS Fixed (FF)",
+                                    "componentRef": {
+                                        "familyName": "WPS_嵌め殺し_ver1-0",
+                                        "typeName": "FF"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "componentTemplates": [
+                {
+                    "templateId": "panel_2dan",
+                    "label": "2段 Panel Template",
+                    "role": "Panel",
+                    "selectors": [
+                        {
+                            "selectorId": "panel_left",
+                            "label": "Left Panel",
+                            "paramName": "Panel1Type",
+                            "options": [
+                                {
+                                    "optionId": "panel_f",
+                                    "label": "Panel-F",
+                                    "componentRef": {
+                                        "familyName": "WPUv_2段_ver3-3",
+                                        "typeName": "Panel-F/BP_AW3-4_mpc"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "selectorId": "panel_right",
+                            "label": "Right Panel",
+                            "paramName": "Panel2Type",
+                            "options": [
+                                {
+                                    "optionId": "panel_sr",
+                                    "label": "Panel-Sr",
+                                    "componentRef": {
+                                        "familyName": "WPUv_2段_ver3-3",
+                                        "typeName": "Panel-Sr/BP_AW3-4_mpc"
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "previewLayout": {
+                        "kind": "split",
+                        "axis": "V",
+                        "parts": [
+                            {
+                                "weight": 3,
+                                "slotId": "L"
+                            },
+                            {
+                                "weight": 1,
+                                "child": {
+                                    "kind": "split",
+                                    "axis": "H",
+                                    "parts": [
+                                        {
+                                            "weight": 1,
+                                            "slotId": "RT"
+                                        },
+                                        {
+                                            "weight": 1,
+                                            "slotId": "RB"
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+}

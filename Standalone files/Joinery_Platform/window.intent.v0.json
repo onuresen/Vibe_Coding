@@ -1,0 +1,36 @@
+{
+    "schemaVersion": "0.2",
+    "categoryId": "windows_ob",
+    "window": {
+        "familyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+        "typeName": "TWC_ver3-1"
+    },
+    "composition": {
+        "nodeId": "root",
+        "role": "Sash",
+        "selectors": [
+            {
+                "selectorId": "panel_main",
+                "paramName": "PanelTypeWin<窓>",
+                "selectedOptionId": "wpuv_2dan_frame",
+                "child": {
+                    "nodeId": "n1",
+                    "role": "Panel",
+                    "templateHint": "panel_2dan",
+                    "selectors": [
+                        {
+                            "selectorId": "panel_left",
+                            "paramName": "Panel1Type",
+                            "selectedOptionId": "panel_f"
+                        },
+                        {
+                            "selectorId": "panel_right",
+                            "paramName": "Panel2Type",
+                            "selectedOptionId": "panel_sr"
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}
