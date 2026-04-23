@@ -8,6 +8,7 @@
   <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
+  <script src="hub-bootstrap.js"></script>
   <link rel="stylesheet" href="theme.css">
   <style>
     * {
@@ -526,7 +527,6 @@
     }
 
     // ─── INITIALIZATION ──────────────────────────────────────────────────────────
-    HubData.init('decision-hub');
     loadData();
     renderSidebar();
 
@@ -967,6 +967,11 @@
       }
     });
 
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      HubBootstrap.start('decision-hub');
+    });
   </script>
 </body>
 

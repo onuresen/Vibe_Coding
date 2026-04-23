@@ -8,6 +8,7 @@
   <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
+  <script src="hub-bootstrap.js"></script>
   <link rel="stylesheet" href="theme.css">
   <style>
     /* ONLY styles unique to this tool go here */
@@ -2764,8 +2765,12 @@
     // ─── INIT ─────────────────────────────────────────────────────────────────────
     renderSidebarUsers();
     renderContent();
-    try { HubLinks.init('project-hub'); } catch { }
-    try { HubData.init('project-hub'); } catch { }
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      HubBootstrap.start('project-hub');
+    });
   </script>
 </body>
 

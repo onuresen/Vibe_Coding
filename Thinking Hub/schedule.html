@@ -8,6 +8,7 @@
   <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
+  <script src="hub-bootstrap.js"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet">
@@ -2049,14 +2050,17 @@
     // Init
     // ═══════════════════════════════════════════════════════════════
     state = loadState();
-    try { HubLinks.init('schedule'); } catch { }
     try {
-      HubData.init('schedule');
       _populateProjectSelect();
       HubData.onChange(_populateProjectSelect);
     } catch { }
     render();
     setTimeout(scrollToToday, 160);
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      HubBootstrap.start('schedule');
+    });
   </script>
 </body>
 

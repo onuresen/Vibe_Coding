@@ -7,6 +7,7 @@
   <title>KMQT Board (Standalone)</title>
   <script src="hub-storage.js"></script>
   <script src="hub-data.js"></script>
+  <script src="hub-bootstrap.js"></script>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
   <link rel="stylesheet" href="theme.css">
@@ -1744,7 +1745,6 @@
       updateConnectUI(false);
       renderAll();
       document.getElementById('btn-ph-import').addEventListener('click', showPhImport);
-      try { HubData.init('kmqt-board'); } catch { }
     }
     init();
 
@@ -1821,6 +1821,11 @@
 
     document.getElementById('ph-import-modal').addEventListener('click', e => {
       if (e.target === document.getElementById('ph-import-modal')) closePhImport();
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      HubBootstrap.start('kmqt-board');
     });
   </script>
 </body>

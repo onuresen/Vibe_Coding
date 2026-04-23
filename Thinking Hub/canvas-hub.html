@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="theme.css">
   <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
+  <script src="hub-bootstrap.js"></script>
   <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
     body {
@@ -299,8 +300,6 @@
   </div>
 
   <script>
-    HubLinks.init('canvas-hub');
-
     // ── Constants ────────────────────────────────────────────
 
     const STORAGE_KEY = 'canvas-v1';
@@ -842,6 +841,11 @@
 
     updateTransform();
     renderAll();
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      HubBootstrap.start('decision-hub');
+    });
   </script>
 </body>
 

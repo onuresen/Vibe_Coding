@@ -11,6 +11,7 @@
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
+  <script src="hub-bootstrap.js"></script>
   <style>
     body {
       margin: 0;
@@ -252,8 +253,6 @@
   <div id="mynetwork"></div>
 
   <script>
-    HubLinks.init('graph-hub');
-
     const TOOL_COLORS = {
       'project-hub': { bg: '#1c2d47', border: '#3a5f96' },
       'decision-hub': { bg: '#3a1e1e', border: '#7a3535' },
@@ -480,6 +479,11 @@
     buildGraph();
     HubStorage.subscribe('hub-links-v1', buildGraph);
     window.__hl_onLinkChange = buildGraph;
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      HubBootstrap.start('graph-hub');
+    });
   </script>
 </body>
 

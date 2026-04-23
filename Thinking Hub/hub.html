@@ -14,6 +14,7 @@
   <script src="hub-links.js"></script>
   <script src="hub-search.js"></script>
   <script src="hub-toast.js"></script>
+  <script src="hub-bootstrap.js"></script>
   <style>
     html,
     body {
@@ -1445,7 +1446,6 @@
     refreshRecentStrip();
     setGreeting();
     initCloudPanel();
-    HubSearch.init();
 
     // Auto-start tutorial on first run
     if (!HubStorage.get('tutorial-seen-v1')) {
@@ -1480,6 +1480,11 @@
     document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
       const current = document.documentElement.getAttribute('data-theme') || 'dark';
       applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      HubBootstrap.start('hub');
     });
   </script>
 </body>

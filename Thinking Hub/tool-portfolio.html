@@ -5,12 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tool Portfolio Hub</title>
-
     <script src="hub-storage.js"></script>
     <script src="hub-links.js"></script>
     <script src="hub-data.js"></script>
+    <script src="hub-bootstrap.js"></script>
     <link rel="stylesheet" href="theme.css">
-
     <style>
         body {
             margin: 0;
@@ -261,8 +260,6 @@
     </div>
 
     <script>
-        HubLinks.init('tool-portfolio');
-
         const STORAGE_KEY = 'tool-portfolio-v1';
         let tools = [];
         let currentId = null;
@@ -664,6 +661,11 @@
         }
 
         load();
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            HubBootstrap.start('tool-portfolio');
+        });
     </script>
 </body>
 
