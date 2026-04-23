@@ -9,7 +9,6 @@
  * Usage:
  *   <script src="hub-storage.js"></script>
  *   <script src="hub-data.js"></script>
- *   HubData.init('my-tool');
  *   const projects = HubData.getProjects();
  *   HubData.onChange(() => repopulateDropdowns());
  */
@@ -19,9 +18,9 @@
 if (typeof window.HubStorage === 'undefined') {
   console.warn('[HubData] hub-storage.js not loaded — falling back to direct localStorage');
   window.HubStorage = {
-    get:       k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-    set:       (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-    subscribe: () => (() => {}),
+    get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } },
+    subscribe: () => (() => { }),
   };
 }
 
@@ -38,7 +37,7 @@ window.HubData = (() => {
       const data = HubStorage.get(PH_KEY);
       if (!data) return { members: [], projects: [] };
       return {
-        members:  Array.isArray(data.members)  ? data.members  : [],
+        members: Array.isArray(data.members) ? data.members : [],
         projects: Array.isArray(data.projects) ? data.projects : [],
       };
     } catch {
@@ -76,8 +75,8 @@ window.HubData = (() => {
     return getData().projects.flatMap(p =>
       (p.tasks || []).map(t => ({
         ...t,
-        _projectId:    p.id,
-        _projectName:  p.name,
+        _projectId: p.id,
+        _projectName: p.name,
         _projectColor: p.color,
       }))
     );
@@ -89,8 +88,8 @@ window.HubData = (() => {
     if (!project) return [];
     return (project.tasks || []).map(t => ({
       ...t,
-      _projectId:    project.id,
-      _projectName:  project.name,
+      _projectId: project.id,
+      _projectName: project.name,
       _projectColor: project.color,
     }));
   }

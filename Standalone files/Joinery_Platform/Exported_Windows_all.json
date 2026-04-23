@@ -1,0 +1,3438 @@
+{
+  "SchemaVersion": "0.1",
+  "Category": "Windows",
+  "Families": [
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AD-1-3aCS_2280x3757.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-3aCS_AW1-TBPCSD",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連不均等_ver3-5",
+              "TypeName": "Panel_FB/FB 2",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "VPS_B_折れ分け4枚_ver2-3_窓カテゴリ",
+              "TypeName": "ガラス",
+              "Nesting": [
+                {
+                  "FamilyName": "DP_k_框_ver22",
+                  "TypeName": "開き戸用",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "DP_k_框_ver22",
+                  "TypeName": "開き戸用",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "DP_k_框_ver22",
+                  "TypeName": "開き戸用",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "DP_k_框_ver22",
+                  "TypeName": "開き戸用",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC_NAO",
+      "TypeName": "AD-1-5a_2270x3882.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5b_AW2-000",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連均等_ver3-5",
+              "TypeName": "Panel_FD_FB",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_S",
+          "TypeName": "縦止水パネル_TWC_S",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_S",
+          "TypeName": "縦止水パネル_TWC_S",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC_NAO",
+      "TypeName": "AD-1-5a_2270x4169.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5a_AG1-TB",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連均等_ver3-5",
+              "TypeName": "Panel_FD_GG",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_S",
+          "TypeName": "縦止水パネル_TWC_S",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_S",
+          "TypeName": "縦止水パネル_TWC_S",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC_NAO",
+      "TypeName": "AD-1-5aA_2360x4182.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5aA_AW1-TSBPF",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel_FD_AA/FF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPUh_2連均等_ver3-5",
+                  "TypeName": "Panel_FD_FB",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPUh_2連均等_ver3-5",
+                  "TypeName": "Panel_FD_AA",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_P_突出し_BP_ver3-2_NAO",
+                      "TypeName": "突出し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_P_突出し_BP_ver3-2_NAO",
+                      "TypeName": "突出し",
+                      "Nesting": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_S",
+          "TypeName": "縦止水パネル_TWC_S",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_S",
+          "TypeName": "縦止水パネル_TWC_S",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC_NAO",
+      "TypeName": "AD-1-5aA_2360x4482.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5b_AW3-000",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-2",
+              "TypeName": "F/F 3",
+              "Nesting": [
+                {
+                  "FamilyName": "WPUh_2連不均等_ver3-5",
+                  "TypeName": "Panel_AW1-TBPB",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPUh_2連不均等_ver3-5",
+                  "TypeName": "Panel_AW1-TBPB",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_S",
+          "TypeName": "縦止水パネル_TWC_S",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_S",
+          "TypeName": "縦止水パネル_TWC_S",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AD-1-5aBPCS_2270x4144.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5aCSA_AG1-TCS",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連均等_ver3-5",
+              "TypeName": "Panel_FD_GG",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FP/FP/FP",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AD-1-5aCS_2180x3757.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5bCS_AW2-000_2",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連不均等_ver3-5",
+              "TypeName": "Panel_AW1-TBPCSC",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AD-1-5aCSA_2270x3757.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5bCS_AW2-000_2",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連不均等_ver3-5",
+              "TypeName": "Panel_AW1-TBPCSC",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AD-1-5aCSA_2270x4357.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5bCS_AW2-000",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-2",
+              "TypeName": "F/F 2",
+              "Nesting": [
+                {
+                  "FamilyName": "WPUh_2連不均等_ver3-5",
+                  "TypeName": "Panel_AW1-TBPCSC",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPUh_2連不均等_ver3-5",
+                  "TypeName": "Panel_AW1-TBPCSC",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AD-1-5aCSB_2360x4067.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5aCSB_AW1-TSBPCS",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Frame_AW1-TSBPCS",
+              "Nesting": [
+                {
+                  "FamilyName": "WPUh_2連不均等_ver3-5",
+                  "TypeName": "Panel_AW1-TSBPCS",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_P_突出し_BP_ver3-2_NAO",
+                      "TypeName": "突出し",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPUh_2連不均等_ver3-5",
+                  "TypeName": "Panel_AW1-TSBPCS",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_P_突出し_BP_ver3-2_NAO",
+                      "TypeName": "突出し",
+                      "Nesting": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AD-1-5aCSB_2360x4357.5",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5bCS_AW2-000",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-2",
+              "TypeName": "F/F 2",
+              "Nesting": [
+                {
+                  "FamilyName": "WPUh_2連不均等_ver3-5",
+                  "TypeName": "Panel_AW1-TBPCSC",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPUh_2連不均等_ver3-5",
+                  "TypeName": "Panel_AW1-TBPCSC",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AD-1-5aCSC_2120x3720",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_FD-06-2_H3950",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連均等_ver3-5",
+              "TypeName": "Panel_FD_FB",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-1-5b_2210x4857",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AD1-5b_AG1-TC",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連均等_ver3-5",
+              "TypeName": "Panel_FD_GG",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "FFF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1a2R_2600x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-R_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1a3L_2600x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-L_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "左勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1a3R_2600x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-R_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1aL_2600x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-L_AD2-1/AW2-1_mpc AD 2‐1aL",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "左勝手",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1aR_2600x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-R_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1bL_2570x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-L_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "左勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル端_TWC_Left",
+          "TypeName": "縦止水パネル端_TWC_Left",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1bR_2570x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-R_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル端_TWC_Right",
+          "TypeName": "縦止水パネル端_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1fL_2420x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-L_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "左勝手",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1fR_2420x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-R_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1jR_2285x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-R_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1yR_2480x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-R_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル端_TWC_Left",
+          "TypeName": "縦止水パネル端_TWC_Left",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-5Ha_1225x2250",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-3",
+          "TypeName": "Frame-T--F/F_AD2-5H_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル端_TWC_Right",
+          "TypeName": "縦止水パネル端_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-5Hc_990x2250",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-3",
+          "TypeName": "Frame-T--F/F_AD2-5H_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-5Sa_2600x2250",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-3",
+          "TypeName": "Frame-T-PPP/FFF_AD2-5S_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "Panel-PPP_AD2-5S_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_P_突出し_ver3-2",
+                  "TypeName": "突出し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_P_突出し_ver3-2",
+                  "TypeName": "突出し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_P_突出し_ver3-2",
+                  "TypeName": "突出し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連均等_ver3-4",
+              "TypeName": "Panel-FFF_AD2-5S_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-E-2a3L_2600x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame_T-DFD-L_AD2-2/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "左勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPUh_2連不均等_TWC_ver3-5",
+              "TypeName": "Panel_DrF/F_AD-2/AW2-1_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPUv_2段_ver3-2",
+                  "TypeName": "F/F",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPS_D_片開き_ver3-1",
+                  "TypeName": "右勝手",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-E-2aL_2600x2365_E",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame_T-DFD-L_AD2-2/AW2-1_mpc ADE‐2aL",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連不均等_TWC_ver3-5",
+              "TypeName": "Panel_DrF/F_AD-2/AW2-1_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPUv_2段_ver3-2",
+                  "TypeName": "F/F",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPS_D_片開き_ver3-1",
+                  "TypeName": "右勝手",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "左勝手",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-E-2aR_2600x2365_E",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame_T-DFD-R_AD2-2/AW2-1_ADE-2aR",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPUh_2連不均等_TWC_ver3-5",
+              "TypeName": "Panel_F/FDl_AD2-2/AW2-1_ADE-2aR",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_D_片開き_ver3-1",
+                  "TypeName": "左勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPUv_2段_ver3-2",
+                  "TypeName": "F/F 4",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-E-2d3R_2480x2365_E",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame_T-DFD-R_AD2-2/AW2-1_ADE-2",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連不均等_TWC_ver3-5",
+              "TypeName": "Panel_F/FDl_AD2-2/AW2-1_ADE-2",
+              "Nesting": [
+                {
+                  "FamilyName": "WPUv_2段_ver3-2",
+                  "TypeName": "F/F",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPS_D_片開き_ver3-1",
+                  "TypeName": "左勝手",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル端_TWC_Right",
+          "TypeName": "縦止水パネル端_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-EK-2bD_2510x2365_E",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_3連均等_ver3-4",
+          "TypeName": "DFD_EK-2bD",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "左勝手",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC1",
+      "TypeName": "AD-EK-2pA_990x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPS_D_片開き_ver3-1",
+          "TypeName": "左勝手",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-K-5a11_2600x2250",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-FF/FF-L_ADK-5a11",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-BP/BP_ADK-5a11",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-BP/BP_ADK-5a11",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-K-5a12_2600x2250",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-FF/FF-L_ADK-5a12",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Frame-T-F/F_ADK-5a12",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-BP/BP_ADK-5a11",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-K-5a14_2600x2250",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-FF/FF-L_ADK-5a14",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-BP/BP_ADK-5a11",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Frame-T-F/F_ADK-5a12",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-K-5a2_2600x2250",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-FF/FF-L_ADK-5h5",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Frame-T-F/F_ADK-5a12",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Frame-T-F/F_ADK-5a12",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル端_TWC_Right",
+          "TypeName": "縦止水パネル端_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側(出窓)_TWC ",
+      "TypeName": "AD-K-5d_2510x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-FF/FF-L_ADK-5d11",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-BP/BP_ADK-5a11",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-BP/BP_ADK-5a11",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側(出窓)_TWC ",
+      "TypeName": "AD-K-5d11_2510x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-FF/FF-L_ADK-5d11",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-BP/BP_ADK-5a11",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-BP/BP_ADK-5a11",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-K-5g13_2450x2120",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-DF/F-L_ADK-5g13内",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連不均等_TWC_ver3-5",
+              "TypeName": "BAD-K-5I13",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_D_片開き内_ver3-1_TWC",
+                  "TypeName": "左勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPUv_2段_ver3-2",
+                  "TypeName": "F/F",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    },
+                    {
+                      "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                      "TypeName": "嵌殺し",
+                      "Nesting": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-BP/BP_BAD-K-5I13",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-K-5h5_2375x2250 p",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-FF/FF-L_ADK-5h5P",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Frame-T-F/F_ADK-5a12 P",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Frame-T-F/F_ADK-5a12",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル端_TWC_Left",
+          "TypeName": "縦止水パネル端_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ALC_ver3-1",
+      "TypeName": "AG1-B-1",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AG1-B1",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_3連不均等_ver3-5",
+              "TypeName": "Frame_AG1-B上",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_3連不均等_ver3-5",
+              "TypeName": "Frame_AG1-B下",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_G_ガラリ_ver3-1",
+                  "TypeName": "ガラリ",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_D_片開き_ver3-1",
+                  "TypeName": "左勝手",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ALC_ver3-1",
+      "TypeName": "AG1-B-2",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-2_TWC",
+          "TypeName": "Frame_AG1-B2",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_G_ガラリ_ver3-1",
+              "TypeName": "ガラリ",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_G_ガラリ_ver3-1",
+              "TypeName": "ガラリ",
+              "Nesting": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC",
+      "TypeName": "AW-3-1d2_2340x2350 2",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-3",
+          "TypeName": "Frame-ZT-Z/BP_AW3-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_Z_引違い_手摺付_mpc_ver3-1",
+              "TypeName": "引違い",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPUh_2連均等_ver3-5",
+              "TypeName": "Panel-BPBP_AW3-1_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "下部止水パネル_柱芯_TWC",
+          "TypeName": "下部止水パネル_柱芯_TWC",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC",
+      "TypeName": "AW-3-1Sb_2390x2350",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連均等_ver3-5",
+          "TypeName": "Frame-ZT-PP/FF_AW3-1S_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-P/F_AW3-1S_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_P_突出し_ver31",
+                  "TypeName": "突出し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-P/F_AW3-1S_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_P_突出し_ver31",
+                  "TypeName": "突出し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "下部止水パネル_柱芯_TWC",
+          "TypeName": "下部止水パネル_柱芯_TWC",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC",
+      "TypeName": "AW-3-2a_2430x2350",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連均等_ver3-5",
+          "TypeName": "Frame-ZT-Ra_AW3-2_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "下部止水パネル_柱芯_TWC",
+          "TypeName": "下部止水パネル_柱芯_TWC",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC",
+      "TypeName": "AW-3-2b_2390x2350",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連均等_ver3-5",
+          "TypeName": "Frame-ZT-Ra_AW3-2_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "下部止水パネル_柱芯_TWC",
+          "TypeName": "下部止水パネル_柱芯_TWC",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC",
+      "TypeName": "AW-3-2c_2350x2350",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連均等_ver3-5",
+          "TypeName": "Frame-ZT-Ra_AW3-2_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "下部止水パネル_柱芯_TWC",
+          "TypeName": "下部止水パネル_柱芯_TWC",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC",
+      "TypeName": "AW-3-2c3_2350x2350",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連均等_ver3-5",
+          "TypeName": "Frame-ZT-Ra_AW3-2_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "下部止水パネル_柱芯_TWC",
+          "TypeName": "下部止水パネル_柱芯_TWC",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC",
+      "TypeName": "AW-3-2d_2340x2350",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連均等_ver3-5",
+          "TypeName": "Frame-ZT-Ra_AW3-2_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/F_AW3-2_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "下部止水パネル_柱芯_TWC",
+          "TypeName": "下部止水パネル_柱芯_TWC",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-4a1L_2410x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZH-OH-L_AW3-4_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Sr/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付_mpc_ver3-1",
+                  "TypeName": "右勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-4a1R_2410x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZH-OH-R_AW3-4_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Sl/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付_mpc_ver3-1",
+                  "TypeName": "左勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-4b1L_2320x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZH-OH-L_AW3-4_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Sr/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付_mpc_ver3-1",
+                  "TypeName": "右勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-4b1R_2320x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZH-OH-R_AW3-4_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Sl/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付_mpc_ver3-1",
+                  "TypeName": "左勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-4b2L_2320x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZH-OH-L_AW3-4_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Sr/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付_mpc_ver3-1",
+                  "TypeName": "右勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-4e1R_2280x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZH-OH-R_AW3-4_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Sl/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付_mpc_ver3-1",
+                  "TypeName": "左勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-4HLaL_2420x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZH-OH-L_AW3-4_HLaL",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/Bp_AW3-2_HLaL",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Ra/Bp_AW3-2_HLaL",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_E_開口・手摺_mpc",
+                  "TypeName": "手摺_h300_r16",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-4Sa1R_2420x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-PP/FF-R_AW3-4S_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-P/F_AW3-4S_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_P_突出し_ver31",
+                  "TypeName": "突出し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-P/F_AW3-4S_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_P_突出し_ver31",
+                  "TypeName": "突出し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-6a1R_2310x2750",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZD-OH-R_AW3-6_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Sl/BP_AW3-6_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付_mpc_ver3-1",
+                  "TypeName": "左勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-6_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-6b1L_2220x2750",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZD-OH-L_AW3-6_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-6_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Sr/BP_AW3-6_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付_mpc_ver3-1",
+                  "TypeName": "右勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓コーナー_TWC",
+      "TypeName": "AW-3-6Wc1R_3050x2750",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-3",
+          "TypeName": "Panel_ZD-01-O_F/F",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-1",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame_ZD-01-O",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel_ZD-01-O_Dl/F",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_ver3-1",
+                  "TypeName": "左勝手",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel_ZD-01-O_F/F",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(コーナー出窓)_TWC_左",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(コーナー出窓)_TWC_右",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓コーナー_TWC",
+      "TypeName": "AW-3-7ab1_6800x2750",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame_ZD-OH-L_AW3-7_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel_F/BP_AW3-7_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel_Sr/BP_AW3-7_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付（2段）_mpc_ver3-1",
+                  "TypeName": "右勝手",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_E_開口・2段手摺_mpc",
+                      "TypeName": "手摺_h275,575_r16",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame_ZD-OH-R_AW3-7_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel_Sl/BP_AW3-7_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_S_縦辷出し_手摺付（2段）_mpc_ver3-1",
+                  "TypeName": "左勝手",
+                  "Nesting": [
+                    {
+                      "FamilyName": "WPS_E_開口・2段手摺_mpc",
+                      "TypeName": "手摺_h275,575_r16",
+                      "Nesting": []
+                    }
+                  ]
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel_F/BP_AW3-7_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(コーナー出窓)_TWC_左",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(コーナー出窓)_TWC_右",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱芯_TWC",
+      "TypeName": "AW-3-8a7_2430x2350",
+      "Nesting": [
+        {
+          "FamilyName": "WPUv_2段_ver3-3",
+          "TypeName": "Frame-ZT-FF/BPBP_AW3-8a7",
+          "Nesting": [
+            {
+              "FamilyName": "WPUh_2連均等_ver3-5",
+              "TypeName": "Panel_FD_FF",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUh_2連均等_ver3-5",
+              "TypeName": "Panel-BPBP_AW3-1_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "下部止水パネル_柱芯_TWC",
+          "TypeName": "下部止水パネル_柱芯_TWC",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-Fa1R_2410x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZH-OH-R_AW3-F_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-Sl/BP_AW3-F_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-0",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_絶壁側_柱面・出窓_TWC",
+      "TypeName": "AW-3-Fb1L_2320x2535",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-ZH-OH-L_AW3-Fb1L",
+          "Nesting": [
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            },
+            {
+              "FamilyName": "WPUv_2段_ver3-3",
+              "TypeName": "Panel-F/BP_AW3-4_mpc",
+              "Nesting": [
+                {
+                  "FamilyName": "WPS_F_嵌殺し_ver3-1",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                },
+                {
+                  "FamilyName": "WPS_F_嵌殺し_化粧木_TWC",
+                  "TypeName": "嵌殺し",
+                  "Nesting": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Right",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル(出窓)_TWC_Left",
+          "TypeName": "縦止水パネル_TWC_出窓",
+          "Nesting": []
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ALC_ver3-1",
+      "TypeName": "SSW-1-T_5802x2400",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_多連均等_ver3-4",
+          "TypeName": "Fx4",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "SSW-2-T_2602x2400",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連均等_ver3-4",
+          "TypeName": "FF",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_F_嵌殺し_ver3-0",
+              "TypeName": "嵌殺し",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        }
+      ]
+    }
+  ]
+}

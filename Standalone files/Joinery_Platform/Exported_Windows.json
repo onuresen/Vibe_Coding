@@ -1,0 +1,38 @@
+{
+  "SchemaVersion": "0.1",
+  "Category": "Windows",
+  "Families": [
+    {
+      "FamilyName": "_AW_ECP_テラス側_TWC",
+      "TypeName": "AD-2-1a2R_2600x2365",
+      "Nesting": [
+        {
+          "FamilyName": "WPUh_2連不均等_ver3-5",
+          "TypeName": "Frame-T-ZD-R_AD2-1/AW2-1_mpc",
+          "Nesting": [
+            {
+              "FamilyName": "WPS_Z3_3枚建_TWC_ver3-1",
+              "TypeName": "3枚建",
+              "Nesting": []
+            },
+            {
+              "FamilyName": "WPS_D_片開き_ver3-1",
+              "TypeName": "右勝手",
+              "Nesting": []
+            }
+          ]
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Right",
+          "TypeName": "縦止水パネル短_TWC_Right",
+          "Nesting": []
+        },
+        {
+          "FamilyName": "縦止水パネル短_TWC_Left",
+          "TypeName": "縦止水パネル短_TWC_Left",
+          "Nesting": []
+        }
+      ]
+    }
+  ]
+}

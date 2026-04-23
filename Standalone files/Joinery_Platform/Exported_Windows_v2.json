@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "0.2",
+  "category": "Windows",
+  "families": [
+    {
+      "familyName": "_AW_ECP_...",
+      "types": [
+        {
+          "typeName": "TWC_ver3-1",
+          "parameters": [
+            {
+              "name": "Width",
+              "spec": {
+                "kind": "length",
+                "unit": "mm"
+              },
+              "value": 1200.0
+            }
+          ],
+          "components": [
+            {
+              "componentId": "E12345",
+              "familyName": "WPUv_2段_ver3-3",
+              "typeName": "Panel-F/BP_AW3-4_mpc",
+              "slotId": "P1",
+              "slotPath": "0"
+            },
+            {
+              "componentId": "E12346",
+              "familyName": "WPUv_2段_ver3-3",
+              "typeName": "Panel-Sr/BP_AW3-4_mpc",
+              "slotId": "P2",
+              "slotPath": "1.0"
+            }
+          ],
+          "layout": {
+            "kind": "split",
+            "axis": "V",
+            "parts": [
+              {
+                "weight": 3,
+                "child": {
+                  "kind": "leaf",
+                  "slotId": "P1",
+                  "slotPath": "0"
+                }
+              },
+              {
+                "weight": 1,
+                "child": {
+                  "kind": "split",
+                  "axis": "H",
+                  "parts": [
+                    {
+                      "weight": 1,
+                      "child": {
+                        "kind": "leaf",
+                        "slotId": "P2",
+                        "slotPath": "1.0"
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "child": {
+                        "kind": "leaf",
+                        "slotId": "P3",
+                        "slotPath": "1.1"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

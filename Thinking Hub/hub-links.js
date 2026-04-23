@@ -4,8 +4,6 @@
  * Exposes a global `HubLinks` singleton. Load this file in any tool via:
  *   <script src="hub-storage.js"></script>
  *   <script src="hub-links.js"></script>
- * Then call:
- *   HubLinks.init('tool-id')
  *
  * Storage key: hub-links-v1
  * Link shape: { id, a: {tool, itemId, label}, b: {tool, itemId, label}, createdAt }

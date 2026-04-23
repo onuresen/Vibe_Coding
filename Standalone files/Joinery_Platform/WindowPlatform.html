@@ -1,0 +1,701 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Revit Window Family Nesting Viewer (JSON)</title>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --panel: #121826;
+            --panel2: #0f1522;
+            --text: #e8edf6;
+            --muted: #a9b4c6;
+            --muted2: #7f8aa0;
+            --border: #22304a;
+            --accent: #6aa7ff;
+            --danger: #ff6b6b;
+            --ok: #2dd4bf;
+
+            --row-radius: 10px;
+            --row-pad-y: 10px;
+            --row-pad-x: 12px;
+            --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            font-family: var(--sans);
+            background: radial-gradient(1200px 600px at 20% 0%, #142042 0%, var(--bg) 55%) fixed;
+            color: var(--text);
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 24px auto 48px;
+            padding: 0 16px;
+        }
+
+        .title {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        h1 {
+            font-size: 18px;
+            font-weight: 650;
+            letter-spacing: 0.2px;
+            margin: 0;
+        }
+
+        .subtitle {
+            color: var(--muted2);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .panel {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .fileRow {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        .fileInput {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            max-width: 520px;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px dashed rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--muted);
+            outline: none;
+        }
+
+        input[type="file"]:focus {
+            border-color: rgba(106, 167, 255, 0.6);
+            box-shadow: 0 0 0 3px rgba(106, 167, 255, 0.18);
+        }
+
+        .hint {
+            color: var(--muted2);
+            font-size: 12px;
+            line-height: 1.4;
+            margin-left: auto;
+            text-align: right;
+            min-width: 240px;
+            flex: 1;
+        }
+
+        .error {
+            display: none;
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 107, 107, 0.45);
+            background: rgba(255, 107, 107, 0.12);
+            color: #ffd6d6;
+            font-size: 13px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+
+        .meta {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .metaCard {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            min-height: 52px;
+        }
+
+        .metaLabel {
+            font-size: 11px;
+            color: var(--muted2);
+            letter-spacing: 0.2px;
+            margin-bottom: 6px;
+        }
+
+        .metaValue {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .treePanel {
+            margin-top: 14px;
+            padding: 14px;
+        }
+
+        .treeHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .treeHeader .left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .treeTitle {
+            font-size: 14px;
+            font-weight: 650;
+            margin: 0;
+        }
+
+        .treeNote {
+            color: var(--muted2);
+            font-size: 12px;
+            margin: 0;
+        }
+
+        .legend {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            color: var(--muted2);
+            font-size: 12px;
+        }
+
+        .pill {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 0.85;
+        }
+
+        .dot2 {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--ok);
+            opacity: 0.85;
+        }
+
+        /* Tree */
+        .tree {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .node {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--row-radius);
+            background: rgba(255, 255, 255, 0.02);
+            overflow: hidden;
+        }
+
+        .nodeRow {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: var(--row-pad-y) var(--row-pad-x);
+            cursor: default;
+            user-select: none;
+            position: relative;
+        }
+
+        .nodeRow:hover {
+            filter: brightness(1.04);
+        }
+
+        .toggle {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            background: rgba(255, 255, 255, 0.03);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            cursor: pointer;
+            flex: 0 0 auto;
+            color: var(--muted);
+        }
+
+        .toggle:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(106, 167, 255, 0.20);
+            border-color: rgba(106, 167, 255, 0.55);
+        }
+
+        .toggle[aria-disabled="true"] {
+            opacity: 0.35;
+            cursor: default;
+        }
+
+        .tri {
+            width: 0;
+            height: 0;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            border-left: 8px solid var(--muted);
+            transform-origin: 35% 50%;
+            transition: transform 140ms ease;
+        }
+
+        .collapsed .tri {
+            transform: rotate(0deg);
+        }
+
+        .expanded .tri {
+            transform: rotate(90deg);
+        }
+
+        .labels {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .family {
+            font-weight: 650;
+            color: var(--text);
+            font-size: 13px;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sep {
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 12px;
+            flex: 0 0 auto;
+        }
+
+        .type {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            color: var(--muted);
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .depthTag {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.50);
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            background: rgba(0, 0, 0, 0.10);
+            flex: 0 0 auto;
+            margin-left: auto;
+        }
+
+        .children {
+            padding: 0 10px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .children[hidden] {
+            display: none;
+        }
+
+        .emptyState {
+            padding: 18px;
+            border-radius: 14px;
+            border: 1px dashed rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--muted2);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 740px) {
+            .meta {
+                grid-template-columns: 1fr;
+            }
+
+            .hint {
+                text-align: left;
+                min-width: 0;
+            }
+
+            input[type="file"] {
+                max-width: none;
+            }
+
+            .labels {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            .sep {
+                display: none;
+            }
+
+            .type {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="title">
+            <div>
+                <h1>Revit Window Family Nesting Viewer</h1>
+                <div class="subtitle">Load a JSON export and view nested window families as a collapsible tree.</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="controls">
+                <div class="fileRow">
+                    <div class="fileInput">
+                        <input id="fileInput" type="file" accept=".json,application/json" />
+                        <div class="hint">Tip: Double-click this HTML to run. Use the file picker to load JSON.</div>
+                    </div>
+                    <div id="error" class="error"></div>
+                </div>
+            </div>
+
+            <div id="meta" class="meta" aria-label="JSON metadata" style="display:none;">
+                <div class="metaCard">
+                    <div class="metaLabel">SchemaVersion</div>
+                    <div id="metaSchema" class="metaValue">—</div>
+                </div>
+                <div class="metaCard">
+                    <div class="metaLabel">Category</div>
+                    <div id="metaCategory" class="metaValue">—</div>
+                </div>
+                <div class="metaCard">
+                    <div class="metaLabel">Families</div>
+                    <div id="metaCount" class="metaValue">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel treePanel">
+            <div class="treeHeader">
+                <div class="left">
+                    <div class="treeTitle">Tree</div>
+                    <p class="treeNote">FamilyName (bold) and TypeName (monospace). Click triangles to expand/collapse.
+                    </p>
+                </div>
+                <div class="legend" aria-hidden="true">
+                    <span class="pill"><span class="dot"></span>FamilyName</span>
+                    <span class="pill"><span class="dot2"></span>TypeName</span>
+                </div>
+            </div>
+
+            <div id="treeRoot" class="tree" aria-label="Nesting tree">
+                <div class="emptyState" id="emptyState">
+                    No file loaded.<br>
+                    Please choose a JSON file exported from Revit window families.
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const elFile = document.getElementById('fileInput');
+            const elError = document.getElementById('error');
+            const elMeta = document.getElementById('meta');
+            const elMetaSchema = document.getElementById('metaSchema');
+            const elMetaCategory = document.getElementById('metaCategory');
+            const elMetaCount = document.getElementById('metaCount');
+            const elTreeRoot = document.getElementById('treeRoot');
+            const elEmptyState = document.getElementById('emptyState');
+
+            function showError(msg) {
+                elError.textContent = msg || '';
+                elError.style.display = msg ? 'block' : 'none';
+            }
+
+            function clearTree() {
+                while (elTreeRoot.firstChild) elTreeRoot.removeChild(elTreeRoot.firstChild);
+            }
+
+            function safeString(v) {
+                if (v === null || v === undefined) return '';
+                return String(v);
+            }
+
+            function isPlainObject(o) {
+                return o && typeof o === 'object' && !Array.isArray(o);
+            }
+
+            function validateNode(node, path) {
+                if (!isPlainObject(node)) {
+                    throw new Error('Invalid node at ' + path + ': expected an object.');
+                }
+                if (!('FamilyName' in node) || !('TypeName' in node)) {
+                    throw new Error('Invalid node at ' + path + ': missing "FamilyName" or "TypeName".');
+                }
+                if (!('Nesting' in node)) {
+                    // Allow missing Nesting; normalize later.
+                    return;
+                }
+                if (!Array.isArray(node.Nesting)) {
+                    throw new Error('Invalid node at ' + path + ': "Nesting" must be an array.');
+                }
+                for (let i = 0; i < node.Nesting.length; i++) {
+                    validateNode(node.Nesting[i], path + '.Nesting[' + i + ']');
+                }
+            }
+
+            function normalizeNode(node) {
+                if (!('Nesting' in node) || node.Nesting === null || node.Nesting === undefined) node.Nesting = [];
+                if (!Array.isArray(node.Nesting)) node.Nesting = [];
+                return node;
+            }
+
+            function validateRoot(root) {
+                if (!isPlainObject(root)) {
+                    throw new Error('Invalid JSON root: expected an object.');
+                }
+                if (!('Families' in root)) {
+                    throw new Error('Invalid JSON: missing "Families" array at root.');
+                }
+                if (!Array.isArray(root.Families)) {
+                    throw new Error('Invalid JSON: "Families" must be an array.');
+                }
+                for (let i = 0; i < root.Families.length; i++) {
+                    validateNode(root.Families[i], 'Families[' + i + ']');
+                }
+            }
+
+            function depthColor(depth) {
+                // subtle alternating tone by depth (dark theme)
+                // base hue near blue; increase lightness slightly with depth, clamp
+                const h = 215;
+                const s = 32;
+                const l = Math.min(22 + depth * 2, 34);
+                const a = 0.42;
+                return `hsla(${h}, ${s}%, ${l}%, ${a})`;
+            }
+
+            function createNodeElement(node, depth) {
+                normalizeNode(node);
+
+                const hasChildren = node.Nesting.length > 0;
+
+                const container = document.createElement('div');
+                container.className = 'node';
+                container.style.background = depthColor(depth);
+
+                const row = document.createElement('div');
+                row.className = 'nodeRow';
+                row.style.paddingLeft = (12 + depth * 18) + 'px';
+
+                const toggle = document.createElement('button');
+                toggle.className = 'toggle ' + (hasChildren ? 'expanded' : 'collapsed');
+                toggle.type = 'button';
+                toggle.setAttribute('aria-label', hasChildren ? 'Collapse' : 'No children');
+                toggle.setAttribute('aria-expanded', hasChildren ? 'true' : 'false');
+                toggle.setAttribute('aria-disabled', hasChildren ? 'false' : 'true');
+
+                const tri = document.createElement('span');
+                tri.className = 'tri';
+                toggle.appendChild(tri);
+
+                const labels = document.createElement('div');
+                labels.className = 'labels';
+
+                const family = document.createElement('div');
+                family.className = 'family';
+                family.textContent = safeString(node.FamilyName);
+
+                const sep = document.createElement('div');
+                sep.className = 'sep';
+                sep.textContent = '—';
+
+                const type = document.createElement('div');
+                type.className = 'type';
+                type.textContent = safeString(node.TypeName);
+
+                labels.appendChild(family);
+                labels.appendChild(sep);
+                labels.appendChild(type);
+
+                const depthTag = document.createElement('div');
+                depthTag.className = 'depthTag';
+                depthTag.textContent = 'L' + depth;
+
+                row.appendChild(toggle);
+                row.appendChild(labels);
+                row.appendChild(depthTag);
+
+                const children = document.createElement('div');
+                children.className = 'children';
+                if (!hasChildren) children.hidden = true;
+
+                if (hasChildren) {
+                    for (let i = 0; i < node.Nesting.length; i++) {
+                        const childEl = createNodeElement(node.Nesting[i], depth + 1);
+                        children.appendChild(childEl);
+                    }
+                }
+
+                if (hasChildren) {
+                    const setExpanded = (expanded) => {
+                        children.hidden = !expanded;
+                        toggle.classList.toggle('expanded', expanded);
+                        toggle.classList.toggle('collapsed', !expanded);
+                        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                        toggle.setAttribute('aria-label', expanded ? 'Collapse' : 'Expand');
+                    };
+
+                    toggle.addEventListener('click', () => {
+                        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                        setExpanded(!expanded);
+                    });
+
+                    // Also allow clicking row label area to toggle (engineer-friendly)
+                    row.addEventListener('dblclick', () => {
+                        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                        setExpanded(!expanded);
+                    });
+                } else {
+                    // If no children, keep triangle space but dim; disable interaction
+                    toggle.addEventListener('click', (e) => e.preventDefault());
+                }
+
+                container.appendChild(row);
+                container.appendChild(children);
+                return container;
+            }
+
+            function render(root) {
+                clearTree();
+                showError('');
+
+                // Meta
+                elMetaSchema.textContent = safeString(root.SchemaVersion || '—');
+                elMetaCategory.textContent = safeString(root.Category || '—');
+                elMetaCount.textContent = String((root.Families && root.Families.length) || 0);
+                elMeta.style.display = 'grid';
+
+                // Tree
+                if (!root.Families || root.Families.length === 0) {
+                    elTreeRoot.appendChild(elEmptyState);
+                    return;
+                }
+
+                // remove empty state if it exists
+                if (elEmptyState.parentNode) elEmptyState.parentNode.removeChild(elEmptyState);
+
+                const frag = document.createDocumentFragment();
+                for (let i = 0; i < root.Families.length; i++) {
+                    frag.appendChild(createNodeElement(root.Families[i], 0));
+                }
+                elTreeRoot.appendChild(frag);
+            }
+
+            elFile.addEventListener('change', (ev) => {
+                showError('');
+                const file = ev.target.files && ev.target.files[0];
+                if (!file) {
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        const text = String(reader.result || '');
+                        const data = JSON.parse(text);
+                        validateRoot(data);
+                        render(data);
+                    } catch (err) {
+                        clearTree();
+                        elTreeRoot.appendChild(elEmptyState);
+                        elMeta.style.display = 'none';
+                        const msg = (err && err.message) ? err.message : String(err);
+                        showError('JSON load error:\n' + msg);
+                    }
+                };
+                reader.onerror = () => {
+                    clearTree();
+                    elTreeRoot.appendChild(elEmptyState);
+                    elMeta.style.display = 'none';
+                    showError('File read error: could not read the selected file.');
+                };
+                reader.readAsText(file, 'utf-8');
+            });
+        })();
+    </script>
+
+</body>
+
+</html>
