@@ -301,52 +301,6 @@
       font-family: var(--font-mono);
     }
 
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 6px 13px;
-      border-radius: 8px;
-      font-family: var(--font-ui);
-      font-size: 12.5px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.12s;
-      white-space: nowrap;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #0b0b0d;
-    }
-
-    .btn-primary:hover {
-      filter: brightness(1.08);
-    }
-
-    .btn-ghost {
-      background: transparent;
-      color: var(--text2);
-      border: 1px solid var(--border2);
-    }
-
-    .btn-ghost:hover {
-      background: var(--surface2);
-      color: var(--text);
-      border-color: var(--border2);
-    }
-
-    .btn-danger {
-      background: rgba(240, 67, 107, 0.1);
-      color: var(--accent3);
-      border: 1px solid rgba(240, 67, 107, 0.2);
-    }
-
-    .btn-danger:hover {
-      background: rgba(240, 67, 107, 0.18);
-    }
-
     .content {
       flex: 1;
       overflow-y: auto;
@@ -876,56 +830,6 @@
       margin-bottom: 22px;
     }
 
-    .form-group {
-      margin-bottom: 14px;
-    }
-
-    .form-label {
-      font-size: 10.5px;
-      font-family: var(--font-mono);
-      color: var(--text3);
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-      display: block;
-    }
-
-    .form-input,
-    .form-select,
-    .form-textarea {
-      width: 100%;
-      background: var(--surface3);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 9px 12px;
-      color: var(--text);
-      font-family: var(--font-ui);
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.12s;
-    }
-
-    .form-input:focus,
-    .form-select:focus,
-    .form-textarea:focus {
-      border-color: var(--accent);
-    }
-
-    .form-textarea {
-      min-height: 76px;
-      resize: vertical;
-    }
-
-    .form-select option {
-      background: var(--surface3);
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
     .modal-actions {
       display: flex;
       gap: 8px;
@@ -962,30 +866,6 @@
       display: flex;
       align-items: center;
       gap: 8px;
-    }
-
-    /* ── EMPTY STATE ─────────────────────────────────────────── */
-    .empty-state {
-      text-align: center;
-      padding: 48px 24px;
-      color: var(--text3);
-    }
-
-    .empty-state .e-icon {
-      font-size: 32px;
-      margin-bottom: 10px;
-      opacity: 0.5;
-    }
-
-    .empty-state .e-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text2);
-      margin-bottom: 4px;
-    }
-
-    .empty-state .e-sub {
-      font-size: 12px;
     }
 
     /* ── STATUS/PRIORITY BADGES ──────────────────────────────── */

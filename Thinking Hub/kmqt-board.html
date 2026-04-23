@@ -131,43 +131,8 @@
       line-height: 1.5;
     }
 
-    .btn {
-      border: none;
-      border-radius: var(--r-sm);
-      padding: 10px 14px;
-      font-family: 'Syne', sans-serif;
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
-    }
-
     .btn:active {
       transform: scale(0.97);
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-
-    .btn-primary:hover {
-      opacity: 0.88;
-    }
-
-    .btn-ghost {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--text3);
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 600;
-      padding: 9px 12px;
-    }
-
-    .btn-ghost:hover {
-      color: var(--text);
-      border-color: var(--border2);
-      background: var(--surface2);
     }
 
     .btn-danger:hover {
@@ -186,40 +151,6 @@
       display: flex;
       gap: 8px;
       align-items: center;
-    }
-
-    .input,
-    .select,
-    textarea {
-      width: 100%;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
-      padding: 9px 11px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .input:focus,
-    .select:focus,
-    textarea:focus {
-      border-color: var(--border2);
-    }
-
-    .select {
-      appearance: none;
-      background-image:
-        linear-gradient(45deg, transparent 50%, var(--text3) 50%),
-        linear-gradient(135deg, var(--text3) 50%, transparent 50%);
-      background-position:
-        calc(100% - 14px) calc(1em + 2px),
-        calc(100% - 9px) calc(1em + 2px);
-      background-size: 5px 5px, 5px 5px;
-      background-repeat: no-repeat;
-      padding-right: 28px;
     }
 
     .stage {
@@ -593,13 +524,6 @@
     .right-body::-webkit-scrollbar-thumb {
       background: var(--border2);
       border-radius: 99px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      padding: 10px 12px;
     }
 
     .card-title {
