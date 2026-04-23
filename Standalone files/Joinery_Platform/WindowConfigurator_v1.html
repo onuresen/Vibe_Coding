@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Window Configurator</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-app:      #15171C;
+  --bg-panel:    #1E2128;
+  --bg-surface:  #252830;
+  --bg-input:    #1A1D23;
+  --border:      #32363F;
+  --border-light:#3E4250;
+  --accent:      #4A9EFF;
+  --accent-dim:  rgba(74,158,255,0.15);
+  --accent-glow: rgba(74,158,255,0.08);
+  --text-primary:#E2E5EA;
+  --text-muted:  #7A8190;
+  --text-dim:    #4A5060;
+  --danger:      #FF5F57;
+  --success:     #30C96A;
+  --frame-fill:  #2E3240;
+  --frame-edge:  #454A5A;
+  --scrollbar:   #2A2D35;
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: var(--text-primary); font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+
+/* ── SCROLLBAR ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-app); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+
+/* ── APP SHELL ─────────────────────────────────────────── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── TOPBAR ────────────────────────────────────────────── */
+#topbar {
+  flex: none; height: 46px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; gap: 12px;
+  user-select: none;
+}
+#topbar-brand { display: flex; align-items: center; gap: 10px; }
+.brand-logo { width: 28px; height: 28px; }
+.brand-name { font-size: 14px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-primary); }
+.brand-name span { color: var(--accent); }
+#topbar-center { flex: 1; display: flex; justify-content: center; }
+#window-title {
+  font-size: 13px; color: var(--text-muted); cursor: default;
+  padding: 4px 10px; border-radius: 4px; transition: background 0.15s;
+}
+#window-title:hover { background: var(--bg-surface); color: var(--text-primary); cursor: text; }
+#topbar-actions { display: flex; gap: 6px; }
+
+/* ── BUTTONS ───────────────────────────────────────────── */
+.btn {
+  padding: 5px 12px; border-radius: 5px; border: 1px solid var(--border-light);
+  background: var(--bg-surface); color: var(--text-primary);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--border); border-color: var(--border-light); }
+.btn:active { background: var(--bg-input); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: #5AADFF; border-color: #5AADFF; }
+.btn-danger { background: var(--bg-surface); border-color: var(--border-light); color: var(--danger); }
+.btn-danger:hover { background: rgba(255,95,87,0.12); border-color: var(--danger); }
+.btn-icon {
+  padding: 5px 8px; font-size: 13px;
+  background: var(--bg-surface); border: 1px solid var(--border-light);
+  border-radius: 5px; cursor: pointer; color: var(--text-muted); transition: all 0.12s;
+}
+.btn-icon:hover { color: var(--text-primary); background: var(--border); }
+.btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── WORKSPACE ─────────────────────────────────────────── */
+#workspace {
+  flex: 1; display: grid;
+  grid-template-columns: 220px 1fr 290px;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ───────────────────────────────────────────── */
+#sidebar {
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-section {
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-section-title {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+/* Type palette */
+#type-palette {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  padding: 10px 12px;
+}
+.type-btn {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 6px 4px; gap: 4px; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--bg-surface);
+  cursor: pointer; transition: all 0.12s; color: var(--text-muted);
+  font-size: 10px; text-align: center; min-height: 56px;
+  justify-content: center;
+}
+.type-btn:hover { border-color: var(--accent); color: var(--text-primary); background: var(--accent-glow); }
+.type-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+.type-btn svg { flex-shrink: 0; }
+.type-btn-label { font-size: 9px; line-height: 1.2; }
+
+/* Panel outline tree */
+#outline-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#outline-tree { flex: 1; overflow-y: auto; padding: 6px 0; }
+.outline-item {
+  display: flex; align-items: center; gap: 6px;
+  height: 28px; padding-right: 12px;
+  cursor: pointer; border-radius: 4px; margin: 0 6px 1px;
+  transition: background 0.1s;
+}
+.outline-item:hover { background: var(--bg-surface); }
+.outline-item.selected { background: var(--accent-dim); color: var(--accent); }
+.outline-icon { font-size: 12px; width: 16px; text-align: center; flex-shrink: 0; }
+.outline-label { font-size: 12px; truncate: ellipsis; overflow: hidden; white-space: nowrap; }
+
+/* ── CANVAS AREA ───────────────────────────────────────── */
+#canvas-area { display: flex; flex-direction: column; background: var(--bg-app); overflow: hidden; }
+
+/* Context toolbar */
+#ctx-toolbar {
+  flex: none; height: 42px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 12px; gap: 6px;
+}
+.ctx-separator { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.ctx-label { font-size: 11px; color: var(--text-muted); }
+#ctx-type-select {
+  background: var(--bg-surface); border: 1px solid var(--border-light);
+  color: var(--text-primary); border-radius: 4px; padding: 4px 8px;
+  font-size: 12px; cursor: pointer;
+}
+#ctx-type-select:disabled { opacity: 0.4; cursor: not-allowed; }
+#ctx-type-select option { background: var(--bg-surface); }
+
+#canvas {
+  flex: 1; overflow: hidden; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+#main-svg { width: 100%; height: 100%; display: block; }
+
+/* ── INSPECTOR ─────────────────────────────────────────── */
+#inspector {
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;
+}
+
+/* Accordion */
+.accordion { border-bottom: 1px solid var(--border); }
+.accordion-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+  user-select: none; transition: background 0.1s;
+}
+.accordion-header:hover { background: var(--bg-surface); }
+.acc-arrow { font-size: 9px; color: var(--text-muted); transition: transform 0.15s; }
+.accordion-body { padding: 0 14px 12px; }
+.accordion-body.hidden { display: none; }
+
+/* Form rows */
+.form-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 7px; gap: 8px;
+}
+.form-row label { font-size: 11px; color: var(--text-muted); flex: 1; white-space: nowrap; }
+.form-row input, .form-row select {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-primary); border-radius: 4px; padding: 4px 7px;
+  font-size: 12px; width: 90px; text-align: right;
+  transition: border-color 0.1s;
+}
+.form-row input:focus, .form-row select:focus {
+  outline: none; border-color: var(--accent);
+}
+.form-row input[type="text"] { text-align: left; width: 100%; }
+.form-row select { width: 100%; text-align: left; }
+.form-row select option { background: var(--bg-surface); }
+.form-section-divider {
+  height: 1px; background: var(--border); margin: 10px 0;
+}
+.form-subsection-title {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-dim); margin: 8px 0 6px;
+}
+
+/* Section diagram */
+#section-diagram-wrap {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 5px; padding: 8px; margin-bottom: 10px;
+  display: flex; justify-content: center;
+}
+#section-diagram { display: block; }
+
+/* Pane inspector disabled state */
+#pane-inspector-body.disabled {
+  opacity: 0.4; pointer-events: none;
+}
+
+/* Dimensions table */
+#dims-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 8px; }
+#dims-table th {
+  text-align: left; color: var(--text-dim); font-weight: 600;
+  padding: 4px 6px; border-bottom: 1px solid var(--border);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+#dims-table td { padding: 4px 6px; color: var(--text-primary); border-bottom: 1px solid rgba(50,54,63,0.5); }
+#dims-table tr:hover td { background: var(--bg-surface); }
+#dims-table tr.selected-row td { background: var(--accent-dim); }
+.dims-total-row { display: flex; justify-content: space-between; padding: 6px 0 0; }
+.dims-total-label { font-size: 11px; color: var(--text-muted); }
+.dims-total-val { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+
+/* Keyboard shortcuts hint */
+#shortcuts-hint {
+  padding: 10px 14px;
+  font-size: 10px; color: var(--text-dim); line-height: 1.8;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+.shortcut { display: flex; justify-content: space-between; }
+.shortcut kbd {
+  background: var(--bg-surface); border: 1px solid var(--border-light);
+  border-radius: 3px; padding: 1px 5px; font-size: 10px;
+  font-family: monospace; color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── TOPBAR ─────────────────────────────────────────── -->
+  <div id="topbar">
+    <div id="topbar-brand">
+      <svg class="brand-logo" viewBox="0 0 28 28" fill="none">
+        <rect x="1" y="1" width="26" height="26" rx="4" fill="#252830" stroke="#3E4250"/>
+        <rect x="3" y="3" width="10" height="22" rx="1" fill="#3A3E4A" stroke="#4A9EFF" stroke-width="0.8"/>
+        <rect x="15" y="3" width="10" height="10" rx="1" fill="#3A3E4A" stroke="#4A9EFF" stroke-width="0.8"/>
+        <rect x="15" y="15" width="10" height="10" rx="1" fill="#3A3E4A" stroke="#4A9EFF" stroke-width="0.8"/>
+        <line x1="5" y1="7" x2="11" y2="14" stroke="rgba(74,158,255,0.6)" stroke-width="0.8"/>
+        <line x1="11" y1="7" x2="5" y2="14" stroke="rgba(74,158,255,0.6)" stroke-width="0.8"/>
+      </svg>
+      <span class="brand-name">id<span>:window</span></span>
+    </div>
+    <div id="topbar-center">
+      <span id="window-title" title="Double-click to rename">New Window</span>
+    </div>
+    <div id="topbar-actions">
+      <button class="btn" id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
+      <button class="btn" id="btn-new" title="New (Ctrl+N)">New</button>
+      <button class="btn" id="btn-import" title="Import JSON">Import</button>
+      <button class="btn btn-primary" id="btn-export" title="Export JSON (Ctrl+E)">Export</button>
+    </div>
+  </div>
+
+  <!-- ── WORKSPACE ──────────────────────────────────────── -->
+  <div id="workspace">
+
+    <!-- ── SIDEBAR ──────────────────────────────────────── -->
+    <div id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Panel Types</div>
+        <div id="type-palette">
+          <!-- Fixed -->
+          <button class="type-btn" data-type="fixed" title="Fixed Glass">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,195,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/></svg>
+            <span class="type-btn-label">Fixed</span>
+          </button>
+          <!-- Casement Left -->
+          <button class="type-btn" data-type="casement-left" title="Casement (Hinge Left)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="34" y1="2" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="24" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Casement L</span>
+          </button>
+          <!-- Casement Right -->
+          <button class="type-btn" data-type="casement-right" title="Casement (Hinge Right)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Casement R</span>
+          </button>
+          <!-- Awning -->
+          <button class="type-btn" data-type="awning" title="Awning (Hinge Top)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(160,215,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="24" x2="18" y2="2" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="24" x2="18" y2="2" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Awning</span>
+          </button>
+          <!-- Hopper -->
+          <button class="type-btn" data-type="hopper" title="Hopper (Hinge Bottom)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(160,215,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Hopper</span>
+          </button>
+          <!-- Tilt & Turn -->
+          <button class="type-btn" data-type="tilt-turn" title="Tilt & Turn">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,215,145,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="18" y2="2" stroke="#4AFFBB" stroke-width="1"/><line x1="34" y1="24" x2="18" y2="2" stroke="#4AFFBB" stroke-width="1"/></svg>
+            <span class="type-btn-label">Tilt-Turn</span>
+          </button>
+          <!-- Sliding 2T -->
+          <button class="type-btn" data-type="sliding-2t" title="Sliding 2-Track">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,200,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="31" y1="13" x2="27" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="31" y1="13" x2="27" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/></svg>
+            <span class="type-btn-label">Sliding 2T</span>
+          </button>
+          <!-- Sliding 3T -->
+          <button class="type-btn" data-type="sliding-3t" title="Sliding 3-Track">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,200,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="31" y1="13" x2="27" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="31" y1="13" x2="27" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="13" y1="4" x2="13" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="23" y1="4" x2="23" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/></svg>
+            <span class="type-btn-label">Sliding 3T</span>
+          </button>
+          <!-- Pivot -->
+          <button class="type-btn" data-type="pivot-v" title="Pivot Vertical">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,180,230,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="3" x2="18" y2="23" stroke="#4A9EFF" stroke-width="1.2"/><path d="M18 8 A7 7 0 0 1 18 18" stroke="#4A9EFF" stroke-width="1" fill="none"/><path d="M18 8 A7 7 0 0 0 18 18" stroke="#4A9EFF" stroke-width="1" fill="none"/></svg>
+            <span class="type-btn-label">Pivot V</span>
+          </button>
+          <!-- Casement Top -->
+          <button class="type-btn" data-type="casement-top" title="Casement (Hinge Top)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="24" x2="18" y2="2" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="24" x2="18" y2="2" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Top Hung</span>
+          </button>
+          <!-- Casement Bottom -->
+          <button class="type-btn" data-type="casement-bottom" title="Casement (Hinge Bottom)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Bottom Hung</span>
+          </button>
+          <!-- Louvre -->
+          <button class="type-btn" data-type="louvre" title="Louvre">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(220,200,160,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="8" x2="31" y2="8" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="18" x2="31" y2="18" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Louvre</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="outline-section" class="sidebar-section" style="border-bottom:none; flex:1; overflow:hidden; display:flex; flex-direction:column;">
+        <div class="sidebar-section-title">Panel Tree</div>
+        <div id="outline-tree"></div>
+      </div>
+    </div>
+
+    <!-- ── CANVAS AREA ─────────────────────────────────── -->
+    <div id="canvas-area">
+      <div id="ctx-toolbar">
+        <button class="btn btn-icon" id="btn-split-h" title="Split Horizontal (H)" disabled>⊟ Split H</button>
+        <button class="btn btn-icon" id="btn-split-v" title="Split Vertical (V)" disabled>⊞ Split V</button>
+        <div class="ctx-separator"></div>
+        <button class="btn btn-icon btn-danger" id="btn-delete" title="Delete Panel (Del)" disabled>✕ Delete</button>
+        <div class="ctx-separator"></div>
+        <span class="ctx-label">Type:</span>
+        <select id="ctx-type-select" disabled>
+          <option value="fixed">Fixed</option>
+          <option value="casement-left">Casement Left</option>
+          <option value="casement-right">Casement Right</option>
+          <option value="casement-top">Top Hung</option>
+          <option value="casement-bottom">Bottom Hung</option>
+          <option value="awning">Awning</option>
+          <option value="hopper">Hopper</option>
+          <option value="sliding-2t">Sliding 2-Track</option>
+          <option value="sliding-3t">Sliding 3-Track</option>
+          <option value="pivot-v">Pivot Vertical</option>
+          <option value="pivot-h">Pivot Horizontal</option>
+          <option value="tilt-turn">Tilt & Turn</option>
+          <option value="louvre">Louvre</option>
+        </select>
+        <div style="flex:1"></div>
+        <span id="selection-hint" style="font-size:11px;color:var(--text-dim)">Click a panel to select</span>
+      </div>
+      <div id="canvas">
+        <svg id="main-svg" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+
+    <!-- ── INSPECTOR ───────────────────────────────────── -->
+    <div id="inspector">
+
+      <!-- Frame accordion -->
+      <div class="accordion">
+        <div class="accordion-header" data-target="frame-body">
+          <span class="acc-arrow">▼</span> Frame
+        </div>
+        <div class="accordion-body" id="frame-body">
+          <div id="section-diagram-wrap">
+            <svg id="section-diagram" width="220" height="70" viewBox="0 0 220 70"></svg>
+          </div>
+          <div class="form-subsection-title">Overall Dimensions</div>
+          <div class="form-row"><label>Width (mm)</label><input type="number" id="frame-width" min="100" max="10000" step="1"/></div>
+          <div class="form-row"><label>Height (mm)</label><input type="number" id="frame-height" min="100" max="10000" step="1"/></div>
+          <div class="form-section-divider"></div>
+          <div class="form-subsection-title">Frame Profile</div>
+          <div class="form-row"><label>Thickness (mm)</label><input type="number" id="frame-thickness" min="10" max="300" step="1"/></div>
+          <div class="form-row"><label>Depth (mm)</label><input type="number" id="frame-depth" min="10" max="500" step="1"/></div>
+          <div class="form-row"><label>Inner Offset (mm)</label><input type="number" id="frame-inner-offset" min="0" max="200" step="1"/></div>
+          <div class="form-row"><label>Outer Offset (mm)</label><input type="number" id="frame-outer-offset" min="0" max="200" step="1"/></div>
+          <div class="form-section-divider"></div>
+          <div class="form-subsection-title">Material</div>
+          <div class="form-row">
+            <label>Material</label>
+            <select id="frame-material" style="width:120px">
+              <option value="aluminium">Aluminium</option>
+              <option value="timber">Timber</option>
+              <option value="upvc">uPVC</option>
+              <option value="steel">Steel</option>
+              <option value="composite">Composite</option>
+            </select>
+          </div>
+          <div class="form-row"><label>Finish</label><input type="text" id="frame-finish" placeholder="e.g. Anodised Black"/></div>
+        </div>
+      </div>
+
+      <!-- Selected Panel accordion -->
+      <div class="accordion">
+        <div class="accordion-header" data-target="pane-body">
+          <span class="acc-arrow">▼</span> Selected Panel
+        </div>
+        <div class="accordion-body" id="pane-body">
+          <div id="pane-inspector-body" class="disabled">
+            <div class="form-row">
+              <label>Type</label>
+              <select id="pane-type-select" style="width:140px">
+                <option value="fixed">Fixed</option>
+                <option value="casement-left">Casement Left</option>
+                <option value="casement-right">Casement Right</option>
+                <option value="casement-top">Top Hung</option>
+                <option value="casement-bottom">Bottom Hung</option>
+                <option value="awning">Awning</option>
+                <option value="hopper">Hopper</option>
+                <option value="sliding-2t">Sliding 2-Track</option>
+                <option value="sliding-3t">Sliding 3-Track</option>
+                <option value="pivot-v">Pivot Vertical</option>
+                <option value="pivot-h">Pivot Horizontal</option>
+                <option value="tilt-turn">Tilt &amp; Turn</option>
+                <option value="louvre">Louvre</option>
+              </select>
+            </div>
+            <div class="form-row"><label>Label</label><input type="text" id="pane-label" placeholder="Optional label"/></div>
+            <div class="form-section-divider"></div>
+            <div class="form-subsection-title">Glass</div>
+            <div class="form-row">
+              <label>Product</label>
+              <select id="pane-glass-product" style="width:120px">
+                <option value="clear">Clear</option>
+                <option value="low-e">Low-E</option>
+                <option value="laminated">Laminated</option>
+                <option value="obscure">Obscure</option>
+                <option value="tinted">Tinted</option>
+                <option value="reflective">Reflective</option>
+              </select>
+            </div>
+            <div class="form-row"><label>Thickness (mm)</label><input type="number" id="pane-glass-thickness" min="4" max="60" step="1"/></div>
+            <div class="form-section-divider"></div>
+            <div id="pane-sash-section">
+              <div class="form-subsection-title">Sash</div>
+              <div class="form-row"><label>Thickness (mm)</label><input type="number" id="pane-sash-thickness" min="10" max="200" step="1"/></div>
+              <div class="form-row">
+                <label>Handle Side</label>
+                <select id="pane-handle-side" style="width:100px">
+                  <option value="right">Right</option>
+                  <option value="left">Left</option>
+                  <option value="top">Top</option>
+                  <option value="bottom">Bottom</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dimensions accordion -->
+      <div class="accordion">
+        <div class="accordion-header" data-target="dims-body">
+          <span class="acc-arrow">▼</span> Dimensions
+        </div>
+        <div class="accordion-body" id="dims-body">
+          <table id="dims-table">
+            <thead>
+              <tr><th>Panel</th><th>W mm</th><th>H mm</th><th>m²</th></tr>
+            </thead>
+            <tbody id="dims-tbody"></tbody>
+          </table>
+          <div class="dims-total-row">
+            <span class="dims-total-label">Total glazed area</span>
+            <span class="dims-total-val" id="dims-total">0.000 m²</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shortcuts hint -->
+      <div id="shortcuts-hint">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:6px">Shortcuts</div>
+        <div class="shortcut"><span>Split Horizontal</span><kbd>H</kbd></div>
+        <div class="shortcut"><span>Split Vertical</span><kbd>V</kbd></div>
+        <div class="shortcut"><span>Delete Panel</span><kbd>Del</kbd></div>
+        <div class="shortcut"><span>Undo</span><kbd>Ctrl+Z</kbd></div>
+        <div class="shortcut"><span>Deselect</span><kbd>Esc</kbd></div>
+        <div class="shortcut"><span>Export</span><kbd>Ctrl+E</kbd></div>
+      </div>
+
+    </div><!-- /inspector -->
+  </div><!-- /workspace -->
+</div><!-- /app -->
+
+<script>
+'use strict';
+
+// ============================================================
+// CONSTANTS & DEFAULTS
+// ============================================================
+const MIN_PANE_MM = 60;
+const SVG_MARGIN = 160;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const PANE_TYPE_LABELS = {
+  'fixed':'Fixed','casement-left':'Casement L','casement-right':'Casement R',
+  'casement-top':'Top Hung','casement-bottom':'Bottom Hung',
+  'awning':'Awning','hopper':'Hopper','sliding-2t':'Sliding 2T',
+  'sliding-3t':'Sliding 3T','pivot-v':'Pivot V','pivot-h':'Pivot H',
+  'tilt-turn':'Tilt-Turn','louvre':'Louvre'
+};
+const PANE_TYPE_ICONS = {
+  'fixed':'▭','casement-left':'◁','casement-right':'▷',
+  'casement-top':'△','casement-bottom':'▽',
+  'awning':'⌒','hopper':'⌣','sliding-2t':'↔',
+  'sliding-3t':'⟺','pivot-v':'⊕','pivot-h':'⊗',
+  'tilt-turn':'◈','louvre':'≡'
+};
+const GLASS_COLORS = {
+  'fixed':          'rgba(120,185,230,0.38)',
+  'casement-left':  'rgba(100,200,155,0.38)',
+  'casement-right': 'rgba(100,200,155,0.38)',
+  'casement-top':   'rgba(100,200,155,0.38)',
+  'casement-bottom':'rgba(100,200,155,0.38)',
+  'awning':         'rgba(120,200,160,0.38)',
+  'hopper':         'rgba(120,200,160,0.38)',
+  'sliding-2t':     'rgba(80,210,190,0.38)',
+  'sliding-3t':     'rgba(80,210,190,0.38)',
+  'pivot-v':        'rgba(180,150,230,0.38)',
+  'pivot-h':        'rgba(180,150,230,0.38)',
+  'tilt-turn':      'rgba(200,210,100,0.38)',
+  'louvre':         'rgba(220,185,130,0.38)',
+};
+
+// ============================================================
+// STATE
+// ============================================================
+function uid() { return crypto.randomUUID(); }
+
+function mkPane() {
+  return { id:uid(), kind:'pane', type:'fixed', label:'',
+    glass:{ product:'clear', thickness:24, uValue:null },
+    sash:{ thickness:50, direction:null, handleSide:'right' } };
+}
+
+function mkComposition() {
+  return {
+    schemaVersion:'1.0',
+    meta:{ id:uid(), name:'New Window', createdAt:new Date().toISOString(), modifiedAt:new Date().toISOString() },
+    frame:{ overallWidth:1200, overallHeight:900, unit:'mm', thickness:60, depth:100, innerOffset:0, outerOffset:0, material:'aluminium', finish:'' },
+    composition: mkPane()
+  };
+}
+
+const S = {
+  c: mkComposition(),   // composition
+  sel: null,            // selected node id
+  drag: null,           // { splitId, divIdx, axis, startRatio, parentRect, startSvgPos }
+  undoStack: [],
+  dirty: false
+};
+
+// ============================================================
+// TREE OPERATIONS
+// ============================================================
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+function findNode(node, id) {
+  if (node.id === id) return node;
+  if (node.kind === 'split') for (const c of node.children) { const f = findNode(c, id); if (f) return f; }
+  return null;
+}
+
+function findParent(root, id) {
+  if (root.kind !== 'split') return null;
+  for (let i = 0; i < root.children.length; i++) {
+    if (root.children[i].id === id) return { parent: root, index: i };
+    const f = findParent(root.children[i], id);
+    if (f) return f;
+  }
+  return null;
+}
+
+function computeRect(node, x, y, w, h, targetId) {
+  if (node.id === targetId) return { x, y, w, h };
+  if (node.kind !== 'split') return null;
+  for (let i = 0; i < node.children.length; i++) {
+    const sr = i === 0 ? 0 : node.dividers[i-1].ratio;
+    const er = i === node.children.length-1 ? 1 : node.dividers[i].ratio;
+    const rect = node.axis === 'V'
+      ? computeRect(node.children[i], x+sr*w, y, (er-sr)*w, h, targetId)
+      : computeRect(node.children[i], x, y+sr*h, w, (er-sr)*h, targetId);
+    if (rect) return rect;
+  }
+  return null;
+}
+
+function nodeRect(id) {
+  const f = S.c.frame;
+  const ft = f.thickness;
+  return computeRect(S.c.composition, ft, ft, f.overallWidth-2*ft, f.overallHeight-2*ft, id);
+}
+
+function pushUndo() {
+  S.undoStack.push(clone(S.c));
+  if (S.undoStack.length > 50) S.undoStack.shift();
+  document.getElementById('btn-undo').disabled = false;
+}
+
+function splitNode(id, axis) {
+  const node = findNode(S.c.composition, id);
+  if (!node || node.kind !== 'pane') return;
+  pushUndo();
+  const childA = clone(node); childA.id = uid();
+  const childB = mkPane(); childB.type = node.type; childB.glass = clone(node.glass); childB.sash = clone(node.sash);
+  const split = { id:uid(), kind:'split', axis, dividers:[{ratio:0.5}], children:[childA, childB] };
+  const pr = findParent(S.c.composition, id);
+  if (!pr) S.c.composition = split;
+  else pr.parent.children[pr.index] = split;
+  S.sel = childA.id;
+  S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
+  render();
+}
+
+function deleteNode(id) {
+  if (S.c.composition.id === id) return;
+  const pr = findParent(S.c.composition, id);
+  if (!pr) return;
+  pushUndo();
+  const { parent, index } = pr;
+  parent.children.splice(index, 1);
+  const divIdx = Math.min(index, parent.dividers.length-1);
+  if (parent.dividers.length > 0) parent.dividers.splice(divIdx, 1);
+  if (parent.children.length === 1) {
+    const survivor = parent.children[0];
+    const gpr = findParent(S.c.composition, parent.id);
+    if (!gpr) S.c.composition = survivor;
+    else gpr.parent.children[gpr.index] = survivor;
+  } else if (parent.children.length > 0) {
+    const n = parent.children.length;
+    parent.dividers = Array.from({length:n-1}, (_,i) => ({ratio:(i+1)/n}));
+  }
+  S.sel = null; S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
+  render();
+}
+
+function assignType(id, type) {
+  const node = findNode(S.c.composition, id);
+  if (!node || node.kind !== 'pane') return;
+  pushUndo();
+  node.type = type;
+  if (type !== 'fixed' && !node.sash) node.sash = { thickness:50, direction:null, handleSide:'right' };
+  S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
+  render();
+}
+
+// ============================================================
+// SVG HELPERS
+// ============================================================
+function el(tag, attrs) {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+  return e;
+}
+function line(x1,y1,x2,y2,stroke,sw) {
+  return el('line',{x1,y1,x2,y2,stroke,'stroke-width':sw,'pointer-events':'none'});
+}
+function path(d,stroke,sw) {
+  return el('path',{d,stroke,'stroke-width':sw,fill:'none','pointer-events':'none'});
+}
+
+// ============================================================
+// OPERATION SYMBOLS
+// ============================================================
+function drawSymbol(g, type, x, y, w, h) {
+  const cx=x+w/2, cy=y+h/2;
+  const sw = Math.max(1.5, Math.min(w,h)*0.015);
+  const col = 'rgba(74,158,255,0.75)';
+  const col2 = 'rgba(74,255,170,0.65)';
+
+  switch(type) {
+    case 'casement-left':
+      g.append(line(x+w,y,   x, cy, col, sw));
+      g.append(line(x+w,y+h, x, cy, col, sw));
+      { const r=Math.min(w,h)*0.28; g.append(path(`M ${x} ${cy-r} A ${r} ${r} 0 0 1 ${x} ${cy+r}`,col,sw*0.8)); }
+      break;
+    case 'casement-right':
+      g.append(line(x,y,   x+w, cy, col, sw));
+      g.append(line(x,y+h, x+w, cy, col, sw));
+      { const r=Math.min(w,h)*0.28; g.append(path(`M ${x+w} ${cy-r} A ${r} ${r} 0 0 0 ${x+w} ${cy+r}`,col,sw*0.8)); }
+      break;
+    case 'casement-top':
+    case 'awning':
+      g.append(line(x,  y+h, cx, y, col, sw));
+      g.append(line(x+w,y+h, cx, y, col, sw));
+      { const r=Math.min(w,h)*0.25; g.append(path(`M ${cx-r} ${y} A ${r} ${r} 0 0 0 ${cx+r} ${y}`,col,sw*0.8)); }
+      break;
+    case 'casement-bottom':
+    case 'hopper':
+      g.append(line(x,  y, cx, y+h, col, sw));
+      g.append(line(x+w,y, cx, y+h, col, sw));
+      { const r=Math.min(w,h)*0.25; g.append(path(`M ${cx-r} ${y+h} A ${r} ${r} 0 0 1 ${cx+r} ${y+h}`,col,sw*0.8)); }
+      break;
+    case 'tilt-turn':
+      g.append(line(x,y,   x+w, cy, col, sw));
+      g.append(line(x,y+h, x+w, cy, col, sw));
+      g.append(line(x,  y+h, cx, y, col2, sw*0.85));
+      g.append(line(x+w,y+h, cx, y, col2, sw*0.85));
+      break;
+    case 'sliding-2t': {
+      const m=w*0.15; const ay=cy;
+      g.append(line(x+m,ay, x+w-m,ay, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.07,ay-h*0.07, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.07,ay+h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.07,ay-h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.07,ay+h*0.07, col, sw));
+      g.append(el('line',{x1:cx,y1:y+h*0.15,x2:cx,y2:y+h*0.85,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'}));
+      break;
+    }
+    case 'sliding-3t': {
+      const m=w*0.1; const ay=cy;
+      g.append(line(x+m,ay, x+w-m,ay, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.06,ay-h*0.07, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.06,ay+h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.06,ay-h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.06,ay+h*0.07, col, sw));
+      const dx=w/3;
+      [dx,dx*2].forEach(dv => g.append(el('line',{x1:x+dv,y1:y+h*0.15,x2:x+dv,y2:y+h*0.85,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'})));
+      break;
+    }
+    case 'pivot-v': {
+      g.append(line(cx,y+h*0.05, cx,y+h*0.95, col, sw));
+      const r=Math.min(w,h)*0.28;
+      g.append(path(`M ${cx} ${cy-r} A ${r} ${r} 0 0 1 ${cx} ${cy+r}`,col,sw*0.8));
+      g.append(path(`M ${cx} ${cy-r} A ${r} ${r} 0 0 0 ${cx} ${cy+r}`,col,sw*0.8));
+      break;
+    }
+    case 'pivot-h': {
+      g.append(line(x+w*0.05,cy, x+w*0.95,cy, col, sw));
+      const r=Math.min(w,h)*0.28;
+      g.append(path(`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`,col,sw*0.8));
+      g.append(path(`M ${cx-r} ${cy} A ${r} ${r} 0 0 0 ${cx+r} ${cy}`,col,sw*0.8));
+      break;
+    }
+    case 'louvre': {
+      const n = Math.max(3, Math.floor(h/55));
+      for (let i=1;i<n;i++) { const sy=y+h*i/n; g.append(line(x+w*0.08,sy, x+w*0.92,sy, col, sw)); }
+      break;
+    }
+  }
+}
+
+// ============================================================
+// CANVAS RENDER
+// ============================================================
+let _nodeRects = {};
+
+function renderCanvas() {
+  const svg = document.getElementById('main-svg');
+  svg.innerHTML = '';
+  _nodeRects = {};
+
+  const f = S.c.frame;
+  const W = f.overallWidth, H = f.overallHeight;
+  const M = SVG_MARGIN;
+  svg.setAttribute('viewBox', `${-M} ${-M} ${W+2*M} ${H+2*M}`);
+
+  // Defs
+  const defs = el('defs', {});
+  const pat = el('pattern', {id:'gg',x:0,y:0,width:60,height:60,patternUnits:'userSpaceOnUse'});
+  pat.append(el('line',{x1:0,y1:0,x2:60,y2:0,stroke:'rgba(255,255,255,0.025)','stroke-width':1}));
+  pat.append(el('line',{x1:0,y1:0,x2:0,y2:60,stroke:'rgba(255,255,255,0.025)','stroke-width':1}));
+  defs.append(pat);
+  svg.append(defs);
+
+  // Canvas background
+  svg.append(el('rect',{x:-M,y:-M,width:W+2*M,height:H+2*M,fill:'#15171C'}));
+
+  // Subtle canvas grid
+  svg.append(el('rect',{x:-M,y:-M,width:W+2*M,height:H+2*M,fill:'url(#gg)'}));
+
+  // ── DIMENSION LINES ──────────────────────────────────────
+  const dimG = el('g',{opacity:1});
+  renderDimLines(dimG, f);
+  svg.append(dimG);
+
+  // ── FRAME SHADOW (depth effect) ──────────────────────────
+  svg.append(el('rect',{x:4,y:4,width:W,height:H,fill:'rgba(0,0,0,0.4)',rx:2}));
+
+  // ── FRAME MEMBERS ────────────────────────────────────────
+  const ft = f.thickness;
+  const frameColor = '#2A2D38';
+  const frameEdge = '#484C5E';
+  const frameHighlight = '#565A6E';
+
+  // Frame fill (outer rect, will be overlaid by panes in center)
+  svg.append(el('rect',{x:0,y:0,width:W,height:H,fill:frameColor,stroke:frameEdge,'stroke-width':2}));
+
+  // Draw 4 frame members (to create solid border with open center)
+  // Top
+  svg.append(el('rect',{x:0,y:0,width:W,height:ft,fill:'#32364A',stroke:'none'}));
+  // Bottom
+  svg.append(el('rect',{x:0,y:H-ft,width:W,height:ft,fill:'#32364A'}));
+  // Left
+  svg.append(el('rect',{x:0,y:0,width:ft,height:H,fill:'#32364A'}));
+  // Right
+  svg.append(el('rect',{x:W-ft,y:0,width:ft,height:H,fill:'#32364A'}));
+
+  // Frame highlight lines (top/left of each member - 3D effect)
+  const hl='rgba(255,255,255,0.06)';
+  svg.append(el('line',{x1:0,y1:0,x2:W,y2:0,stroke:hl,'stroke-width':2}));
+  svg.append(el('line',{x1:0,y1:0,x2:0,y2:H,stroke:hl,'stroke-width':2}));
+  const sh='rgba(0,0,0,0.25)';
+  svg.append(el('line',{x1:W,y1:0,x2:W,y2:H,stroke:sh,'stroke-width':2}));
+  svg.append(el('line',{x1:0,y1:H,x2:W,y2:H,stroke:sh,'stroke-width':2}));
+
+  // Inner frame edge lines
+  svg.append(el('rect',{x:ft,y:ft,width:W-2*ft,height:H-2*ft,fill:'none',stroke:frameEdge,'stroke-width':1.5}));
+
+  // ── COMPOSITION NODES ────────────────────────────────────
+  const nodesG = el('g', {});
+  renderNodeRec(nodesG, S.c.composition, ft, ft, W-2*ft, H-2*ft);
+  svg.append(nodesG);
+
+  // ── SELECTION OVERLAY ────────────────────────────────────
+  if (S.sel) {
+    const r = _nodeRects[S.sel];
+    if (r) {
+      const sw = 3;
+      svg.append(el('rect',{x:r.x-sw,y:r.y-sw,width:r.w+sw*2,height:r.h+sw*2,fill:'none',stroke:'rgba(74,158,255,0.2)','stroke-width':sw*3,rx:1,'pointer-events':'none'}));
+      svg.append(el('rect',{x:r.x,y:r.y,width:r.w,height:r.h,fill:'none',stroke:'#4A9EFF','stroke-width':sw,rx:1,'pointer-events':'none'}));
+      // Corner markers
+      const cs=10;
+      [[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]].forEach(([cx2,cy2])=>{
+        svg.append(el('rect',{x:cx2-3,y:cy2-3,width:6,height:6,fill:'#4A9EFF',rx:1,'pointer-events':'none'}));
+      });
+    }
+  }
+
+  // SVG click (deselect)
+  svg.addEventListener('click', (e) => {
+    if (e.target === svg || e.target.tagName === 'svg') { S.sel=null; render(); }
+  });
+}
+
+function renderNodeRec(g, node, x, y, w, h) {
+  _nodeRects[node.id] = {x,y,w,h};
+  if (node.kind === 'pane') renderPane(g, node, x, y, w, h);
+  else renderSplit(g, node, x, y, w, h);
+}
+
+function renderPane(g, node, x, y, w, h) {
+  const gColor = GLASS_COLORS[node.type] || GLASS_COLORS['fixed'];
+  const isSelected = S.sel === node.id;
+
+  const paneG = el('g', {'data-id':node.id, cursor:'pointer'});
+
+  // Glass fill
+  paneG.append(el('rect',{x,y,width:w,height:h,fill:gColor}));
+
+  // Glass grid
+  paneG.append(el('rect',{x,y,width:w,height:h,fill:'url(#gg)','pointer-events':'none'}));
+
+  // Glass reflection
+  const rw = Math.min(w*0.35, h*0.35);
+  const reflPts = `${x},${y} ${x+rw},${y} ${x},${y+rw}`;
+  paneG.append(el('polygon',{points:reflPts,fill:'rgba(255,255,255,0.055)','pointer-events':'none'}));
+
+  // Operation symbol
+  if (node.type !== 'fixed') drawSymbol(paneG, node.type, x, y, w, h);
+
+  // Label
+  if (node.label && w > 80 && h > 40) {
+    const fs = Math.min(24, Math.max(10, Math.min(w,h)*0.07));
+    const t = el('text',{x:x+w/2,y:y+h/2,'text-anchor':'middle','dominant-baseline':'middle',fill:'rgba(255,255,255,0.55)','font-size':fs,'font-family':'system-ui','pointer-events':'none'});
+    t.textContent = node.label;
+    paneG.append(t);
+  }
+
+  // Type badge
+  if (w > 120 && h > 70) {
+    const fs2 = Math.min(18, w*0.055);
+    const badge = el('text',{x:x+6,y:y+h-6,fill:'rgba(255,255,255,0.28)','font-size':fs2,'font-family':'system-ui','pointer-events':'none'});
+    badge.textContent = PANE_TYPE_LABELS[node.type] || node.type;
+    paneG.append(badge);
+  }
+
+  // Border (subtle)
+  paneG.append(el('rect',{x,y,width:w,height:h,fill:'none',stroke:'rgba(80,90,110,0.6)','stroke-width':1,'pointer-events':'none'}));
+
+  paneG.addEventListener('click', (e) => { e.stopPropagation(); S.sel = node.id; render(); });
+  g.append(paneG);
+}
+
+function renderSplit(g, node, x, y, w, h) {
+  // Render children
+  for (let i=0; i<node.children.length; i++) {
+    const sr = i===0 ? 0 : node.dividers[i-1].ratio;
+    const er = i===node.children.length-1 ? 1 : node.dividers[i].ratio;
+    if (node.axis==='V') renderNodeRec(g, node.children[i], x+sr*w, y, (er-sr)*w, h);
+    else                  renderNodeRec(g, node.children[i], x, y+sr*h, w, (er-sr)*h);
+  }
+
+  // Divider handles
+  const HDIM = 8;
+  for (let i=0; i<node.dividers.length; i++) {
+    const ratio = node.dividers[i].ratio;
+    let hx, hy, hw, hh;
+    if (node.axis==='V') { hx=x+ratio*w-HDIM/2; hy=y; hw=HDIM; hh=h; }
+    else                  { hx=x; hy=y+ratio*h-HDIM/2; hw=w; hh=HDIM; }
+
+    const handle = el('rect',{x:hx,y:hy,width:hw,height:hh,
+      fill:'rgba(74,158,255,0.0)',stroke:'rgba(74,158,255,0.25)','stroke-width':1,
+      cursor: node.axis==='V' ? 'ew-resize' : 'ns-resize',
+      rx:1
+    });
+    handle.addEventListener('mouseenter', ()=>{ handle.setAttribute('fill','rgba(74,158,255,0.18)'); });
+    handle.addEventListener('mouseleave', ()=>{ if (!S.drag) handle.setAttribute('fill','rgba(74,158,255,0.0)'); });
+    handle.addEventListener('mousedown', (e)=>{ e.preventDefault(); e.stopPropagation(); startDrag(e, node.id, i, node.axis, x, y, w, h); });
+    g.append(handle);
+
+    // Visual divider line
+    const dline = node.axis==='V'
+      ? el('line',{x1:x+ratio*w,y1:y,x2:x+ratio*w,y2:y+h,stroke:'rgba(80,90,110,0.8)','stroke-width':1.5,'pointer-events':'none'})
+      : el('line',{x1:x,y1:y+ratio*h,x2:x+w,y2:y+ratio*h,stroke:'rgba(80,90,110,0.8)','stroke-width':1.5,'pointer-events':'none'});
+    g.append(dline);
+  }
+}
+
+// ── DIMENSION LINES ──────────────────────────────────────────
+function renderDimLines(g, f) {
+  const W=f.overallWidth, H=f.overallHeight;
+  const dimCol='rgba(100,105,120,0.9)', textCol='rgba(160,165,180,0.9)', tickLen=14;
+  const topY=-65, leftX=-65, fs=28;
+
+  function dimLine(x1,y1,x2,y2) { return el('line',{x1,y1,x2,y2,stroke:dimCol,'stroke-width':1.2,'pointer-events':'none'}); }
+  function tick(x1,y1,x2,y2)    { return el('line',{x1,y1,x2,y2,stroke:dimCol,'stroke-width':1.5,'pointer-events':'none'}); }
+  function label(x2,y2,txt,rot) {
+    const t=el('text',{x:x2,y:y2,'text-anchor':'middle','dominant-baseline':'middle',fill:textCol,'font-size':fs,'font-family':'system-ui, sans-serif','pointer-events':'none'});
+    if(rot) t.setAttribute('transform',`rotate(${rot},${x2},${y2})`);
+    t.textContent=txt; return t;
+  }
+
+  // Overall width (top)
+  g.append(dimLine(0,topY,W,topY));
+  g.append(tick(0,topY-tickLen/2,0,topY+tickLen/2));
+  g.append(tick(W,topY-tickLen/2,W,topY+tickLen/2));
+  g.append(label(W/2,topY-22,`${W} mm`));
+
+  // Overall height (left)
+  g.append(dimLine(leftX,0,leftX,H));
+  g.append(tick(leftX-tickLen/2,0,leftX+tickLen/2,0));
+  g.append(tick(leftX-tickLen/2,H,leftX+tickLen/2,H));
+  g.append(label(leftX-25,H/2,`${H} mm`,-90));
+
+  // Extension lines (grey dashed from window corners to dim lines)
+  const ext='rgba(60,65,80,0.7)';
+  g.append(el('line',{x1:0,y1:0,x2:0,y2:topY,stroke:ext,'stroke-width':1,'stroke-dasharray':'4,4','pointer-events':'none'}));
+  g.append(el('line',{x1:W,y1:0,x2:W,y2:topY,stroke:ext,'stroke-width':1,'stroke-dasharray':'4,4','pointer-events':'none'}));
+  g.append(el('line',{x1:0,y1:0,x2:leftX,y2:0,stroke:ext,'stroke-width':1,'stroke-dasharray':'4,4','pointer-events':'none'}));
+  g.append(el('line',{x1:0,y1:H,x2:leftX,y2:H,stroke:ext,'stroke-width':1,'stroke-dasharray':'4,4','pointer-events':'none'}));
+
+  // Sub-dimensions for first level of composition
+  const comp = S.c.composition;
+  if (comp.kind === 'split') {
+    const ft = f.thickness;
+    const innerW = W-2*ft, innerH = H-2*ft;
+    renderSubDimLine(g, comp, ft, ft, innerW, innerH, topY, leftX, dimCol, textCol, tickLen, fs*0.78);
+  }
+}
+
+function renderSubDimLine(g, node, x, y, w, h, topY, leftX, dimCol, textCol, tickLen, fs) {
+  if (node.kind !== 'split') return;
+  for (let i=0; i<node.dividers.length; i++) {
+    const ratio = node.dividers[i].ratio;
+    if (node.axis==='V') {
+      const divX = x + ratio*w;
+      g.append(el('line',{x1:divX,y1:topY-tickLen/2,x2:divX,y2:topY+tickLen/2,stroke:dimCol,'stroke-width':1,'pointer-events':'none'}));
+      // Label previous segment
+      const prevX = i===0 ? x : x+node.dividers[i-1].ratio*w;
+      const segW = Math.round(divX-prevX);
+      const midX = (prevX+divX)/2;
+      const t=el('text',{x:midX,y:topY-22,fill:'rgba(120,130,150,0.7)','font-size':fs,'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'system-ui'});
+      t.textContent=segW; g.append(t);
+      if (i===node.dividers.length-1) {
+        const lastPrevX = x+ratio*w;
+        const lastW = Math.round((x+w)-lastPrevX);
+        const lastMid = (lastPrevX+(x+w))/2;
+        const t2=el('text',{x:lastMid,y:topY-22,fill:'rgba(120,130,150,0.7)','font-size':fs,'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'system-ui'});
+        t2.textContent=lastW; g.append(t2);
+      }
+    } else {
+      const divY = y + ratio*h;
+      g.append(el('line',{x1:leftX-tickLen/2,y1:divY,x2:leftX+tickLen/2,y2:divY,stroke:dimCol,'stroke-width':1,'pointer-events':'none'}));
+      const prevY = i===0 ? y : y+node.dividers[i-1].ratio*h;
+      const segH = Math.round(divY-prevY);
+      const midY = (prevY+divY)/2;
+      const t=el('text',{x:leftX-26,y:midY,fill:'rgba(120,130,150,0.7)','font-size':fs,'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'system-ui'});
+      t.setAttribute('transform',`rotate(-90,${leftX-26},${midY})`);
+      t.textContent=segH; g.append(t);
+      if (i===node.dividers.length-1) {
+        const lastPrevY = y+ratio*h;
+        const lastH = Math.round((y+h)-lastPrevY);
+        const lastMid = (lastPrevY+(y+h))/2;
+        const t2=el('text',{x:leftX-26,y:lastMid,fill:'rgba(120,130,150,0.7)','font-size':fs,'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'system-ui'});
+        t2.setAttribute('transform',`rotate(-90,${leftX-26},${lastMid})`);
+        t2.textContent=lastH; g.append(t2);
+      }
+    }
+  }
+}
+
+// ============================================================
+// DRAG SYSTEM
+// ============================================================
+function svgPt(svg, cx, cy) {
+  const pt = svg.createSVGPoint(); pt.x=cx; pt.y=cy;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function startDrag(e, splitId, divIdx, axis, px, py, pw, ph) {
+  const svg = document.getElementById('main-svg');
+  const sp = svgPt(svg, e.clientX, e.clientY);
+  S.drag = { splitId, divIdx, axis, parentX:px, parentY:py, parentW:pw, parentH:ph,
+    startSvgX:sp.x, startSvgY:sp.y,
+    startRatio: findNode(S.c.composition, splitId).dividers[divIdx].ratio };
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup',   onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!S.drag) return;
+  const svg = document.getElementById('main-svg');
+  const sp = svgPt(svg, e.clientX, e.clientY);
+  const ds = S.drag;
+  const node = findNode(S.c.composition, ds.splitId);
+  if (!node) return;
+
+  let newRatio = ds.axis==='V'
+    ? (sp.x - ds.parentX) / ds.parentW
+    : (sp.y - ds.parentY) / ds.parentH;
+
+  const dim = ds.axis==='V' ? ds.parentW : ds.parentH;
+  const minStep = MIN_PANE_MM / dim;
+  const prevR = ds.divIdx>0 ? node.dividers[ds.divIdx-1].ratio : 0;
+  const nextR = ds.divIdx<node.dividers.length-1 ? node.dividers[ds.divIdx+1].ratio : 1;
+  newRatio = Math.max(prevR+minStep, Math.min(nextR-minStep, newRatio));
+  node.dividers[ds.divIdx].ratio = newRatio;
+
+  renderCanvas();
+  renderDimensionsTable();
+}
+
+function onDragEnd() {
+  S.drag=null; S.dirty=true;
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup',   onDragEnd);
+  updateTopbar();
+}
+
+// ============================================================
+// INSPECTOR
+// ============================================================
+function renderInspector() {
+  renderFrameForm();
+  renderPaneForm();
+  renderDimensionsTable();
+  renderSectionDiagram();
+}
+
+function renderFrameForm() {
+  const f=S.c.frame;
+  setVal('frame-width',     f.overallWidth);
+  setVal('frame-height',    f.overallHeight);
+  setVal('frame-thickness', f.thickness);
+  setVal('frame-depth',     f.depth);
+  setVal('frame-inner-offset', f.innerOffset);
+  setVal('frame-outer-offset', f.outerOffset);
+  setVal('frame-material',  f.material);
+  setVal('frame-finish',    f.finish);
+}
+
+function renderPaneForm() {
+  const node = S.sel ? findNode(S.c.composition, S.sel) : null;
+  const body = document.getElementById('pane-inspector-body');
+  if (!node || node.kind !== 'pane') { body.classList.add('disabled'); return; }
+  body.classList.remove('disabled');
+  setVal('pane-type-select', node.type);
+  setVal('pane-label',        node.label||'');
+  setVal('pane-glass-product', node.glass.product);
+  setVal('pane-glass-thickness', node.glass.thickness);
+  const sashSec = document.getElementById('pane-sash-section');
+  sashSec.style.display = node.type==='fixed' ? 'none' : 'block';
+  if (node.sash) { setVal('pane-sash-thickness', node.sash.thickness); setVal('pane-handle-side', node.sash.handleSide||'right'); }
+}
+
+function renderDimensionsTable() {
+  const f=S.c.frame, ft=f.thickness;
+  const rows=[];
+  collectDims(S.c.composition, ft, ft, f.overallWidth-2*ft, f.overallHeight-2*ft, rows);
+  const tbody=document.getElementById('dims-tbody');
+  tbody.innerHTML='';
+  let total=0;
+  rows.forEach(r=>{
+    const area=(r.w*r.h/1e6).toFixed(3);
+    total+=parseFloat(area);
+    const tr=document.createElement('tr');
+    if (r.id===S.sel) tr.className='selected-row';
+    tr.innerHTML=`<td>${r.label||r.id.slice(0,7)+'…'}</td><td>${Math.round(r.w)}</td><td>${Math.round(r.h)}</td><td>${area}</td>`;
+    tr.addEventListener('click',()=>{S.sel=r.id;render();});
+    tbody.appendChild(tr);
+  });
+  document.getElementById('dims-total').textContent=`${total.toFixed(3)} m²`;
+}
+
+function collectDims(node, x, y, w, h, rows) {
+  if (node.kind==='pane') { rows.push({id:node.id,label:node.label,w,h}); return; }
+  for (let i=0;i<node.children.length;i++) {
+    const sr=i===0?0:node.dividers[i-1].ratio, er=i===node.children.length-1?1:node.dividers[i].ratio;
+    if (node.axis==='V') collectDims(node.children[i],x+sr*w,y,(er-sr)*w,h,rows);
+    else                  collectDims(node.children[i],x,y+sr*h,w,(er-sr)*h,rows);
+  }
+}
+
+function renderSectionDiagram() {
+  const svg=document.getElementById('section-diagram');
+  if (!svg) return;
+  svg.innerHTML='';
+  const f=S.c.frame;
+  const SVW=220,SVH=70;
+  // Scale to fit
+  const scale=Math.min((SVW-40)/f.depth, (SVH-20)/f.thickness);
+  const d=f.depth*scale, t=f.thickness*scale;
+  const ox=(SVW-d)/2, oy=(SVH-t)/2;
+  // Wall zone (background)
+  svg.append(el('rect',{x:0,y:0,width:SVW,height:SVH,fill:'#15171C'}));
+  svg.append(el('rect',{x:ox-16,y:0,width:d+32,height:SVH,fill:'rgba(40,45,55,0.5)'}));
+  // Frame section (rectangle)
+  svg.append(el('rect',{x:ox,y:oy,width:d,height:t,fill:'#32364A',stroke:'#484C5E','stroke-width':1.5,rx:1}));
+  // Glass position
+  const maxDepth=Math.max(f.depth,1);
+  const glassX=ox+d*(f.outerOffset/maxDepth);
+  svg.append(el('line',{x1:glassX,y1:oy+2,x2:glassX,y2:oy+t-2,stroke:'#4A9EFF','stroke-width':3}));
+  // Dim labels
+  const lbl=(x2,y2,txt,rot)=>{const t2=el('text',{x:x2,y:y2,'text-anchor':'middle',fill:'rgba(120,130,150,0.8)','font-size':9,'font-family':'system-ui'});if(rot)t2.setAttribute('transform',`rotate(${rot},${x2},${y2})`);t2.textContent=txt;svg.append(t2);};
+  lbl(SVW/2, SVH-3, `${f.depth}mm depth`);
+  lbl(ox-8, SVH/2, `${f.thickness}mm`, -90);
+}
+
+function renderOutline() {
+  const c=document.getElementById('outline-tree');
+  c.innerHTML='';
+  renderOutlineNode(c, S.c.composition, 0);
+}
+
+function renderOutlineNode(c, node, depth) {
+  const d=document.createElement('div');
+  d.className='outline-item'+(node.id===S.sel?' selected':'');
+  d.style.paddingLeft=`${8+depth*16}px`;
+  const icon=node.kind==='split'?(node.axis==='V'?'⊞':'⊟'):(PANE_TYPE_ICONS[node.type]||'▭');
+  const lbl=node.kind==='split'?`Split ${node.axis} (${node.children.length})`:(node.label||PANE_TYPE_LABELS[node.type]||node.type);
+  d.innerHTML=`<span class="outline-icon">${icon}</span><span class="outline-label">${lbl}</span>`;
+  d.addEventListener('click',()=>{S.sel=node.id;render();});
+  c.appendChild(d);
+  if (node.kind==='split') node.children.forEach(ch=>renderOutlineNode(c,ch,depth+1));
+}
+
+// ============================================================
+// CONTEXT TOOLBAR
+// ============================================================
+function updateContextToolbar() {
+  const node=S.sel?findNode(S.c.composition,S.sel):null;
+  const isPane=node&&node.kind==='pane';
+  const isRoot=S.sel===S.c.composition.id;
+  document.getElementById('btn-split-h').disabled=!isPane;
+  document.getElementById('btn-split-v').disabled=!isPane;
+  document.getElementById('btn-delete').disabled=!S.sel||isRoot;
+  document.getElementById('ctx-type-select').disabled=!isPane;
+  if (isPane) document.getElementById('ctx-type-select').value=node.type;
+  // Update type palette active state
+  document.querySelectorAll('.type-btn').forEach(b=>{
+    b.classList.toggle('active', isPane && b.dataset.type===node.type);
+  });
+  // Hint
+  const hint=document.getElementById('selection-hint');
+  if (S.sel && node) {
+    hint.textContent=node.kind==='split'?`Split (${node.children.length} children)`:`Panel: ${PANE_TYPE_LABELS[node.type]||node.type}`;
+    hint.style.color='var(--text-muted)';
+  } else {
+    hint.textContent='Click a panel to select';
+    hint.style.color='var(--text-dim)';
+  }
+}
+
+// ============================================================
+// TOPBAR
+// ============================================================
+function updateTopbar() {
+  const t=document.getElementById('window-title');
+  t.textContent=S.c.meta.name+(S.dirty?' ●':'');
+  document.getElementById('btn-undo').disabled=S.undoStack.length===0;
+}
+
+// ============================================================
+// MASTER RENDER
+// ============================================================
+function render() {
+  renderCanvas();
+  renderInspector();
+  renderOutline();
+  updateTopbar();
+  updateContextToolbar();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function setVal(id, val) {
+  const el2=document.getElementById(id);
+  if (el2) el2.value=val;
+}
+
+// ============================================================
+// IMPORT / EXPORT
+// ============================================================
+function exportJSON() {
+  S.c.meta.modifiedAt=new Date().toISOString();
+  const json=JSON.stringify(S.c, null, 2);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+  a.download=`${S.c.meta.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  S.dirty=false; updateTopbar();
+}
+
+function importJSON() {
+  if (S.dirty && !confirm('Unsaved changes will be lost. Continue?')) return;
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=(e)=>{
+    const f=e.target.files[0]; if(!f) return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      try {
+        const data=JSON.parse(ev.target.result);
+        if (!data.schemaVersion) { alert('Not a valid Window Configurator JSON.'); return; }
+        if (data.schemaVersion!=='1.0') { alert(`Unsupported schema version: ${data.schemaVersion}`); return; }
+        S.c=data; S.sel=null; S.dirty=false; S.undoStack=[];
+        render();
+      } catch(err) { alert('Failed to parse JSON: '+err.message); }
+    };
+    reader.readAsText(f);
+  };
+  inp.click();
+}
+
+function newComposition() {
+  if (S.dirty && !confirm('Unsaved changes will be lost. Create new window?')) return;
+  S.c=mkComposition(); S.sel=null; S.dirty=false; S.undoStack=[];
+  render();
+}
+
+function undo() {
+  if (!S.undoStack.length) return;
+  S.c=S.undoStack.pop(); S.sel=null;
+  render();
+}
+
+// ============================================================
+// EVENT BINDING
+// ============================================================
+
+// Topbar
+document.getElementById('btn-new').addEventListener('click', newComposition);
+document.getElementById('btn-import').addEventListener('click', importJSON);
+document.getElementById('btn-export').addEventListener('click', exportJSON);
+document.getElementById('btn-undo').addEventListener('click', undo);
+document.getElementById('window-title').addEventListener('dblclick', ()=>{
+  const n=prompt('Window name:', S.c.meta.name);
+  if (n!==null && n.trim()) { S.c.meta.name=n.trim(); S.dirty=true; updateTopbar(); }
+});
+
+// Context toolbar
+document.getElementById('btn-split-h').addEventListener('click', ()=>{ if(S.sel) splitNode(S.sel,'H'); });
+document.getElementById('btn-split-v').addEventListener('click', ()=>{ if(S.sel) splitNode(S.sel,'V'); });
+document.getElementById('btn-delete').addEventListener('click',  ()=>{ if(S.sel) deleteNode(S.sel); });
+document.getElementById('ctx-type-select').addEventListener('change', e=>{ if(S.sel) assignType(S.sel,e.target.value); });
+
+// Type palette
+document.querySelectorAll('.type-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if (!S.sel) return;
+    const node=findNode(S.c.composition,S.sel);
+    if (node && node.kind==='pane') assignType(S.sel, btn.dataset.type);
+  });
+});
+
+// Inspector — frame
+function bindNum(id, key, min=1) {
+  document.getElementById(id).addEventListener('change', e=>{
+    const v=parseFloat(e.target.value);
+    if (isNaN(v)||v<min) return;
+    S.c.frame[key]=v; S.dirty=true; render();
+  });
+}
+bindNum('frame-width',        'overallWidth',  100);
+bindNum('frame-height',       'overallHeight', 100);
+bindNum('frame-thickness',    'thickness',     10);
+bindNum('frame-depth',        'depth',         10);
+bindNum('frame-inner-offset', 'innerOffset',   0);
+bindNum('frame-outer-offset', 'outerOffset',   0);
+document.getElementById('frame-material').addEventListener('change', e=>{ S.c.frame.material=e.target.value; S.dirty=true; updateTopbar(); });
+document.getElementById('frame-finish').addEventListener('input',  e=>{ S.c.frame.finish=e.target.value;    S.dirty=true; updateTopbar(); });
+
+// Inspector — pane
+document.getElementById('pane-type-select').addEventListener('change', e=>{ if(S.sel) assignType(S.sel,e.target.value); });
+document.getElementById('pane-label').addEventListener('input', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane') { node.label=e.target.value; S.dirty=true; renderCanvas(); renderOutline(); updateTopbar(); }
+});
+document.getElementById('pane-glass-thickness').addEventListener('change', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane') { node.glass.thickness=parseInt(e.target.value); S.dirty=true; updateTopbar(); }
+});
+document.getElementById('pane-glass-product').addEventListener('change', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane') { node.glass.product=e.target.value; S.dirty=true; updateTopbar(); }
+});
+document.getElementById('pane-sash-thickness').addEventListener('change', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane'&&node.sash) { node.sash.thickness=parseInt(e.target.value); S.dirty=true; updateTopbar(); }
+});
+document.getElementById('pane-handle-side').addEventListener('change', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane'&&node.sash) { node.sash.handleSide=e.target.value; S.dirty=true; updateTopbar(); }
+});
+
+// Accordion toggles
+document.querySelectorAll('.accordion-header').forEach(h=>{
+  h.addEventListener('click', ()=>{
+    const body=document.getElementById(h.dataset.target);
+    const arrow=h.querySelector('.acc-arrow');
+    const open=body.style.display!=='none'&&!body.classList.contains('hidden');
+    body.style.display=open?'none':'block';
+    if (arrow) arrow.style.transform=open?'rotate(-90deg)':'';
+  });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e=>{
+  const tag=document.activeElement.tagName;
+  if (tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
+  if (e.key==='Delete'||e.key==='Backspace') { if(S.sel) deleteNode(S.sel); }
+  else if ((e.key==='h'||e.key==='H')&&!e.ctrlKey) { if(S.sel){const n=findNode(S.c.composition,S.sel);if(n&&n.kind==='pane')splitNode(S.sel,'H');} }
+  else if ((e.key==='v'||e.key==='V')&&!e.ctrlKey) { if(S.sel){const n=findNode(S.c.composition,S.sel);if(n&&n.kind==='pane')splitNode(S.sel,'V');} }
+  else if (e.key==='Escape') { S.sel=null; render(); }
+  else if (e.ctrlKey&&e.key==='z') { e.preventDefault(); undo(); }
+  else if (e.ctrlKey&&e.key==='e') { e.preventDefault(); exportJSON(); }
+  else if (e.ctrlKey&&e.key==='n') { e.preventDefault(); newComposition(); }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('btn-undo').disabled = true;
+render();
+</script>
+</body>
+</html>
