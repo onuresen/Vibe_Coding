@@ -19,12 +19,6 @@
     }
   </style>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
     body {
       height: 100vh;
       display: flex;
@@ -870,42 +864,6 @@
     }
 
     /* ── MODAL ───────────────────────────────────────────────── */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(4px);
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.18s;
-    }
-
-    .modal-overlay.open {
-      opacity: 1;
-      pointer-events: all;
-    }
-
-    .modal {
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: 14px;
-      width: 100%;
-      max-width: 500px;
-      padding: 26px;
-      transform: translateY(16px) scale(0.98);
-      transition: transform 0.18s ease;
-      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
-    }
-
-    .modal-overlay.open .modal {
-      transform: translateY(0) scale(1);
-    }
-
     .modal-title {
       font-size: 17px;
       font-weight: 700;
@@ -1153,25 +1111,6 @@
       color: var(--text3);
       text-align: right;
       line-height: 1.5;
-    }
-
-    /* ── SCROLLBAR ───────────────────────────────────────────── */
-    ::-webkit-scrollbar {
-      width: 3px;
-      height: 3px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: var(--border2);
-      border-radius: 2px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #444458;
     }
 
     /* ── KANBAN ──────────────────────────────────────────────── */
@@ -1518,8 +1457,8 @@
   </div>
 
   <!-- MODALS -->
-  <div class="modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
-    <div class="modal" onclick="event.stopPropagation()">
+  <div class="ui-modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+    <div class="ui-modal" onclick="event.stopPropagation()">
       <div class="modal-title">New Project</div>
       <div class="modal-sub">Set up a new project workspace</div>
       <div class="form-group">
@@ -1563,8 +1502,8 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="modal-task" onclick="closeModal('modal-task')">
-    <div class="modal" onclick="event.stopPropagation()">
+  <div class="ui-modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+    <div class="ui-modal" onclick="event.stopPropagation()">
       <div class="modal-title">New Task</div>
       <div class="modal-sub">Add a task to the project</div>
       <div class="form-group">
@@ -1618,8 +1557,8 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="modal-milestone" onclick="closeModal('modal-milestone')">
-    <div class="modal" onclick="event.stopPropagation()">
+  <div class="ui-modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+    <div class="ui-modal" onclick="event.stopPropagation()">
       <div class="modal-title">New Milestone</div>
       <div class="modal-sub">Define a key milestone for this project</div>
       <div class="form-group">
@@ -1649,8 +1588,8 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="modal-goal" onclick="closeModal('modal-goal')">
-    <div class="modal" onclick="event.stopPropagation()">
+  <div class="ui-modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+    <div class="ui-modal" onclick="event.stopPropagation()">
       <div class="modal-title">New Goal</div>
       <div class="modal-sub">Define a high-level goal for this project</div>
       <div class="form-group">
@@ -1668,8 +1607,8 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="modal-member" onclick="closeModal('modal-member')">
-    <div class="modal" onclick="event.stopPropagation()">
+  <div class="ui-modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+    <div class="ui-modal" onclick="event.stopPropagation()">
       <div class="modal-title">Add Team Member</div>
       <div class="modal-sub">Add someone to the workspace</div>
       <div class="form-row">
@@ -2056,8 +1995,7 @@
       container.appendChild(statsDiv);
 
       const hdr = document.createElement('div');
-      hdr.innerHTML = `<div class="section-header"><div class="section-title">Projects</div><div class="section-line"></div><div class="section-action" onclick="showAddProject()">+ New</div></div>`;
-      container.appendChild(hdr);
+      hdr.innerHTML = `<div class="ui-section-header"><div class="ui-section-title">Projects</div><div class="ui-section-line"></div><div class="ui-section-action" onclick="showAddProject()">+ New</div></div>`; container.appendChild(hdr);
 
       const grid = document.createElement('div');
       grid.className = 'project-grid animate-in';
@@ -2375,7 +2313,7 @@
       const wrap = document.createElement('div'); wrap.className = 'animate-in';
       state.projects.forEach(proj => {
         if (!proj.milestones.length) return;
-        wrap.innerHTML += `<div class="section-header" style="margin-bottom:10px"><div class="section-title" style="color:${proj.color}">${proj.name}</div><div class="section-line"></div></div>`;
+        wrap.innerHTML += `<div class="ui-section-header" style="margin-bottom:10px"><div class="ui-section-title" style="color:${proj.color}">${proj.name}</div><div class="ui-section-line"></div></div>`;
         proj.milestones.forEach(ms => {
           const msTasks = proj.tasks.filter(t => t.milestoneId === ms.id);
           const doneCount = msTasks.filter(t => t.done).length;
@@ -2397,7 +2335,7 @@
       const wrap = document.createElement('div'); wrap.className = 'animate-in';
       state.projects.forEach(proj => {
         if (!proj.goals.length) return;
-        wrap.innerHTML += `<div class="section-header" style="margin-bottom:10px"><div class="section-title" style="color:${proj.color}">${proj.name}</div><div class="section-line"></div></div>`;
+        wrap.innerHTML += `<div class="ui-section-header" style="margin-bottom:10px"><div class="ui-section-title" style="color:${proj.color}">${proj.name}</div><div class="ui-section-line"></div></div>`;
         proj.goals.forEach(g => {
           wrap.innerHTML += `<div class="goal-item"><div class="goal-header"><div class="goal-name">${g.name}</div><span style="font-size:11px;font-family:var(--font-mono);color:var(--accent)">${g.progress}%</span></div><div class="goal-desc">${g.desc}</div><div class="goal-bar"><div class="goal-fill" style="width:${g.progress}%"></div></div></div>`;
         });
@@ -2664,8 +2602,8 @@
     }
 
     // ─── MODALS ───────────────────────────────────────────────────────────────────
-    function openModal(id) { document.getElementById(id).classList.add('open'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    function openModal(id) { document.getElementById(id).classList.add('is-open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('is-open'); }
 
     function showAddProject() {
       const c = document.getElementById('proj-members');
