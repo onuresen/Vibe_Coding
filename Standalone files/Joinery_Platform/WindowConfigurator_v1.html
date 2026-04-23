@@ -250,6 +250,39 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
   border-radius: 3px; padding: 1px 5px; font-size: 10px;
   font-family: monospace; color: var(--text-muted);
 }
+
+/* ── TOOLTIP ───────────────────────────────────────────── */
+#dim-tooltip {
+  position: fixed; display: none; pointer-events: none; z-index: 200;
+  background: #1E2128; border: 1px solid #4A9EFF;
+  border-radius: 5px; padding: 5px 10px;
+  font-size: 11px; font-family: system-ui, sans-serif;
+  color: #E2E5EA; white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  letter-spacing: 0.02em;
+}
+#dim-tooltip .tt-row { display: flex; align-items: center; gap: 8px; }
+#dim-tooltip .tt-val { color: #4A9EFF; font-weight: 600; }
+#dim-tooltip .tt-sep { color: #3E4250; }
+
+/* ── PAN CURSOR ────────────────────────────────────────── */
+#canvas.can-pan { cursor: grab; }
+#canvas.panning { cursor: grabbing !important; }
+#canvas.can-pan #main-svg { cursor: grab; }
+#canvas.panning #main-svg { cursor: grabbing; }
+
+/* ── ZOOM INDICATOR ────────────────────────────────────── */
+#zoom-indicator {
+  position: absolute; bottom: 10px; right: 10px;
+  background: rgba(30,33,40,0.85); border: 1px solid #32363F;
+  border-radius: 4px; padding: 3px 8px;
+  font-size: 10px; color: #7A8190;
+  pointer-events: none; font-family: monospace;
+  backdrop-filter: blur(4px);
+}
+
+/* ── ACTIVE TOGGLE BUTTON ──────────────────────────────── */
+.btn-icon.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
@@ -380,11 +413,15 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
           <option value="tilt-turn">Tilt & Turn</option>
           <option value="louvre">Louvre</option>
         </select>
+        <div class="ctx-separator"></div>
+        <button class="btn btn-icon" id="btn-dims-toggle" title="Toggle Dimension Lines (D)">⊥ Dims</button>
+        <button class="btn btn-icon" id="btn-fit" title="Fit to Canvas (F)">⊡ Fit</button>
         <div style="flex:1"></div>
         <span id="selection-hint" style="font-size:11px;color:var(--text-dim)">Click a panel to select</span>
       </div>
       <div id="canvas">
         <svg id="main-svg" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="zoom-indicator">100%</div>
       </div>
     </div>
 
@@ -516,6 +553,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
     </div><!-- /inspector -->
   </div><!-- /workspace -->
 </div><!-- /app -->
+<div id="dim-tooltip"></div>
 
 <script>
 'use strict';
@@ -578,12 +616,49 @@ function mkComposition() {
 }
 
 const S = {
-  c: mkComposition(),   // composition
-  sel: null,            // selected node id
-  drag: null,           // { splitId, divIdx, axis, startRatio, parentRect, startSvgPos }
+  c: mkComposition(),
+  sel: null,
+  drag: null,
+  pan: null,            // { lastX, lastY } while middle-mouse panning
   undoStack: [],
-  dirty: false
+  dirty: false,
+  showDims: true,       // dimension lines visibility toggle
 };
+
+// Pan/zoom viewport — null means "fit to content" on next render
+let _vbox = null;
+
+function resetViewBox() { _vbox = null; }
+
+function initVbox() {
+  const f = S.c.frame, M = SVG_MARGIN;
+  _vbox = { x: -M, y: -M, w: f.overallWidth + 2*M, h: f.overallHeight + 2*M };
+}
+
+function zoomAt(ptX, ptY, factor) {
+  if (!_vbox) initVbox();
+  const newW = _vbox.w / factor;
+  const newH = _vbox.h / factor;
+  const baseW = S.c.frame.overallWidth + 2*SVG_MARGIN;
+  if (newW < baseW * 0.08 || newW > baseW * 5) return;
+  _vbox = {
+    x: ptX - (ptX - _vbox.x) / factor,
+    y: ptY - (ptY - _vbox.y) / factor,
+    w: newW, h: newH
+  };
+  updateZoomIndicator();
+}
+
+function currentZoomPct() {
+  if (!_vbox) return 100;
+  const baseW = S.c.frame.overallWidth + 2*SVG_MARGIN;
+  return Math.round((baseW / _vbox.w) * 100);
+}
+
+function updateZoomIndicator() {
+  const el2 = document.getElementById('zoom-indicator');
+  if (el2) el2.textContent = currentZoomPct() + '%';
+}
 
 // ============================================================
 // TREE OPERATIONS
@@ -788,7 +863,9 @@ function renderCanvas() {
   const f = S.c.frame;
   const W = f.overallWidth, H = f.overallHeight;
   const M = SVG_MARGIN;
-  svg.setAttribute('viewBox', `${-M} ${-M} ${W+2*M} ${H+2*M}`);
+  if (!_vbox) initVbox();
+  svg.setAttribute('viewBox', `${_vbox.x} ${_vbox.y} ${_vbox.w} ${_vbox.h}`);
+  updateZoomIndicator();
 
   // Defs
   const defs = el('defs', {});
@@ -805,9 +882,11 @@ function renderCanvas() {
   svg.append(el('rect',{x:-M,y:-M,width:W+2*M,height:H+2*M,fill:'url(#gg)'}));
 
   // ── DIMENSION LINES ──────────────────────────────────────
-  const dimG = el('g',{opacity:1});
-  renderDimLines(dimG, f);
-  svg.append(dimG);
+  if (S.showDims) {
+    const dimG = el('g',{opacity:1});
+    renderDimLines(dimG, f);
+    svg.append(dimG);
+  }
 
   // ── FRAME SHADOW (depth effect) ──────────────────────────
   svg.append(el('rect',{x:4,y:4,width:W,height:H,fill:'rgba(0,0,0,0.4)',rx:2}));
@@ -939,9 +1018,10 @@ function renderSplit(g, node, x, y, w, h) {
       cursor: node.axis==='V' ? 'ew-resize' : 'ns-resize',
       rx:1
     });
-    handle.addEventListener('mouseenter', ()=>{ handle.setAttribute('fill','rgba(74,158,255,0.18)'); });
-    handle.addEventListener('mouseleave', ()=>{ if (!S.drag) handle.setAttribute('fill','rgba(74,158,255,0.0)'); });
-    handle.addEventListener('mousedown', (e)=>{ e.preventDefault(); e.stopPropagation(); startDrag(e, node.id, i, node.axis, x, y, w, h); });
+    handle.addEventListener('mouseenter', (e)=>{ handle.setAttribute('fill','rgba(74,158,255,0.18)'); showDividerTooltip(e, node, i, w, h); });
+    handle.addEventListener('mousemove', (e)=>{ moveDividerTooltip(e); });
+    handle.addEventListener('mouseleave', ()=>{ if (!S.drag) handle.setAttribute('fill','rgba(74,158,255,0.0)'); hideDividerTooltip(); });
+    handle.addEventListener('mousedown', (e)=>{ e.preventDefault(); e.stopPropagation(); hideDividerTooltip(); startDrag(e, node.id, i, node.axis, x, y, w, h); });
     g.append(handle);
 
     // Visual divider line
@@ -1033,6 +1113,33 @@ function renderSubDimLine(g, node, x, y, w, h, topY, leftX, dimCol, textCol, tic
       }
     }
   }
+}
+
+// ============================================================
+// TOOLTIP
+// ============================================================
+function showDividerTooltip(e, node, divIdx, w, h) {
+  const dim = node.axis === 'V' ? w : h;
+  const ratio = node.dividers[divIdx].ratio;
+  const prevR = divIdx === 0 ? 0 : node.dividers[divIdx-1].ratio;
+  const nextR = divIdx === node.dividers.length-1 ? 1 : node.dividers[divIdx+1].ratio;
+  const sizeA = Math.round((ratio - prevR) * dim);
+  const sizeB = Math.round((nextR - ratio) * dim);
+  const tt = document.getElementById('dim-tooltip');
+  tt.innerHTML = node.axis === 'V'
+    ? `<div class="tt-row"><span class="tt-val">${sizeA}</span><span class="tt-sep">mm ⟷ </span><span class="tt-val">${sizeB}</span><span class="tt-sep">mm</span></div>`
+    : `<div class="tt-row"><span class="tt-val">${sizeA}</span><span class="tt-sep">mm ⟵⟶ </span><span class="tt-val">${sizeB}</span><span class="tt-sep">mm</span></div>`;
+  tt.style.display = 'block';
+  tt.style.left = `${e.clientX + 14}px`;
+  tt.style.top  = `${e.clientY - 36}px`;
+}
+function moveDividerTooltip(e) {
+  const tt = document.getElementById('dim-tooltip');
+  tt.style.left = `${e.clientX + 14}px`;
+  tt.style.top  = `${e.clientY - 36}px`;
+}
+function hideDividerTooltip() {
+  document.getElementById('dim-tooltip').style.display = 'none';
 }
 
 // ============================================================
