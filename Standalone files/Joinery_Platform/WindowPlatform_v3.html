@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Design Intent Editor (Window Wizard)</title>
+    <style>
+        :root {
+            --bg-window: #F0F0F0;
+            --bg-panel: #FFFFFF;
+            --border: #D1D1D1;
+            --border-dark: #A0A0A0;
+            --text: #333333;
+            --text-muted: #666666;
+            --accent: #0078D7;
+            --accent-bg: #E5F1FB;
+            
+            --sans: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            --mono: Consolas, "Courier New", monospace;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: var(--bg-window);
+            font-family: var(--sans);
+            color: var(--text);
+            font-size: 12px;
+            overflow: hidden;
+        }
+        
+        * { box-sizing: border-box; }
+
+        .topbar {
+            background: var(--bg-window);
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .brand .sub { display: none; }
+
+        .filebar {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .btn {
+            background: #E1E1E1;
+            border: 1px solid #ADADAD;
+            padding: 4px 12px;
+            border-radius: 2px;
+            color: var(--text);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+
+        .btn:hover { background: #E5F1FB; border-color: #0078D7; }
+        .btn:active { background: #CCE4F7; border-color: #005499; }
+        .btn:disabled { color: #999; border-color: #CCC; background: #F0F0F0; cursor: default; }
+
+        input[type="file"] { display: none; }
+        
+        .chip {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+
+        .wrap {
+            height: calc(100vh - 40px); /* minus topbar */
+            padding: 0 8px 8px 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 220px 1fr 340px;
+            gap: 4px;
+            flex: 1;
+            align-items: stretch;
+            min-height: 0;
+        }
+
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dark);
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+        }
+
+        .panelHeader {
+            background: #F5F6F7;
+            border-bottom: 1px solid var(--border);
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .panelHeader .title {
+            font-weight: 600;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .panelHeader .title::before {
+            content: "▼";
+            font-size: 9px;
+            color: #555;
+        }
+
+        .panelHeader .hint { display: none; }
+        .panelHeader .chip { margin: 0; }
+
+        .panelBody {
+            padding: 8px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Left side lists */
+        .search {
+            width: 100%;
+            border: 1px solid var(--border);
+            padding: 4px 6px;
+            border-radius: 2px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .search:focus { border-color: var(--accent); }
+
+        .list {
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card {
+            padding: 4px 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 0;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card:hover { background: var(--bg-window); }
+        .card.active { background: var(--accent-bg); border-color: #99C9EF; }
+
+        .icon-placeholder {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #E0E0E0;
+            background: #FAFAFA;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-placeholder svg {
+            width: 18px; 
+            height: 18px;
+            stroke: #333;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .card .kicker { display: none; }
+        .card .name { font-size: 12px; flex: 1; }
+        .card .desc { display: none; }
+
+        /* Preview Center */
+        .preview {
+            background: #FFFFFF;
+            min-height: 400px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview svg { width: 100%; height: 100%; }
+
+        .previewNote {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Below preview tools */
+        .center-tools {
+            display: flex;
+            gap: 40px;
+            padding: 20px 40px;
+            border-top: 1px solid var(--border);
+            background: #F9F9F9;
+            min-height: 150px;
+        }
+
+        .center-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .prop-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .prop-row .p-label { color: var(--text); font-size: 12px; }
+        .prop-row .p-val { 
+            display: flex; align-items: center; gap: 8px;
+        }
+        .prop-row .p-val span {
+            color: var(--text);
+            font-family: inherit;
+            padding: 2px 0;
+            min-width: 40px;
+        }
+        .prop-row .p-val input[type="checkbox"] {
+            margin: 0;
+        }
+
+        /* Right Inspector */
+        .kv {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #EEEEEE;
+        }
+        .kv:last-child { border-bottom: none; }
+
+        .kv .k { font-size: 12px; color: var(--text-muted); }
+        .kv .v { font-size: 12px; font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; text-align: right; }
+
+        .selBlock {
+            margin-top: 12px;
+        }
+
+        .sel-inline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .sel-inline .label {
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        select {
+            flex: 1;
+            padding: 3px;
+            border: 1px solid var(--border-dark);
+            border-radius: 2px;
+            background: #FFF;
+            font-family: inherit;
+            font-size: 12px;
+            outline: none;
+            width: 100%;
+        }
+
+        select:focus { border-color: var(--accent); }
+
+        .footerRow { margin-top: 6px; display: flex; gap: 6px; justify-content: flex-end; }
+        
+        .section-diagram {
+            height: 120px;
+            width: 100%;
+            background: #FFFFFF;
+            margin-bottom: 16px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .app-footer {
+            display: flex;
+            justify-content: flex-end;
+            padding: 8px 0 0 0;
+            gap: 8px;
+        }
+
+        .app-footer .btn { min-width: 75px; height: 26px; }
+
+        .error {
+            display: none;
+            color: #D8000C;
+            background-color: #FFBABA;
+            padding: 8px;
+            margin-top: 8px;
+            border-radius: 2px;
+            border: 1px solid #D8000C;
+        }
+
+        .accordion {
+            margin-top: 10px;
+        }
+        .accordion-header {
+            background: #F0F0F0;
+            padding: 4px 8px;
+            font-weight: 600;
+            font-size: 12px;
+            border: 1px solid var(--border);
+            border-bottom: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .accordion-header::before {
+            content: "▼";
+            font-size: 9px;
+            color: #555;
+        }
+        .accordion-body {
+            padding: 10px;
+            border: 1px solid var(--border);
+            background: #FAFAFA;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="topbar">
+        <div class="brand">
+            <h1>id:window</h1>
+        </div>
+
+        <div class="filebar">
+            <span id="statusChip" class="chip"></span>
+            <label class="btn">
+                Load Catalog
+                <input id="catalogFile" type="file" accept=".json,application/json" />
+            </label>
+            <label class="btn">
+                Load JSON
+                <input id="windowFile" type="file" accept=".json,application/json" />
+            </label>
+            <button id="exportBtn" class="btn" disabled>Export</button>
+        </div>
+    </div>
+
+    <div class="wrap">
+        <div class="grid">
+
+            <!-- LEFT -->
+            <div class="panel">
+                <div class="panelHeader">
+                    <div class="title">Templates</div>
+                </div>
+                <div class="panelBody" style="padding: 0;">
+                    <div style="padding: 8px; border-bottom: 1px solid #CCC;">
+                        <input id="searchBox" class="search" placeholder="Search templates…" />
+                    </div>
+                    <div id="templateList" class="list" style="margin-top:0;"></div>
+                    <div id="leftError" class="error" style="margin: 8px;"></div>
+                </div>
+            </div>
+
+            <!-- CENTER -->
+            <div class="panel">
+                <div class="panelHeader">
+                    <div class="title">Dimensions</div>
+                    <div class="chip" id="categoryChip">Interior View</div>
+                </div>
+                <div class="panelBody" style="padding: 0; display: flex; flex-direction: column;">
+                    <div class="preview" id="preview">
+                        <!-- SVG inserted here -->
+                        <div class="previewNote">
+                            <span id="previewLeft"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="center-tools">
+                         <div class="center-group">
+                             <div class="prop-row">
+                                 <div class="p-label" style="font-weight: 600;">Opening Type</div>
+                             </div>
+                             <div class="prop-row">
+                                 <div class="p-val" style="gap: 16px;">
+                                     <!-- fake icons -->
+                                     <svg width="60" height="20" viewBox="0 0 60 20" stroke="#0078D7" fill="none" stroke-width="1.5">
+                                         <rect x="2" y="2" width="16" height="16" fill="#A8D1EC" />
+                                         <path d="M2,2 L18,18 M18,2 L2,18" stroke="#333" />
+                                         <rect x="22" y="2" width="16" height="16" />
+                                         <path d="M22,10 L38,10" />
+                                         <path d="M42,2 L42,18 M42,10 L58,10" />
+                                     </svg>
+                                     <label style="display:flex; align-items:center; gap:4px; font-size:11px;">
+                                         <input type="checkbox" /> Inverted Opening Line
+                                     </label>
+                                 </div>
+                             </div>
+                             
+                             <div style="margin-top:8px;" id="dynamicLeavesCenter">
+                                 <!-- We will inject Leaf Widths etc. here -->
+                                 <div class="prop-row"><div class="p-label">Leaf 1 Width</div><div class="p-val"><span>665</span> <label style="display:flex; align-items:center; gap:4px;"><input type="checkbox" checked/> Equal Widths</label></div></div>
+                                 <div class="prop-row"><div class="p-label">Leaf 2 Width</div><div class="p-val"><span>665</span> <label style="display:flex; align-items:center; gap:4px;"><input type="checkbox" checked/> Equal Leaves</label></div></div>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT -->
+            <div class="panel">
+                <div class="panelHeader">
+                    <div class="title">Properties</div>
+                </div>
+                <div class="panelBody">
+                    <div style="background:#FAFAFA; border:1px solid #EBEBEB; padding:8px; margin-bottom:8px;">
+                        <div class="kv"><div class="k">Window Name</div><div class="v" id="winName">—</div></div>
+                        <div class="kv"><div class="k">Template Type</div><div class="v" id="winType">—</div></div>
+                        <div class="kv"><div class="k">Active Node</div><div class="v" id="nodePath">—</div></div>
+                    </div>
+                    
+                    <div class="accordion">
+                        <div class="accordion-header">Frame</div>
+                        <div class="accordion-body">
+                           <div class="section-diagram">
+                                <!-- fake section -->
+                                <svg width="200" height="80" viewBox="0 0 200 80">
+                                   <!-- dimension lines -->
+                                   <line x1="80" y1="20" x2="120" y2="20" stroke="#999" stroke-dasharray="2" />
+                                   <text x="100" y="15" font-size="10" text-anchor="middle" fill="#555">50</text>
+                                   <line x1="80" y1="18" x2="80" y2="22" stroke="#999" />
+                                   <line x1="120" y1="18" x2="120" y2="22" stroke="#999" />
+                                   
+                                   <line x1="40" y1="30" x2="40" y2="70" stroke="#999" stroke-dasharray="2" />
+                                   <text x="30" y="55" font-size="10" text-anchor="end" fill="#555">75</text>
+                                   
+                                   <!-- profiles -->
+                                   <rect x="50" y="30" width="30" height="40" fill="#E0E0E0" stroke="#666" />
+                                   <rect x="80" y="30" width="20" height="25" fill="#60BBEC" stroke="#666" />
+                                   <rect x="100" y="45" width="20" height="10" fill="#FFF" stroke="#666" />
+                                </svg>
+                           </div>
+                           
+                           <div class="sel-inline" style="margin-top: 8px;">
+                               <div class="label">Match to Wall Width</div>
+                               <input type="checkbox" />
+                           </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion">
+                        <div class="accordion-header">Leaves / Sash</div>
+                        <div class="accordion-body">
+                            <div id="selectorPanel"></div>
+                        </div>
+                    </div>
+
+                    <div class="accordion">
+                        <div class="accordion-header">Interior Trim</div>
+                        <div class="accordion-body" style="display:none;"></div>
+                    </div>
+
+                    <div id="rightError" class="error"></div>
+                </div>
+            </div>
+
+        </div>
+        <div class="app-footer">
+            <button class="btn">OK</button>
+            <button class="btn">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            'use strict';
+
+            // ---------- State ----------
+            let catalog = null;
+            let win = null;
+
+            // active category and active node in composition
+            let activeCategory = null;
+            let activeNodePath = []; // array of selectorId chain
+            let activeNode = null;
+
+            // ---------- DOM ----------
+            const elCatalogFile = document.getElementById('catalogFile');
+            const elWindowFile = document.getElementById('windowFile');
+            const elExportBtn = document.getElementById('exportBtn');
+            const elStatusChip = document.getElementById('statusChip');
+
+            const elTemplateList = document.getElementById('templateList');
+            const elSearchBox = document.getElementById('searchBox');
+            const elCategoryChip = document.getElementById('categoryChip');
+
+            const elWinName = document.getElementById('winName');
+            const elWinType = document.getElementById('winType');
+            const elNodePath = document.getElementById('nodePath');
+            const elSelectorPanel = document.getElementById('selectorPanel');
+
+            const elPreview = document.getElementById('preview');
+            const elPreviewLeft = document.getElementById('previewLeft');
+
+            const elLeftError = document.getElementById('leftError');
+            const elRightError = document.getElementById('rightError');
+
+            // ---------- Helpers ----------
+            function show(el, msg) {
+                if (!el) return;
+                el.textContent = msg || '';
+                el.style.display = msg ? 'block' : 'none';
+            }
+
+            function readJsonFile(file) {
+                return new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = () => {
+                        try { resolve(JSON.parse(String(r.result || ''))); }
+                        catch (e) { reject(e); }
+                    };
+                    r.onerror = () => reject(new Error('File read error'));
+                    r.readAsText(file, 'utf-8');
+                });
+            }
+
+            function setStatus(text) {
+                elStatusChip.textContent = text;
+            }
+
+            function findCategory(categoryId) {
+                if (!catalog || !catalog.categories) return null;
+                return catalog.categories.find(c => c.categoryId === categoryId) || null;
+            }
+
+            function getActiveNode() {
+                if (!win || !win.composition) return null;
+                let node = win.composition;
+                for (const selId of activeNodePath) {
+                    const sel = (node.selectors || []).find(s => s.selectorId === selId);
+                    if (!sel || !sel.child) break;
+                    node = sel.child;
+                }
+                return node;
+            }
+
+            function nodePathLabel() {
+                if (activeNodePath.length === 0) return 'root';
+                return 'root > ' + activeNodePath.join(' > ');
+            }
+
+            // ---------- UI Rendering ----------
+            function renderTemplates() {
+                elTemplateList.innerHTML = '';
+                if (!activeCategory) return;
+
+                const q = (elSearchBox.value || '').trim().toLowerCase();
+                const templates = activeCategory.rootTemplates || [];
+
+                for (const t of templates) {
+                    const text = (t.label + ' ' + (t.description || '')).toLowerCase();
+                    if (q && !text.includes(q)) continue;
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    // We generate a dynamic fake icon to make it look cool/interactive
+                    const fakeIcon = `<svg><rect x="4" y="4" width="10" height="10" /><line x1="9" y1="4" x2="9" y2="14" /></svg>`;
+                    card.innerHTML = `
+        <div class="icon-placeholder">${fakeIcon}</div>
+        <div class="name">${escapeHtml(t.label)}</div>
+      `;
+                    card.addEventListener('click', () => {
+                        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+                        card.classList.add('active');
+                        activeNodePath = [];
+                        refresh();
+                    });
+                    elTemplateList.appendChild(card);
+                }
+            }
+
+            function renderInspector() {
+                if (!win) {
+                    elWinName.textContent = '—';
+                    elWinType.textContent = '—';
+                    elNodePath.textContent = '—';
+                    elSelectorPanel.innerHTML = '';
+                    return;
+                }
+
+                elWinName.textContent = (win.window?.familyName) || '—';
+                elWinType.textContent = (win.window?.typeName) || '—';
+
+                activeNode = getActiveNode();
+                elNodePath.textContent = nodePathLabel();
+
+                elSelectorPanel.innerHTML = '';
+                if (!activeNode) {
+                    return;
+                }
+
+                const selectors = activeNode.selectors || [];
+                for (const sel of selectors) {
+                    const block = document.createElement('div');
+                    block.className = 'selBlock';
+
+                    const label = getSelectorLabel(sel.selectorId) || sel.selectorId;
+                    const options = getCatalogOptionsForSelector(sel.selectorId);
+
+                    const inlineDiv = document.createElement('div');
+                    inlineDiv.className = 'sel-inline';
+                    
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = 'label';
+                    labelDiv.textContent = label;
+                    inlineDiv.appendChild(labelDiv);
+
+                    const select = document.createElement('select');
+                    for (const opt of options) {
+                        const o = document.createElement('option');
+                        o.value = opt.optionId;
+                        o.textContent = opt.label;
+                        select.appendChild(o);
+                    }
+
+                    // set current
+                    select.value = sel.selectedOptionId || (options[0]?.optionId ?? '');
+
+                    select.addEventListener('change', () => {
+                        sel.selectedOptionId = select.value;
+                        if (!sel.child) {
+                            sel.child = {
+                                nodeId: crypto.randomUUID ? crypto.randomUUID() : ('n_' + Math.random().toString(16).slice(2)),
+                                role: 'Component',
+                                templateHint: guessTemplateHintFromOption(select.value),
+                                selectors: []
+                            };
+                        }
+                        refresh();
+                    });
+
+                    inlineDiv.appendChild(select);
+                    block.appendChild(inlineDiv);
+
+                    // drill-down button (optional)
+                    const row = document.createElement('div');
+                    row.className = 'footerRow';
+                    const btn = document.createElement('button');
+                    btn.className = 'btn';
+                    btn.textContent = 'Edit Child →';
+                    btn.addEventListener('click', () => {
+                        if (!sel.child) {
+                            sel.child = {
+                                nodeId: crypto.randomUUID ? crypto.randomUUID() : ('n_' + Math.random().toString(16).slice(2)),
+                                role: 'Component',
+                                templateHint: guessTemplateHintFromOption(sel.selectedOptionId),
+                                selectors: []
+                            };
+                        }
+                        activeNodePath = [...activeNodePath, sel.selectorId];
+                        refresh();
+                    });
+                    row.appendChild(btn);
+
+                    const back = document.createElement('button');
+                    back.className = 'btn';
+                    back.textContent = 'Back';
+                    back.disabled = (activeNodePath.length === 0);
+                    back.addEventListener('click', () => {
+                        activeNodePath = activeNodePath.slice(0, -1);
+                        refresh();
+                    });
+                    row.appendChild(back);
+
+                    block.appendChild(row);
+                    elSelectorPanel.appendChild(block);
+                }
+            }
+
+            function renderPreview() {
+                // Simple symbolic rectangles: if templateHint has previewLayout use it; otherwise blank
+                elPreviewLeft.textContent = nodePathLabel();
+
+                const hint = activeNode?.templateHint;
+                const layout = getPreviewLayoutForTemplate(hint);
+
+                // Clear existing svg
+                const old = elPreview.querySelector('svg');
+                if (old) old.remove();
+
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', '0 0 1000 750');
+
+                if (!layout) {
+                    const t = document.createElementNS(svg.namespaceURI, 'text');
+                    t.setAttribute('x', '500');
+                    t.setAttribute('y', '380');
+                    t.setAttribute('text-anchor', 'middle');
+                    t.setAttribute('fill', '#999');
+                    t.setAttribute('font-size', '16');
+                    t.textContent = 'No preview layout (yet)';
+                    svg.appendChild(t);
+                    elPreview.appendChild(svg);
+                    return;
+                }
+
+                // Window dimensions
+                const wx = 350;
+                const wy = 200;
+                const ww = 300;
+                const wh = 350;
+
+                // architectural ground line
+                const gl = document.createElementNS(svg.namespaceURI, 'line');
+                gl.setAttribute('x1', '100'); gl.setAttribute('y1', String(wy + wh));
+                gl.setAttribute('x2', '900'); gl.setAttribute('y2', String(wy + wh));
+                gl.setAttribute('stroke', '#000');
+                gl.setAttribute('stroke-width', '2');
+                svg.appendChild(gl);
+
+                // dashed elevation line
+                const elLine = document.createElementNS(svg.namespaceURI, 'line');
+                elLine.setAttribute('x1', '150'); elLine.setAttribute('y1', String(wy + wh/2));
+                elLine.setAttribute('x2', '850'); elLine.setAttribute('y2', String(wy + wh/2));
+                elLine.setAttribute('stroke', '#C8B0D3');
+                elLine.setAttribute('stroke-dasharray', '8 4');
+                svg.appendChild(elLine);
+
+                // Fake Dimension lines
+                const drawDim = (x1, y1, x2, y2, text, tx, ty) => {
+                    const dl = document.createElementNS(svg.namespaceURI, 'line');
+                    dl.setAttribute('x1', String(x1)); dl.setAttribute('y1', String(y1));
+                    dl.setAttribute('x2', String(x2)); dl.setAttribute('y2', String(y2));
+                    dl.setAttribute('stroke', '#666');
+                    svg.appendChild(dl);
+                    // ticks
+                    const tickH = 6;
+                    const tl1 = document.createElementNS(svg.namespaceURI, 'line');
+                    tl1.setAttribute('x1', String(x1)); tl1.setAttribute('y1', String(y1-tickH));
+                    tl1.setAttribute('x2', String(x1)); tl1.setAttribute('y2', String(y1+tickH));
+                    tl1.setAttribute('stroke', '#999');
+                    svg.appendChild(tl1);
+                    const tl2 = document.createElementNS(svg.namespaceURI, 'line');
+                    tl2.setAttribute('x1', String(x2)); tl2.setAttribute('y1', String(y2-tickH));
+                    tl2.setAttribute('x2', String(x2)); tl2.setAttribute('y2', String(y2+tickH));
+                    tl2.setAttribute('stroke', '#999');
+                    svg.appendChild(tl2);
+                    
+                    const dt = document.createElementNS(svg.namespaceURI, 'text');
+                    dt.setAttribute('x', String(tx)); dt.setAttribute('y', String(ty));
+                    dt.setAttribute('fill', '#333');
+                    dt.setAttribute('font-size', '14');
+                    dt.setAttribute('text-anchor', 'middle');
+                    dt.textContent = text;
+                    svg.appendChild(dt);
+                };
+
+                // Top dim
+                drawDim(wx, wy-40, wx+ww, wy-40, '48"', wx+ww/2, wy-46);
+                // Left dim
+                drawDim(wx-30, wy, wx-30, wy+wh, '48"', wx-40, wy+wh/2 + 5);
+                // Bottom elevation dim
+                drawDim(wx-30, wy+wh/2, wx-30, wy+wh, '24"', wx-40, wy+wh*0.75 + 5);
+
+                // draw rectangles
+                drawLayout(svg, layout, wx, wy, ww, wh, 0);
+
+                // Outer thick border for the frame
+                const frame = document.createElementNS(svg.namespaceURI, 'rect');
+                frame.setAttribute('x', wx-4); frame.setAttribute('y', wy-4);
+                frame.setAttribute('width', ww+8); frame.setAttribute('height', wh+8);
+                frame.setAttribute('fill', 'none');
+                frame.setAttribute('stroke', '#4D4D4D');
+                frame.setAttribute('stroke-width', '4');
+                svg.appendChild(frame);
+
+                elPreview.appendChild(svg);
+            }
+
+            function drawLayout(svg, node, x, y, w, h, depth) {
+                if (!node) return;
+                if (node.kind === 'leaf' || node.slotId) {
+                    rect(svg, x, y, w, h, depth, node.slotId || '');
+                    return;
+                }
+                if (node.kind !== 'split') return;
+
+                const axis = node.axis || 'V';
+                const parts = node.parts || [];
+                const total = parts.reduce((s, p) => s + (p.weight || 1), 0) || 1;
+
+                let offset = 0;
+                for (const p of parts) {
+                    const frac = (p.weight || 1) / total;
+
+                    if (axis === 'V') {
+                        const cw = w * frac;
+                        drawLayout(svg, p.child || p, x + offset, y, cw, h, depth + 1);
+                        offset += cw;
+                    } else {
+                        const ch = h * frac;
+                        drawLayout(svg, p.child || p, x, y + offset, w, ch, depth + 1);
+                        offset += ch;
+                    }
+                }
+            }
+
+            function rect(svg, x, y, w, h, depth, label) {
+                const g = document.createElementNS(svg.namespaceURI, 'g');
+                g.style.cursor = 'pointer';
+                
+                // Add hover effect
+                g.addEventListener('mouseenter', () => { g.setAttribute('opacity', '0.8'); });
+                g.addEventListener('mouseleave', () => { g.setAttribute('opacity', '1.0'); });
+
+                g.addEventListener('click', () => {
+                    if (label && activeNode && activeNode.selectors) {
+                        const sel = activeNode.selectors.find(s => s.selectorId === label);
+                        if (sel) {
+                            if (!sel.child) {
+                                sel.child = {
+                                    nodeId: crypto.randomUUID ? crypto.randomUUID() : ('n_' + Math.random().toString(16).slice(2)),
+                                    role: 'Component',
+                                    templateHint: guessTemplateHintFromOption(sel.selectedOptionId),
+                                    selectors: []
+                                };
+                            }
+                            activeNodePath = [...activeNodePath, label];
+                            refresh();
+                        } else {
+                            console.warn('Selector not found in current node:', label);
+                        }
+                    }
+                });
+
+                const r = document.createElementNS(svg.namespaceURI, 'rect');
+                r.setAttribute('x', x);
+                r.setAttribute('y', y);
+                r.setAttribute('width', w);
+                r.setAttribute('height', h);
+                // sharp corners, light blue fill for glass, white/gray stroke
+                r.setAttribute('fill', '#A8D1EC');
+                r.setAttribute('stroke', '#FFFFFF');
+                r.setAttribute('stroke-width', '6'); // thick inner frame
+                g.appendChild(r);
+
+                // The glazing line border
+                const gz = document.createElementNS(svg.namespaceURI, 'rect');
+                gz.setAttribute('x', x+3);
+                gz.setAttribute('y', y+3);
+                gz.setAttribute('width', w-6);
+                gz.setAttribute('height', h-6);
+                gz.setAttribute('fill', 'none');
+                gz.setAttribute('stroke', '#2288CC');
+                gz.setAttribute('stroke-width', '1.5');
+                g.appendChild(gz);
+
+                // symbolic X for opening if it's a sash
+                if (depth > 0) {
+                    const l1 = document.createElementNS(svg.namespaceURI, 'line');
+                    l1.setAttribute('x1', x+3); l1.setAttribute('y1', y+3);
+                    l1.setAttribute('x2', x+w-3); l1.setAttribute('y2', y+h-3);
+                    l1.setAttribute('stroke', '#60BBEC');
+                    l1.setAttribute('stroke-width', '1.5');
+                    g.appendChild(l1);
+
+                    const l2 = document.createElementNS(svg.namespaceURI, 'line');
+                    l2.setAttribute('x1', x+w-3); l2.setAttribute('y1', y+3);
+                    l2.setAttribute('x2', x+3); l2.setAttribute('y2', y+h-3);
+                    l2.setAttribute('stroke', '#60BBEC');
+                    l2.setAttribute('stroke-width', '1.5');
+                    g.appendChild(l2);
+                }
+
+                svg.appendChild(g);
+            }
+
+            function escapeHtml(s) {
+                return String(s ?? '').replace(/[&<>"']/g, m => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                }[m]));
+            }
+
+            // ---------- Catalog helpers ----------
+            function getSelectorLabel(selectorId) {
+                // find label in rootTemplates or componentTemplates selectors
+                const cat = activeCategory;
+                if (!cat) return null;
+
+                const scan = (t) => (t.selectors || []).find(s => s.selectorId === selectorId)?.label || null;
+
+                for (const rt of (cat.rootTemplates || [])) {
+                    const hit = scan(rt);
+                    if (hit) return hit;
+                }
+                for (const ct of (cat.componentTemplates || [])) {
+                    const hit = scan(ct);
+                    if (hit) return hit;
+                }
+                return null;
+            }
+
+            function getCatalogOptionsForSelector(selectorId) {
+                const cat = activeCategory;
+                if (!cat) return [];
+                const allTemplates = [...(cat.rootTemplates || []), ...(cat.componentTemplates || [])];
+                for (const t of allTemplates) {
+                    const s = (t.selectors || []).find(x => x.selectorId === selectorId);
+                    if (s && s.options) return s.options;
+                }
+                return [];
+            }
+
+            function guessTemplateHintFromOption(optionId) {
+                // MVP heuristic: if optionId contains "2dan", use panel_2dan
+                if (!optionId) return null;
+                if (String(optionId).includes('2dan')) return 'panel_2dan';
+                return null;
+            }
+
+            function getPreviewLayoutForTemplate(templateId) {
+                if (!templateId || !activeCategory) return null;
+                const t = (activeCategory.componentTemplates || []).find(x => x.templateId === templateId);
+                return t?.previewLayout || null;
+            }
+
+            // ---------- Actions ----------
+            function refresh() {
+                show(elLeftError, '');
+                show(elRightError, '');
+
+                if (!catalog || !win) {
+                    renderTemplates();
+                    renderInspector();
+                    renderPreview();
+                    elExportBtn.disabled = true;
+                    return;
+                }
+
+                activeCategory = findCategory(win.categoryId);
+                elCategoryChip.textContent = 'category: ' + (win.categoryId || '—');
+                setStatus(`Loaded: catalog + window (${win.categoryId})`);
+                elExportBtn.disabled = false;
+
+                renderTemplates();
+                renderInspector();
+                renderPreview();
+            }
+
+            function exportWindow() {
+                const text = JSON.stringify(win, null, 2);
+                const blob = new Blob([text], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = (win.window?.familyName || 'window') + '.intent.json';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
+
+            // ---------- Wire events ----------
+            elCatalogFile.addEventListener('change', async (ev) => {
+                const f = ev.target.files?.[0];
+                if (!f) return;
+                try {
+                    catalog = await readJsonFile(f);
+                    setStatus('Catalog loaded. Now load Window JSON.');
+                    refresh();
+                } catch (e) {
+                    show(elLeftError, 'Catalog JSON load error:\n' + (e?.message || String(e)));
+                }
+            });
+
+            elWindowFile.addEventListener('change', async (ev) => {
+                const f = ev.target.files?.[0];
+                if (!f) return;
+                try {
+                    win = await readJsonFile(f);
+                    activeNodePath = [];
+                    setStatus('Window loaded. Matching category…');
+                    refresh();
+                } catch (e) {
+                    show(elRightError, 'Window JSON load error:\n' + (e?.message || String(e)));
+                }
+            });
+
+            elExportBtn.addEventListener('click', exportWindow);
+            elSearchBox.addEventListener('input', renderTemplates);
+
+            // initial accordion wiring
+            document.querySelectorAll('.accordion-header').forEach(header => {
+                header.style.cursor = 'pointer';
+                header.addEventListener('click', () => {
+                    const body = header.nextElementSibling;
+                    if (body.style.display === 'none') {
+                        body.style.display = 'block';
+                        header.style.background = '#F0F0F0';
+                        header.textContent = header.textContent.replace('▶', '▼');
+                    } else {
+                        body.style.display = 'none';
+                        header.style.background = '#E5E5E5';
+                        header.textContent = header.textContent.replace('▼', '▶');
+                    }
+                });
+            });
+
+            refresh();
+        })();
+    </script>
+
+</body>
+
+</html>
