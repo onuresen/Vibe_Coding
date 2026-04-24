@@ -283,6 +283,68 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
 
 /* ── ACTIVE TOGGLE BUTTON ──────────────────────────────── */
 .btn-icon.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* ── OPENING TYPE TOGGLE ───────────────────────────────── */
+#opening-type-toggle { display:flex; gap:4px; padding:4px 0 6px; }
+.opening-btn {
+  flex:1; padding:5px 0; border-radius:4px; border:1px solid var(--border);
+  background:var(--bg-surface); color:var(--text-muted);
+  font-size:11px; font-weight:600; cursor:pointer; text-align:center;
+  transition:all 0.12s;
+}
+.opening-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+.door-type-palette { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:0 0 4px; }
+
+/* ── TEMPLATES MODAL ───────────────────────────────────── */
+#templates-modal {
+  position:fixed; inset:0; z-index:500;
+  background:rgba(0,0,0,0.72); display:none;
+  align-items:center; justify-content:center;
+}
+#templates-modal.open { display:flex; }
+#templates-box {
+  background:var(--bg-panel); border:1px solid var(--border);
+  border-radius:8px; width:680px; max-height:82vh;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+#templates-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; border-bottom:1px solid var(--border);
+}
+#templates-header h2 { font-size:13px; font-weight:600; }
+#templates-tabs { display:flex; gap:4px; padding:10px 16px 0; }
+.tpl-tab {
+  padding:4px 14px; border-radius:4px; border:1px solid var(--border);
+  background:var(--bg-surface); color:var(--text-muted);
+  font-size:11px; font-weight:600; cursor:pointer; transition:all 0.12s;
+}
+.tpl-tab.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+#templates-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+  padding:14px 16px 16px; overflow-y:auto;
+}
+.template-card {
+  border:1px solid var(--border); border-radius:6px;
+  background:var(--bg-surface); cursor:pointer;
+  transition:border-color 0.12s, background 0.12s;
+  display:flex; flex-direction:column; align-items:center;
+  padding:10px 8px 8px; gap:5px;
+}
+.template-card:hover { border-color:var(--accent); background:var(--accent-glow); }
+.template-card svg { display:block; }
+.template-card-name { font-size:11px; font-weight:600; color:var(--text-primary); text-align:center; }
+.template-card-desc { font-size:9px; color:var(--text-muted); text-align:center; line-height:1.4; }
+
+/* ── DIM INPUT ─────────────────────────────────────────── */
+.dim-input {
+  background:transparent; border:none;
+  border-bottom:1px solid transparent;
+  color:var(--text-primary); font-size:11px;
+  text-align:right; padding:1px 2px; width:52px;
+}
+.dim-input:not([readonly]) { border-bottom-color:var(--border); cursor:text; }
+.dim-input:not([readonly]):focus { outline:none; border-bottom-color:var(--accent); background:var(--accent-glow); }
+.dim-input[readonly] { cursor:default; }
 </style>
 </head>
 <body>
@@ -306,6 +368,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
     </div>
     <div id="topbar-actions">
       <button class="btn" id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
+      <button class="btn" id="btn-templates" title="Quick-Start Templates">Templates</button>
       <button class="btn" id="btn-new" title="New (Ctrl+N)">New</button>
       <button class="btn" id="btn-import" title="Import JSON">Import</button>
       <button class="btn btn-primary" id="btn-export" title="Export JSON (Ctrl+E)">Export</button>
@@ -318,7 +381,13 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
     <!-- ── SIDEBAR ──────────────────────────────────────── -->
     <div id="sidebar">
       <div class="sidebar-section">
-        <div class="sidebar-section-title">Panel Types</div>
+        <div class="sidebar-section-title">Opening Type</div>
+        <div id="opening-type-toggle">
+          <button class="opening-btn active" data-otype="window">Window</button>
+          <button class="opening-btn" data-otype="door">Door</button>
+        </div>
+        <div class="sidebar-section-title" style="margin-top:4px">Panel Types</div>
+        <div id="palette-window">
         <div id="type-palette">
           <!-- Fixed -->
           <button class="type-btn" data-type="fixed" title="Fixed Glass">
@@ -381,6 +450,32 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
             <span class="type-btn-label">Louvre</span>
           </button>
         </div>
+        </div><!-- /palette-window -->
+        <!-- Door palette -->
+        <div id="palette-door" style="display:none">
+          <div class="door-type-palette">
+            <button class="type-btn" data-type="door-single" title="Single Door">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="2" y2="24" stroke="#4A9EFF" stroke-width="1.5"/><path d="M 2 24 A 20 20 0 0 1 22 4" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">Single</span>
+            </button>
+            <button class="type-btn" data-type="door-double" title="Double Door">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1" stroke-dasharray="3,2"/><path d="M 2 24 A 14 14 0 0 1 16 10" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 34 24 A 14 14 0 0 0 20 10" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">Double</span>
+            </button>
+            <button class="type-btn" data-type="door-sliding" title="Sliding Door">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">Sliding</span>
+            </button>
+            <button class="type-btn" data-type="door-bifold" title="Bifold Door">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="11" y1="2" x2="18" y2="14" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="14" x2="25" y2="2" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">Bifold</span>
+            </button>
+            <button class="type-btn" data-type="door-french" title="French Doors">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1" stroke-dasharray="3,2"/><path d="M 2 24 A 12 12 0 0 1 14 12" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 34 24 A 12 12 0 0 0 22 12" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">French</span>
+            </button>
+          </div>
+        </div><!-- /palette-door -->
       </div>
 
       <div id="outline-section" class="sidebar-section" style="border-bottom:none; flex:1; overflow:hidden; display:flex; flex-direction:column;">
@@ -399,19 +494,28 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
         <div class="ctx-separator"></div>
         <span class="ctx-label">Type:</span>
         <select id="ctx-type-select" disabled>
-          <option value="fixed">Fixed</option>
-          <option value="casement-left">Casement Left</option>
-          <option value="casement-right">Casement Right</option>
-          <option value="casement-top">Top Hung</option>
-          <option value="casement-bottom">Bottom Hung</option>
-          <option value="awning">Awning</option>
-          <option value="hopper">Hopper</option>
-          <option value="sliding-2t">Sliding 2-Track</option>
-          <option value="sliding-3t">Sliding 3-Track</option>
-          <option value="pivot-v">Pivot Vertical</option>
-          <option value="pivot-h">Pivot Horizontal</option>
-          <option value="tilt-turn">Tilt & Turn</option>
-          <option value="louvre">Louvre</option>
+          <optgroup label="Windows" id="ctx-window-optgroup">
+            <option value="fixed">Fixed</option>
+            <option value="casement-left">Casement Left</option>
+            <option value="casement-right">Casement Right</option>
+            <option value="casement-top">Top Hung</option>
+            <option value="casement-bottom">Bottom Hung</option>
+            <option value="awning">Awning</option>
+            <option value="hopper">Hopper</option>
+            <option value="sliding-2t">Sliding 2-Track</option>
+            <option value="sliding-3t">Sliding 3-Track</option>
+            <option value="pivot-v">Pivot Vertical</option>
+            <option value="pivot-h">Pivot Horizontal</option>
+            <option value="tilt-turn">Tilt & Turn</option>
+            <option value="louvre">Louvre</option>
+          </optgroup>
+          <optgroup label="Doors" id="ctx-door-optgroup" style="display:none">
+            <option value="door-single">Single Door</option>
+            <option value="door-double">Double Door</option>
+            <option value="door-sliding">Sliding Door</option>
+            <option value="door-bifold">Bifold Door</option>
+            <option value="door-french">French Doors</option>
+          </optgroup>
         </select>
         <div class="ctx-separator"></div>
         <button class="btn btn-icon" id="btn-dims-toggle" title="Toggle Dimension Lines (D)">⊥ Dims</button>
@@ -441,11 +545,25 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
           <div class="form-row"><label>Width (mm)</label><input type="number" id="frame-width" min="100" max="10000" step="1"/></div>
           <div class="form-row"><label>Height (mm)</label><input type="number" id="frame-height" min="100" max="10000" step="1"/></div>
           <div class="form-section-divider"></div>
+          <div class="form-subsection-title">Opening Type</div>
+          <div class="form-row">
+            <label>Type</label>
+            <select id="frame-opening-type" style="width:120px">
+              <option value="window">Window</option>
+              <option value="door">Door</option>
+            </select>
+          </div>
+          <div class="form-section-divider"></div>
           <div class="form-subsection-title">Frame Profile</div>
           <div class="form-row"><label>Thickness (mm)</label><input type="number" id="frame-thickness" min="10" max="300" step="1"/></div>
           <div class="form-row"><label>Depth (mm)</label><input type="number" id="frame-depth" min="10" max="500" step="1"/></div>
           <div class="form-row"><label>Inner Offset (mm)</label><input type="number" id="frame-inner-offset" min="0" max="200" step="1"/></div>
           <div class="form-row"><label>Outer Offset (mm)</label><input type="number" id="frame-outer-offset" min="0" max="200" step="1"/></div>
+          <div class="form-subsection-title" style="margin-top:8px">Per-Side Widths <span style="font-weight:400;color:var(--text-dim);text-transform:none;letter-spacing:0">(overrides thickness)</span></div>
+          <div class="form-row"><label>Top (mm)</label><input type="number" id="frame-top-width" min="10" max="300" step="1" placeholder="—"/></div>
+          <div class="form-row"><label>Bottom (mm)</label><input type="number" id="frame-bottom-width" min="10" max="300" step="1" placeholder="—"/></div>
+          <div class="form-row"><label>Left (mm)</label><input type="number" id="frame-left-width" min="10" max="300" step="1" placeholder="—"/></div>
+          <div class="form-row"><label>Right (mm)</label><input type="number" id="frame-right-width" min="10" max="300" step="1" placeholder="—"/></div>
           <div class="form-section-divider"></div>
           <div class="form-subsection-title">Material</div>
           <div class="form-row">
@@ -472,19 +590,28 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
             <div class="form-row">
               <label>Type</label>
               <select id="pane-type-select" style="width:140px">
-                <option value="fixed">Fixed</option>
-                <option value="casement-left">Casement Left</option>
-                <option value="casement-right">Casement Right</option>
-                <option value="casement-top">Top Hung</option>
-                <option value="casement-bottom">Bottom Hung</option>
-                <option value="awning">Awning</option>
-                <option value="hopper">Hopper</option>
-                <option value="sliding-2t">Sliding 2-Track</option>
-                <option value="sliding-3t">Sliding 3-Track</option>
-                <option value="pivot-v">Pivot Vertical</option>
-                <option value="pivot-h">Pivot Horizontal</option>
-                <option value="tilt-turn">Tilt &amp; Turn</option>
-                <option value="louvre">Louvre</option>
+                <optgroup label="Windows" id="pane-window-optgroup">
+                  <option value="fixed">Fixed</option>
+                  <option value="casement-left">Casement Left</option>
+                  <option value="casement-right">Casement Right</option>
+                  <option value="casement-top">Top Hung</option>
+                  <option value="casement-bottom">Bottom Hung</option>
+                  <option value="awning">Awning</option>
+                  <option value="hopper">Hopper</option>
+                  <option value="sliding-2t">Sliding 2-Track</option>
+                  <option value="sliding-3t">Sliding 3-Track</option>
+                  <option value="pivot-v">Pivot Vertical</option>
+                  <option value="pivot-h">Pivot Horizontal</option>
+                  <option value="tilt-turn">Tilt &amp; Turn</option>
+                  <option value="louvre">Louvre</option>
+                </optgroup>
+                <optgroup label="Doors" id="pane-door-optgroup" style="display:none">
+                  <option value="door-single">Single Door</option>
+                  <option value="door-double">Double Door</option>
+                  <option value="door-sliding">Sliding Door</option>
+                  <option value="door-bifold">Bifold Door</option>
+                  <option value="door-french">French Doors</option>
+                </optgroup>
               </select>
             </div>
             <div class="form-row"><label>Label</label><input type="text" id="pane-label" placeholder="Optional label"/></div>
@@ -558,6 +685,22 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
     </div><!-- /inspector -->
   </div><!-- /workspace -->
 </div><!-- /app -->
+
+<!-- ── TEMPLATES MODAL ──────────────────────────────────────── -->
+<div id="templates-modal">
+  <div id="templates-box">
+    <div id="templates-header">
+      <h2>Quick-Start Templates</h2>
+      <button class="btn-icon" id="btn-close-templates">✕</button>
+    </div>
+    <div id="templates-tabs">
+      <button class="tpl-tab active" data-ttype="window">Windows</button>
+      <button class="tpl-tab" data-ttype="door">Doors</button>
+    </div>
+    <div id="templates-grid"></div>
+  </div>
+</div>
+
 <div id="dim-tooltip"></div>
 
 <script>
@@ -575,14 +718,18 @@ const PANE_TYPE_LABELS = {
   'casement-top':'Top Hung','casement-bottom':'Bottom Hung',
   'awning':'Awning','hopper':'Hopper','sliding-2t':'Sliding 2T',
   'sliding-3t':'Sliding 3T','pivot-v':'Pivot V','pivot-h':'Pivot H',
-  'tilt-turn':'Tilt-Turn','louvre':'Louvre'
+  'tilt-turn':'Tilt-Turn','louvre':'Louvre',
+  'door-single':'Single Door','door-double':'Double Door',
+  'door-sliding':'Sliding Door','door-bifold':'Bifold Door','door-french':'French Doors'
 };
 const PANE_TYPE_ICONS = {
   'fixed':'▭','casement-left':'◁','casement-right':'▷',
   'casement-top':'△','casement-bottom':'▽',
   'awning':'⌒','hopper':'⌣','sliding-2t':'↔',
   'sliding-3t':'⟺','pivot-v':'⊕','pivot-h':'⊗',
-  'tilt-turn':'◈','louvre':'≡'
+  'tilt-turn':'◈','louvre':'≡',
+  'door-single':'🚪','door-double':'⟨⟩',
+  'door-sliding':'↦','door-bifold':'⋈','door-french':'⟪⟫'
 };
 const GLASS_COLORS = {
   'fixed':          'rgba(120,185,230,0.38)',
@@ -598,7 +745,14 @@ const GLASS_COLORS = {
   'pivot-h':        'rgba(180,150,230,0.38)',
   'tilt-turn':      'rgba(200,210,100,0.38)',
   'louvre':         'rgba(220,185,130,0.38)',
+  'door-single':    'rgba(200,170,120,0.32)',
+  'door-double':    'rgba(200,170,120,0.32)',
+  'door-sliding':   'rgba(200,170,120,0.32)',
+  'door-bifold':    'rgba(200,170,120,0.32)',
+  'door-french':    'rgba(200,170,120,0.32)',
 };
+const WINDOW_TYPES = ['fixed','casement-left','casement-right','casement-top','casement-bottom','awning','hopper','sliding-2t','sliding-3t','pivot-v','pivot-h','tilt-turn','louvre'];
+const DOOR_TYPES   = ['door-single','door-double','door-sliding','door-bifold','door-french'];
 
 // ============================================================
 // STATE
@@ -614,10 +768,18 @@ function mkPane() {
 function mkComposition() {
   return {
     schemaVersion:'1.0',
+    openingType:'window',
     meta:{ id:uid(), name:'New Window', createdAt:new Date().toISOString(), modifiedAt:new Date().toISOString() },
-    frame:{ overallWidth:1200, overallHeight:900, unit:'mm', thickness:60, depth:100, innerOffset:0, outerOffset:0, material:'aluminium', finish:'' },
+    frame:{ overallWidth:1200, overallHeight:900, unit:'mm', thickness:60, depth:100,
+      topWidth:null, bottomWidth:null, leftWidth:null, rightWidth:null,
+      innerOffset:0, outerOffset:0, material:'aluminium', finish:'' },
     composition: mkPane()
   };
+}
+
+function frameWidths(f) {
+  const t = f.thickness;
+  return { top: f.topWidth??t, bottom: f.bottomWidth??t, left: f.leftWidth??t, right: f.rightWidth??t };
 }
 
 const S = {
@@ -702,8 +864,8 @@ function computeRect(node, x, y, w, h, targetId) {
 
 function nodeRect(id) {
   const f = S.c.frame;
-  const ft = f.thickness;
-  return computeRect(S.c.composition, ft, ft, f.overallWidth-2*ft, f.overallHeight-2*ft, id);
+  const fw = frameWidths(f);
+  return computeRect(S.c.composition, fw.left, fw.top, f.overallWidth-fw.left-fw.right, f.overallHeight-fw.top-fw.bottom, id);
 }
 
 function pushUndo() {
@@ -755,6 +917,60 @@ function assignType(id, type) {
   pushUndo();
   node.type = type;
   if (type !== 'fixed' && !node.sash) node.sash = { thickness:50, direction:null, handleSide:'right' };
+  S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
+  render();
+}
+
+function syncOpeningType(otype) {
+  S.c.openingType = otype;
+  S.dirty = true;
+  document.getElementById('palette-window').style.display = otype==='window' ? '' : 'none';
+  document.getElementById('palette-door').style.display   = otype==='door'   ? '' : 'none';
+  ['pane-door-optgroup','ctx-door-optgroup'].forEach(id=>{
+    const el2=document.getElementById(id); if(el2) el2.style.display = otype==='door' ? '' : 'none';
+  });
+  ['pane-window-optgroup','ctx-window-optgroup'].forEach(id=>{
+    const el2=document.getElementById(id); if(el2) el2.style.display = otype==='window' ? '' : 'none';
+  });
+  document.querySelectorAll('.opening-btn').forEach(b=>b.classList.toggle('active', b.dataset.otype===otype));
+  setVal('frame-opening-type', otype);
+  updateTopbar();
+}
+
+function findAxisParent(root, targetId, splitAxis) {
+  if (root.kind !== 'split') return null;
+  for (let i=0; i<root.children.length; i++) {
+    if (root.children[i].id === targetId) {
+      return root.axis === splitAxis ? { split:root, childIndex:i } : null;
+    }
+    const found = findAxisParent(root.children[i], targetId, splitAxis);
+    if (found) return found;
+  }
+  return null;
+}
+
+function setNodeDimension(nodeId, axis, targetMm) {
+  const splitAxis = axis==='W' ? 'V' : 'H';
+  const result = findAxisParent(S.c.composition, nodeId, splitAxis);
+  if (!result) return;
+  const { split, childIndex } = result;
+  const rect = nodeRect(split.id);
+  if (!rect) return;
+  const parentDim = splitAxis==='V' ? rect.w : rect.h;
+  const minStep = MIN_PANE_MM / parentDim;
+  const clampedMm = Math.max(MIN_PANE_MM, Math.min(targetMm, parentDim - MIN_PANE_MM*(split.children.length-1)));
+  const newSpan = clampedMm / parentDim;
+  const prevR = childIndex===0 ? 0 : split.dividers[childIndex-1].ratio;
+  pushUndo();
+  if (childIndex === split.children.length-1) {
+    if (split.dividers.length > 0) {
+      const lowerBound = childIndex>=2 ? split.dividers[childIndex-2].ratio+minStep : minStep;
+      split.dividers[childIndex-1].ratio = Math.max(lowerBound, Math.min(1-minStep, 1-newSpan));
+    }
+  } else {
+    const upperBound = childIndex<split.dividers.length-1 ? split.dividers[childIndex+1].ratio-minStep : 1-minStep;
+    split.dividers[childIndex].ratio = Math.max(prevR+minStep, Math.min(upperBound, prevR+newSpan));
+  }
   S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
   render();
 }
@@ -852,6 +1068,49 @@ function drawSymbol(g, type, x, y, w, h) {
       for (let i=1;i<n;i++) { const sy=y+h*i/n; g.append(line(x+w*0.08,sy, x+w*0.92,sy, col, sw)); }
       break;
     }
+    case 'door-single': {
+      const r=Math.min(w*0.85, h*0.85);
+      g.append(line(x, y, x, y+h, col, sw));
+      g.append(path(`M ${x} ${y+h} A ${r} ${r} 0 0 1 ${x+r} ${y+h}`, col, sw*0.8));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-double': {
+      const r2=Math.min(w*0.44, h*0.7);
+      g.append(line(x+w/2, y, x+w/2, y+h, 'rgba(74,158,255,0.35)', sw*0.7));
+      g.append(path(`M ${x} ${y+h} A ${r2} ${r2} 0 0 1 ${x+r2} ${y+h}`, col, sw*0.8));
+      g.append(path(`M ${x+w} ${y+h} A ${r2} ${r2} 0 0 0 ${x+w-r2} ${y+h}`, col, sw*0.8));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-sliding': {
+      const m=w*0.15; const ay=cy;
+      g.append(line(x+m,ay, x+w-m,ay, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.07,ay-h*0.07, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.07,ay+h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.07,ay-h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.07,ay+h*0.07, col, sw));
+      g.append(el('line',{x1:cx,y1:y+h*0.15,x2:cx,y2:y+h*0.85,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'}));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-bifold': {
+      const tp=w*0.25;
+      g.append(line(x+tp, y, x+w/2, y+h, col, sw));
+      g.append(line(x+w-tp, y, x+w/2, y+h, col, sw));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-french': {
+      const r3=Math.min(w*0.38, h*0.6);
+      g.append(line(x, y, x, y+h, col, sw));
+      g.append(line(x+w, y, x+w, y+h, col, sw));
+      g.append(path(`M ${x} ${y+h} A ${r3} ${r3} 0 0 1 ${x+r3} ${y}`, col, sw*0.8));
+      g.append(path(`M ${x+w} ${y+h} A ${r3} ${r3} 0 0 0 ${x+w-r3} ${y}`, col, sw*0.8));
+      g.append(line(x+w/2, y, x+w/2, y+h, 'rgba(74,158,255,0.35)', sw*0.7));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
   }
 }
 
@@ -897,7 +1156,7 @@ function renderCanvas() {
   svg.append(el('rect',{x:4,y:4,width:W,height:H,fill:'rgba(0,0,0,0.4)',rx:2}));
 
   // ── FRAME MEMBERS ────────────────────────────────────────
-  const ft = f.thickness;
+  const fw = frameWidths(f);
   const frameColor = '#2A2D38';
   const frameEdge = '#484C5E';
   const frameHighlight = '#565A6E';
@@ -905,15 +1164,15 @@ function renderCanvas() {
   // Frame fill (outer rect, will be overlaid by panes in center)
   svg.append(el('rect',{x:0,y:0,width:W,height:H,fill:frameColor,stroke:frameEdge,'stroke-width':2}));
 
-  // Draw 4 frame members (to create solid border with open center)
+  // Draw 4 frame members (per-side widths)
   // Top
-  svg.append(el('rect',{x:0,y:0,width:W,height:ft,fill:'#32364A',stroke:'none'}));
+  svg.append(el('rect',{x:0,y:0,width:W,height:fw.top,fill:'#32364A',stroke:'none'}));
   // Bottom
-  svg.append(el('rect',{x:0,y:H-ft,width:W,height:ft,fill:'#32364A'}));
+  svg.append(el('rect',{x:0,y:H-fw.bottom,width:W,height:fw.bottom,fill:'#32364A'}));
   // Left
-  svg.append(el('rect',{x:0,y:0,width:ft,height:H,fill:'#32364A'}));
+  svg.append(el('rect',{x:0,y:0,width:fw.left,height:H,fill:'#32364A'}));
   // Right
-  svg.append(el('rect',{x:W-ft,y:0,width:ft,height:H,fill:'#32364A'}));
+  svg.append(el('rect',{x:W-fw.right,y:0,width:fw.right,height:H,fill:'#32364A'}));
 
   // Frame highlight lines (top/left of each member - 3D effect)
   const hl='rgba(255,255,255,0.06)';
@@ -924,11 +1183,11 @@ function renderCanvas() {
   svg.append(el('line',{x1:0,y1:H,x2:W,y2:H,stroke:sh,'stroke-width':2}));
 
   // Inner frame edge lines
-  svg.append(el('rect',{x:ft,y:ft,width:W-2*ft,height:H-2*ft,fill:'none',stroke:frameEdge,'stroke-width':1.5}));
+  svg.append(el('rect',{x:fw.left,y:fw.top,width:W-fw.left-fw.right,height:H-fw.top-fw.bottom,fill:'none',stroke:frameEdge,'stroke-width':1.5}));
 
   // ── COMPOSITION NODES ────────────────────────────────────
   const nodesG = el('g', {});
-  renderNodeRec(nodesG, S.c.composition, ft, ft, W-2*ft, H-2*ft);
+  renderNodeRec(nodesG, S.c.composition, fw.left, fw.top, W-fw.left-fw.right, H-fw.top-fw.bottom);
   svg.append(nodesG);
 
   // ── SELECTION OVERLAY ────────────────────────────────────
@@ -1073,9 +1332,9 @@ function renderDimLines(g, f) {
   // Sub-dimensions for first level of composition
   const comp = S.c.composition;
   if (comp.kind === 'split') {
-    const ft = f.thickness;
-    const innerW = W-2*ft, innerH = H-2*ft;
-    renderSubDimLine(g, comp, ft, ft, innerW, innerH, topY, leftX, dimCol, textCol, tickLen, fs*0.78);
+    const fw2 = frameWidths(f);
+    const innerW = W-fw2.left-fw2.right, innerH = H-fw2.top-fw2.bottom;
+    renderSubDimLine(g, comp, fw2.left, fw2.top, innerW, innerH, topY, leftX, dimCol, textCol, tickLen, fs*0.78);
   }
 }
 
@@ -1215,6 +1474,19 @@ function renderFrameForm() {
   setVal('frame-outer-offset', f.outerOffset);
   setVal('frame-material',  f.material);
   setVal('frame-finish',    f.finish);
+  // Per-side widths — empty string when null (inheriting)
+  const topW=document.getElementById('frame-top-width');    if(topW)    topW.value    = f.topWidth    ?? '';
+  const botW=document.getElementById('frame-bottom-width'); if(botW)    botW.value    = f.bottomWidth ?? '';
+  const lefW=document.getElementById('frame-left-width');   if(lefW)    lefW.value    = f.leftWidth   ?? '';
+  const rigW=document.getElementById('frame-right-width');  if(rigW)    rigW.value    = f.rightWidth  ?? '';
+  // Opening type
+  const otype = S.c.openingType || 'window';
+  setVal('frame-opening-type', otype);
+  document.getElementById('palette-window').style.display = otype==='window' ? '' : 'none';
+  document.getElementById('palette-door').style.display   = otype==='door'   ? '' : 'none';
+  document.querySelectorAll('.opening-btn').forEach(b=>b.classList.toggle('active', b.dataset.otype===otype));
+  ['pane-door-optgroup','ctx-door-optgroup'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=otype==='door'?'':'none';});
+  ['pane-window-optgroup','ctx-window-optgroup'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=otype==='window'?'':'none';});
 }
 
 function renderPaneForm() {
@@ -1232,9 +1504,10 @@ function renderPaneForm() {
 }
 
 function renderDimensionsTable() {
-  const f=S.c.frame, ft=f.thickness;
+  const f=S.c.frame;
+  const fw=frameWidths(f);
   const rows=[];
-  collectDims(S.c.composition, ft, ft, f.overallWidth-2*ft, f.overallHeight-2*ft, rows);
+  collectDims(S.c.composition, fw.left, fw.top, f.overallWidth-fw.left-fw.right, f.overallHeight-fw.top-fw.bottom, rows);
   const tbody=document.getElementById('dims-tbody');
   tbody.innerHTML='';
   let total=0;
@@ -1243,11 +1516,32 @@ function renderDimensionsTable() {
     total+=parseFloat(area);
     const tr=document.createElement('tr');
     if (r.id===S.sel) tr.className='selected-row';
-    tr.innerHTML=`<td>${r.label||r.id.slice(0,7)+'…'}</td><td>${Math.round(r.w)}</td><td>${Math.round(r.h)}</td><td>${area}</td>`;
-    tr.addEventListener('click',()=>{S.sel=r.id;render();});
+    const wRound=Math.round(r.w), hRound=Math.round(r.h);
+    const canW=!!findAxisParent(S.c.composition,r.id,'V');
+    const canH=!!findAxisParent(S.c.composition,r.id,'H');
+    tr.innerHTML=`<td>${r.label||r.id.slice(0,7)+'…'}</td>`+
+      `<td><input class="dim-input" data-id="${r.id}" data-axis="W" data-orig="${wRound}" value="${wRound}" ${canW?'':'readonly'}/></td>`+
+      `<td><input class="dim-input" data-id="${r.id}" data-axis="H" data-orig="${hRound}" value="${hRound}" ${canH?'':'readonly'}/></td>`+
+      `<td>${area}</td>`;
+    tr.addEventListener('click',e=>{ if(e.target.tagName==='INPUT') return; S.sel=r.id;render(); });
     tbody.appendChild(tr);
   });
   document.getElementById('dims-total').textContent=`${total.toFixed(3)} m²`;
+  // Event delegation for editable dim inputs
+  tbody.addEventListener('keydown', e=>{
+    if (e.key!=='Enter') return;
+    const inp=e.target; if(!inp.classList.contains('dim-input')||inp.readOnly) return;
+    const mm=parseFloat(inp.value);
+    if (!isNaN(mm) && mm>=MIN_PANE_MM && mm!==parseFloat(inp.dataset.orig)) setNodeDimension(inp.dataset.id, inp.dataset.axis, mm);
+    else inp.value=inp.dataset.orig;
+    inp.blur();
+  });
+  tbody.addEventListener('focusout', e=>{
+    const inp=e.target; if(!inp.classList.contains('dim-input')||inp.readOnly) return;
+    const mm=parseFloat(inp.value);
+    if (!isNaN(mm) && mm>=MIN_PANE_MM && mm!==parseFloat(inp.dataset.orig)) setNodeDimension(inp.dataset.id, inp.dataset.axis, mm);
+    else inp.value=inp.dataset.orig;
+  });
 }
 
 function collectDims(node, x, y, w, h, rows) {
@@ -1264,24 +1558,26 @@ function renderSectionDiagram() {
   if (!svg) return;
   svg.innerHTML='';
   const f=S.c.frame;
+  const fw=frameWidths(f);
   const SVW=220,SVH=70;
-  // Scale to fit
-  const scale=Math.min((SVW-40)/f.depth, (SVH-20)/f.thickness);
-  const d=f.depth*scale, t=f.thickness*scale;
+  const scale=Math.min((SVW-40)/f.depth, (SVH-20)/fw.top);
+  const d=f.depth*scale, t=fw.top*scale;
   const ox=(SVW-d)/2, oy=(SVH-t)/2;
-  // Wall zone (background)
   svg.append(el('rect',{x:0,y:0,width:SVW,height:SVH,fill:'#15171C'}));
   svg.append(el('rect',{x:ox-16,y:0,width:d+32,height:SVH,fill:'rgba(40,45,55,0.5)'}));
-  // Frame section (rectangle)
   svg.append(el('rect',{x:ox,y:oy,width:d,height:t,fill:'#32364A',stroke:'#484C5E','stroke-width':1.5,rx:1}));
-  // Glass position
   const maxDepth=Math.max(f.depth,1);
   const glassX=ox+d*(f.outerOffset/maxDepth);
   svg.append(el('line',{x1:glassX,y1:oy+2,x2:glassX,y2:oy+t-2,stroke:'#4A9EFF','stroke-width':3}));
-  // Dim labels
   const lbl=(x2,y2,txt,rot)=>{const t2=el('text',{x:x2,y:y2,'text-anchor':'middle',fill:'rgba(120,130,150,0.8)','font-size':9,'font-family':'system-ui'});if(rot)t2.setAttribute('transform',`rotate(${rot},${x2},${y2})`);t2.textContent=txt;svg.append(t2);};
   lbl(SVW/2, SVH-3, `${f.depth}mm depth`);
-  lbl(ox-8, SVH/2, `${f.thickness}mm`, -90);
+  // Show top label; if bottom differs add indicator
+  const topLabel = fw.top!==f.thickness ? `T:${fw.top}mm` : `${fw.top}mm`;
+  lbl(ox-8, SVH/2, topLabel, -90);
+  if (fw.bottom!==fw.top) {
+    const t3=el('text',{x:ox+d+18,y:SVH/2+3,'text-anchor':'middle',fill:'rgba(255,153,68,0.75)','font-size':8,'font-family':'system-ui'});
+    t3.textContent=`B:${fw.bottom}`; svg.append(t3);
+  }
 }
 
 function renderOutline() {
@@ -1381,6 +1677,8 @@ function importJSON() {
         const data=JSON.parse(ev.target.result);
         if (!data.schemaVersion) { alert('Not a valid Window Configurator JSON.'); return; }
         if (data.schemaVersion!=='1.0') { alert(`Unsupported schema version: ${data.schemaVersion}`); return; }
+        if (!('openingType' in data)) data.openingType = 'window';
+        if (!('topWidth' in data.frame)) { data.frame.topWidth=null; data.frame.bottomWidth=null; data.frame.leftWidth=null; data.frame.rightWidth=null; }
         S.c=data; S.sel=null; S.dirty=false; S.undoStack=[];
         resetViewBox();
         render();
@@ -1402,6 +1700,77 @@ function undo() {
   if (!S.undoStack.length) return;
   S.c=S.undoStack.pop(); S.sel=null;
   render();
+}
+
+// ============================================================
+// TEMPLATES
+// ============================================================
+const TEMPLATES = {
+  window: [
+    { name:'Fixed Picture', desc:'Single fixed pane',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(120,185,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/>',
+      make(){ const c=mkComposition(); c.meta.name='Fixed Picture'; return c; } },
+    { name:'Single Casement', desc:'One casement-left pane',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="34" y1="2" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="24" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/>',
+      make(){ const c=mkComposition(); c.meta.name='Single Casement'; c.composition.type='casement-left'; return c; } },
+    { name:'Double Casement', desc:'Two casements side by side',
+      icon:'<rect x="2" y="2" width="14" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="20" y="2" width="14" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="4" y1="2" x2="15" y2="13" stroke="#4A9EFF" stroke-width="1"/><line x1="4" y1="24" x2="15" y2="13" stroke="#4A9EFF" stroke-width="1"/><line x1="32" y1="2" x2="21" y2="13" stroke="#4A9EFF" stroke-width="1"/><line x1="32" y1="24" x2="21" y2="13" stroke="#4A9EFF" stroke-width="1"/>',
+      make(){ const c=mkComposition(); c.meta.name='Double Casement'; const l=mkPane(); l.type='casement-right'; const r=mkPane(); r.type='casement-left'; c.composition={id:uid(),kind:'split',axis:'V',dividers:[{ratio:0.5}],children:[l,r]}; return c; } },
+    { name:'Sliding 2-Track', desc:'Single sliding panel',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(80,210,190,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/>',
+      make(){ const c=mkComposition(); c.meta.name='Sliding 2-Track'; c.composition.type='sliding-2t'; return c; } },
+    { name:'Awning over Fixed', desc:'Awning top, fixed bottom',
+      icon:'<rect x="2" y="2" width="32" height="10" fill="rgba(120,200,160,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="2" y="14" width="32" height="10" fill="rgba(120,185,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/>',
+      make(){ const c=mkComposition(); c.meta.name='Awning over Fixed'; const t=mkPane(); t.type='awning'; const b=mkPane(); b.type='fixed'; c.composition={id:uid(),kind:'split',axis:'H',dividers:[{ratio:0.35}],children:[t,b]}; return c; } },
+    { name:'Picture + Side Lites', desc:'Fixed centre, casements either side',
+      icon:'<rect x="2" y="2" width="9" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="13" y="2" width="10" height="22" fill="rgba(120,185,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="25" y="2" width="9" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/>',
+      make(){ const c=mkComposition(); c.meta.name='Picture + Side Lites'; c.frame.overallWidth=1800; const l=mkPane(); l.type='casement-right'; const m=mkPane(); m.type='fixed'; const r=mkPane(); r.type='casement-left'; c.composition={id:uid(),kind:'split',axis:'V',dividers:[{ratio:0.25},{ratio:0.75}],children:[l,m,r]}; return c; } },
+  ],
+  door: [
+    { name:'Single Door', desc:'Single swing door',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="2" y2="24" stroke="#4A9EFF" stroke-width="1.5"/><path d="M 2 24 A 20 20 0 0 1 22 4" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='Single Door'; c.openingType='door'; c.composition.type='door-single'; c.frame.overallWidth=900; c.frame.overallHeight=2100; return c; } },
+    { name:'Double Door', desc:'Two-leaf swing doors',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1" stroke-dasharray="3,2"/><path d="M 2 24 A 14 14 0 0 1 16 10" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 34 24 A 14 14 0 0 0 20 10" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='Double Door'; c.openingType='door'; const l=mkPane(); l.type='door-single'; const r=mkPane(); r.type='door-single'; c.composition={id:uid(),kind:'split',axis:'V',dividers:[{ratio:0.5}],children:[l,r]}; c.frame.overallWidth=1800; c.frame.overallHeight=2100; return c; } },
+    { name:'Sliding Door', desc:'Two-track sliding panel',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='Sliding Door'; c.openingType='door'; c.composition.type='door-sliding'; c.frame.overallWidth=1800; c.frame.overallHeight=2100; return c; } },
+    { name:'Bifold Door', desc:'Folding panel system',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="11" y1="2" x2="18" y2="14" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="14" x2="25" y2="2" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='Bifold Door'; c.openingType='door'; c.composition.type='door-bifold'; c.frame.overallWidth=2400; c.frame.overallHeight=2100; return c; } },
+    { name:'French Doors', desc:'Outswing pair with centre post',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1" stroke-dasharray="3,2"/><path d="M 2 24 A 12 12 0 0 1 14 12" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 34 24 A 12 12 0 0 0 22 12" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='French Doors'; c.openingType='door'; const l=mkPane(); l.type='door-french'; const r=mkPane(); r.type='door-french'; c.composition={id:uid(),kind:'split',axis:'V',dividers:[{ratio:0.5}],children:[l,r]}; c.frame.overallWidth=1800; c.frame.overallHeight=2100; return c; } },
+  ]
+};
+
+let _tplTab = 'window';
+
+function openTemplatesModal() {
+  document.getElementById('templates-modal').classList.add('open');
+  renderTemplatesGrid(_tplTab);
+}
+function closeTemplatesModal() {
+  document.getElementById('templates-modal').classList.remove('open');
+}
+function renderTemplatesGrid(ttype) {
+  _tplTab = ttype;
+  document.querySelectorAll('.tpl-tab').forEach(b=>b.classList.toggle('active', b.dataset.ttype===ttype));
+  const grid = document.getElementById('templates-grid');
+  grid.innerHTML = '';
+  (TEMPLATES[ttype]||[]).forEach(tpl=>{
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    card.innerHTML = `<svg width="72" height="50" viewBox="0 0 36 26">${tpl.icon}</svg><div class="template-card-name">${tpl.name}</div><div class="template-card-desc">${tpl.desc}</div>`;
+    card.addEventListener('click', ()=>{
+      if (S.dirty && !confirm('Unsaved changes will be lost. Load template?')) return;
+      S.c = tpl.make(); S.sel=null; S.dirty=false; S.undoStack=[];
+      syncOpeningType(S.c.openingType||'window');
+      resetViewBox(); closeTemplatesModal(); render();
+    });
+    grid.appendChild(card);
+  });
 }
 
 // ============================================================
@@ -1452,6 +1821,32 @@ bindNum('frame-outer-offset', 'outerOffset',   0);
 document.getElementById('frame-material').addEventListener('change', e=>{ S.c.frame.material=e.target.value; S.dirty=true; updateTopbar(); });
 document.getElementById('frame-finish').addEventListener('input',  e=>{ S.c.frame.finish=e.target.value;    S.dirty=true; updateTopbar(); });
 
+// Per-side frame widths
+function bindFrameSide(id, key) {
+  document.getElementById(id).addEventListener('change', e=>{
+    const raw=e.target.value.trim();
+    if (raw==='') { S.c.frame[key]=null; }
+    else { const v=parseFloat(raw); if(!isNaN(v)&&v>=10) S.c.frame[key]=v; }
+    S.dirty=true; render();
+  });
+}
+bindFrameSide('frame-top-width',    'topWidth');
+bindFrameSide('frame-bottom-width', 'bottomWidth');
+bindFrameSide('frame-left-width',   'leftWidth');
+bindFrameSide('frame-right-width',  'rightWidth');
+
+// Opening type
+document.querySelectorAll('.opening-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ syncOpeningType(btn.dataset.otype); S.dirty=true; render(); });
+});
+document.getElementById('frame-opening-type').addEventListener('change', e=>{ syncOpeningType(e.target.value); S.dirty=true; render(); });
+
+// Templates
+document.getElementById('btn-templates').addEventListener('click', openTemplatesModal);
+document.getElementById('btn-close-templates').addEventListener('click', closeTemplatesModal);
+document.getElementById('templates-modal').addEventListener('click', e=>{ if(e.target===document.getElementById('templates-modal')) closeTemplatesModal(); });
+document.querySelectorAll('.tpl-tab').forEach(btn=>{ btn.addEventListener('click', ()=>renderTemplatesGrid(btn.dataset.ttype)); });
+
 // Inspector — pane
 document.getElementById('pane-type-select').addEventListener('change', e=>{ if(S.sel) assignType(S.sel,e.target.value); });
 document.getElementById('pane-label').addEventListener('input', e=>{
@@ -1493,6 +1888,10 @@ document.querySelectorAll('.accordion-header').forEach(h=>{
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e=>{
+  if (document.getElementById('templates-modal').classList.contains('open')) {
+    if (e.key==='Escape') { closeTemplatesModal(); return; }
+    return;
+  }
   const tag=document.activeElement.tagName;
   if (tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
   if (e.key==='Delete'||e.key==='Backspace') { if(S.sel) deleteNode(S.sel); }

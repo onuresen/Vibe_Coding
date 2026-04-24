@@ -226,6 +226,21 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 - [x] Zoom indicator (bottom-right of canvas)
 - [x] + / - keyboard zoom, zoom-at-cursor on scroll wheel
 
+### ✅ Phase 8 — Doors, Customisation & Templates
+- [x] **Editable panel dimensions** — W/H cells in Dimensions table are now inputs; typing a value adjusts the divider ratio
+- [x] **Per-side frame widths** — Top/Bottom/Left/Right overrides for frame thickness (blank = inherit from Thickness)
+- [x] **Door + Window mode** — Opening Type toggle in sidebar + inspector; 5 door panel types (Single, Double, Sliding, Bifold, French) with threshold symbols
+- [x] **Quick-start templates** — Templates modal (6 window + 5 door presets) with SVG previews; dirty-check on load
+
+---
+
+## Schema Notes (v1.0 extensions, 2026-04-24)
+
+- `WindowComposition.openingType`: `"window" | "door"` (migrated from old JSON if absent)
+- `frame.topWidth / bottomWidth / leftWidth / rightWidth`: `number | null` — `null` means inherit from `frame.thickness`
+- New pane types: `door-single`, `door-double`, `door-sliding`, `door-bifold`, `door-french`
+- Helper `frameWidths(f)` returns `{top, bottom, left, right}` resolving nulls — used everywhere in rendering
+
 ---
 
 ## Changelog
@@ -234,3 +249,4 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 |------|---------|--------|
 | 2026-04-23 | v0.1 | CLAUDE.md created, WindowConfigurator_v1.html initial build |
 | 2026-04-24 | v0.2 | Phase 7 polish: SVG pan/zoom, dimension toggle, divider tooltips, zoom indicator |
+| 2026-04-24 | v0.3 | Phase 8: editable dimensions, per-side frame widths, door types + opening mode, templates modal |
