@@ -548,6 +548,11 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
         <div class="shortcut"><span>Undo</span><kbd>Ctrl+Z</kbd></div>
         <div class="shortcut"><span>Deselect</span><kbd>Esc</kbd></div>
         <div class="shortcut"><span>Export</span><kbd>Ctrl+E</kbd></div>
+        <div class="shortcut"><span>Fit to Canvas</span><kbd>F</kbd></div>
+        <div class="shortcut"><span>Toggle Dims</span><kbd>D</kbd></div>
+        <div class="shortcut"><span>Zoom In/Out</span><kbd>+ / -</kbd></div>
+        <div class="shortcut"><span>Pan Canvas</span><kbd>Middle Mouse</kbd></div>
+        <div class="shortcut"><span>Zoom Canvas</span><kbd>Scroll Wheel</kbd></div>
       </div>
 
     </div><!-- /inspector -->
@@ -1377,6 +1382,7 @@ function importJSON() {
         if (!data.schemaVersion) { alert('Not a valid Window Configurator JSON.'); return; }
         if (data.schemaVersion!=='1.0') { alert(`Unsupported schema version: ${data.schemaVersion}`); return; }
         S.c=data; S.sel=null; S.dirty=false; S.undoStack=[];
+        resetViewBox();
         render();
       } catch(err) { alert('Failed to parse JSON: '+err.message); }
     };
@@ -1388,6 +1394,7 @@ function importJSON() {
 function newComposition() {
   if (S.dirty && !confirm('Unsaved changes will be lost. Create new window?')) return;
   S.c=mkComposition(); S.sel=null; S.dirty=false; S.undoStack=[];
+  resetViewBox();
   render();
 }
 
@@ -1427,15 +1434,17 @@ document.querySelectorAll('.type-btn').forEach(btn=>{
 });
 
 // Inspector — frame
-function bindNum(id, key, min=1) {
+function bindNum(id, key, min=1, resetZoom=false) {
   document.getElementById(id).addEventListener('change', e=>{
     const v=parseFloat(e.target.value);
     if (isNaN(v)||v<min) return;
-    S.c.frame[key]=v; S.dirty=true; render();
+    S.c.frame[key]=v; S.dirty=true;
+    if (resetZoom) resetViewBox();
+    render();
   });
 }
-bindNum('frame-width',        'overallWidth',  100);
-bindNum('frame-height',       'overallHeight', 100);
+bindNum('frame-width',        'overallWidth',  100, true);
+bindNum('frame-height',       'overallHeight', 100, true);
 bindNum('frame-thickness',    'thickness',     10);
 bindNum('frame-depth',        'depth',         10);
 bindNum('frame-inner-offset', 'innerOffset',   0);
@@ -1489,11 +1498,74 @@ document.addEventListener('keydown', e=>{
   if (e.key==='Delete'||e.key==='Backspace') { if(S.sel) deleteNode(S.sel); }
   else if ((e.key==='h'||e.key==='H')&&!e.ctrlKey) { if(S.sel){const n=findNode(S.c.composition,S.sel);if(n&&n.kind==='pane')splitNode(S.sel,'H');} }
   else if ((e.key==='v'||e.key==='V')&&!e.ctrlKey) { if(S.sel){const n=findNode(S.c.composition,S.sel);if(n&&n.kind==='pane')splitNode(S.sel,'V');} }
+  else if ((e.key==='f'||e.key==='F')&&!e.ctrlKey) { resetViewBox(); renderCanvas(); }
+  else if ((e.key==='d'||e.key==='D')&&!e.ctrlKey) { toggleDims(); }
+  else if (e.key==='='||e.key==='+') { zoomAtCenter(1.2); renderCanvas(); }
+  else if (e.key==='-') { zoomAtCenter(1/1.2); renderCanvas(); }
   else if (e.key==='Escape') { S.sel=null; render(); }
   else if (e.ctrlKey&&e.key==='z') { e.preventDefault(); undo(); }
   else if (e.ctrlKey&&e.key==='e') { e.preventDefault(); exportJSON(); }
   else if (e.ctrlKey&&e.key==='n') { e.preventDefault(); newComposition(); }
 });
+
+// ── PAN & ZOOM EVENTS ────────────────────────────────────────
+const canvasDiv = document.getElementById('canvas');
+const mainSvg   = document.getElementById('main-svg');
+
+// Scroll-wheel zoom
+canvasDiv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const pt = svgPt(mainSvg, e.clientX, e.clientY);
+  const factor = e.deltaY < 0 ? 1.18 : 1/1.18;
+  zoomAt(pt.x, pt.y, factor);
+  renderCanvas();
+}, { passive: false });
+
+// Middle-mouse pan
+canvasDiv.addEventListener('mousedown', e=>{
+  if (e.button !== 1) return;
+  e.preventDefault();
+  S.pan = { lastX: e.clientX, lastY: e.clientY };
+  canvasDiv.classList.add('panning');
+});
+document.addEventListener('mousemove', e=>{
+  if (!S.pan) return;
+  if (!_vbox) initVbox();
+  const rect = canvasDiv.getBoundingClientRect();
+  // Scale: how many SVG units per screen pixel
+  const scaleX = _vbox.w / rect.width;
+  const scaleY = _vbox.h / rect.height;
+  _vbox.x -= (e.clientX - S.pan.lastX) * scaleX;
+  _vbox.y -= (e.clientY - S.pan.lastY) * scaleY;
+  S.pan.lastX = e.clientX;
+  S.pan.lastY = e.clientY;
+  renderCanvas();
+});
+document.addEventListener('mouseup', e=>{
+  if (e.button === 1 && S.pan) {
+    S.pan = null;
+    canvasDiv.classList.remove('panning');
+  }
+});
+
+// Fit & Dims buttons
+document.getElementById('btn-fit').addEventListener('click', ()=>{ resetViewBox(); renderCanvas(); });
+
+function toggleDims() {
+  S.showDims = !S.showDims;
+  document.getElementById('btn-dims-toggle').classList.toggle('active', S.showDims);
+  renderCanvas();
+}
+document.getElementById('btn-dims-toggle').addEventListener('click', toggleDims);
+// Dims on by default — set active class
+document.getElementById('btn-dims-toggle').classList.add('active');
+
+function zoomAtCenter(factor) {
+  if (!_vbox) initVbox();
+  const cx = _vbox.x + _vbox.w / 2;
+  const cy = _vbox.y + _vbox.h / 2;
+  zoomAt(cx, cy, factor);
+}
 
 // ============================================================
 // INIT

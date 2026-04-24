@@ -217,13 +217,14 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 - [x] JSON import with validation
 - [x] "New" with dirty confirm
 
-### ⬜ Phase 7 — Polish
-- [ ] SVG pan + zoom
-- [ ] Panel outline tree in sidebar
-- [ ] Keyboard shortcuts + undo stack
-- [ ] Dimension line toggle
-- [ ] Hover tooltips on dividers
-- [ ] Smooth transitions
+### ✅ Phase 7 — Polish
+- [x] SVG pan (middle-mouse) + zoom (scroll wheel), Fit (F key / button)
+- [x] Panel outline tree in sidebar
+- [x] Keyboard shortcuts + undo stack (Ctrl+Z, max 50)
+- [x] Dimension line toggle (D key / button)
+- [x] Hover tooltips on dividers (show mm sizes each side)
+- [x] Zoom indicator (bottom-right of canvas)
+- [x] + / - keyboard zoom, zoom-at-cursor on scroll wheel
 
 ---
 
@@ -232,3 +233,4 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-04-23 | v0.1 | CLAUDE.md created, WindowConfigurator_v1.html initial build |
+| 2026-04-24 | v0.2 | Phase 7 polish: SVG pan/zoom, dimension toggle, divider tooltips, zoom indicator |
