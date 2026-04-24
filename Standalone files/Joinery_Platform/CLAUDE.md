@@ -151,21 +151,26 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 
 ## Panel Type Reference
 
-| Type ID | Label | Sash Required | Symbol |
-|---------|-------|--------------|--------|
-| `fixed` | Fixed Glass | No | None |
-| `casement-left` | Casement (Hinge Left) | Yes | Diagonal arc, opens left |
-| `casement-right` | Casement (Hinge Right) | Yes | Diagonal arc, opens right |
-| `casement-top` | Casement (Hinge Top) | Yes | Diagonal arc, opens up |
-| `casement-bottom` | Casement (Hinge Bottom) | Yes | Diagonal arc, opens down |
-| `awning` | Awning | Yes | Horizontal arc, opens out-up |
-| `hopper` | Hopper | Yes | Horizontal arc, opens in-down |
-| `sliding-2t` | Sliding 2-Track | Yes | Double-headed arrow |
-| `sliding-3t` | Sliding 3-Track | Yes | Triple arrow |
-| `pivot-v` | Pivot Vertical | Yes | Vertical line + arcs |
-| `pivot-h` | Pivot Horizontal | Yes | Horizontal line + arcs |
-| `tilt-turn` | Tilt & Turn | Yes | Combined casement + awning |
-| `louvre` | Louvre | Yes | Parallel lines |
+| Type ID | Label | BIM Ref | Sash Required | Symbol |
+|---------|-------|---------|--------------|--------|
+| `fixed` | Fixed Glass | `W-FIX` | No | None |
+| `casement-left` | Casement (Hinge Left) | `W-CS-L` | Yes | Diagonal arc, opens left |
+| `casement-right` | Casement (Hinge Right) | `W-CS-R` | Yes | Diagonal arc, opens right |
+| `casement-top` | Casement (Hinge Top) | `W-CS-T` | Yes | Diagonal arc, opens up |
+| `casement-bottom` | Casement (Hinge Bottom) | `W-CS-B` | Yes | Diagonal arc, opens down |
+| `awning` | Awning | `W-AW` | Yes | Horizontal arc, opens out-up |
+| `hopper` | Hopper | `W-HP` | Yes | Horizontal arc, opens in-down |
+| `sliding-2t` | Sliding 2-Track | `W-SL2` | Yes | Double-headed arrow |
+| `sliding-3t` | Sliding 3-Track | `W-SL3` | Yes | Triple arrow |
+| `pivot-v` | Pivot Vertical | `W-PV-V` | Yes | Vertical line + arcs |
+| `pivot-h` | Pivot Horizontal | `W-PV-H` | Yes | Horizontal line + arcs |
+| `tilt-turn` | Tilt & Turn | `W-TT` | Yes | Combined casement + awning |
+| `louvre` | Louvre | `W-LV` | Yes | Parallel lines |
+| `door-single` | Single Door | `D-SG` | Yes | Arc + threshold |
+| `door-double` | Double Door | `D-DB` | Yes | Two arcs + threshold |
+| `door-sliding` | Sliding Door | `D-SL` | Yes | Arrow + threshold |
+| `door-bifold` | Bifold Door | `D-BF` | Yes | Fold lines + threshold |
+| `door-french` | French Doors | `D-FR` | Yes | Two arcs + threshold |
 
 ---
 
@@ -232,6 +237,10 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 - [x] **Door + Window mode** — Opening Type toggle in sidebar + inspector; 5 door panel types (Single, Double, Sliding, Bifold, French) with threshold symbols
 - [x] **Quick-start templates** — Templates modal (6 window + 5 door presets) with SVG previews; dirty-check on load
 
+### ✅ Phase 9 — Obayashi BIM Alignment + Plan View
+- [x] **BIM type reference codes** — `TYPE_REFS` map assigns every panel type an Obayashi-aligned code (e.g. `W-CS-L`, `D-SL`); displayed as a styled chip in the Selected Panel inspector; exported in JSON as `"ref"` field on each pane node
+- [x] **Plan / top view** — SVG plan diagram in the Frame inspector shows the full composition as a horizontal cross-section (viewed from above); renders frame rails, mullions, glass lines, sash profiles, and opening-swing arcs per pane type; highlights selected panel; updates on every state change
+
 ---
 
 ## Schema Notes (v1.0 extensions, 2026-04-24)
@@ -250,3 +259,4 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | 2026-04-23 | v0.1 | CLAUDE.md created, WindowConfigurator_v1.html initial build |
 | 2026-04-24 | v0.2 | Phase 7 polish: SVG pan/zoom, dimension toggle, divider tooltips, zoom indicator |
 | 2026-04-24 | v0.3 | Phase 8: editable dimensions, per-side frame widths, door types + opening mode, templates modal |
+| 2026-04-25 | v0.4 | Phase 9: Obayashi BIM type reference codes (W-FIX, W-CS-L, D-SL etc.) + plan/top view SVG in inspector |

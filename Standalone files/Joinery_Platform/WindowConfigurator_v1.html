@@ -217,6 +217,20 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
   display: flex; justify-content: center;
 }
 #section-diagram { display: block; }
+#plan-diagram-wrap {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 5px; padding: 8px; margin-bottom: 10px;
+  display: flex; justify-content: center;
+}
+#plan-diagram { display: block; }
+.ref-chip {
+  font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px;
+  font-weight: 600; letter-spacing: 0.05em;
+  color: var(--accent); background: var(--accent-dim);
+  border: 1px solid rgba(74,158,255,0.25);
+  border-radius: 4px; padding: 1px 7px;
+  user-select: all;
+}
 
 /* Pane inspector disabled state */
 #pane-inspector-body.disabled {
@@ -541,6 +555,10 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
           <div id="section-diagram-wrap">
             <svg id="section-diagram" width="220" height="70" viewBox="0 0 220 70"></svg>
           </div>
+          <div class="form-subsection-title" style="margin-bottom:4px">Plan View</div>
+          <div id="plan-diagram-wrap">
+            <svg id="plan-diagram" width="240" height="90" viewBox="0 0 1200 100"></svg>
+          </div>
           <div class="form-subsection-title">Overall Dimensions</div>
           <div class="form-row"><label>Width (mm)</label><input type="number" id="frame-width" min="100" max="10000" step="1"/></div>
           <div class="form-row"><label>Height (mm)</label><input type="number" id="frame-height" min="100" max="10000" step="1"/></div>
@@ -615,6 +633,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
               </select>
             </div>
             <div class="form-row"><label>Label</label><input type="text" id="pane-label" placeholder="Optional label"/></div>
+            <div class="form-row"><label>Ref</label><span id="pane-ref-code" class="ref-chip">—</span></div>
             <div class="form-section-divider"></div>
             <div class="form-subsection-title">Glass</div>
             <div class="form-row">
@@ -753,6 +772,28 @@ const GLASS_COLORS = {
 };
 const WINDOW_TYPES = ['fixed','casement-left','casement-right','casement-top','casement-bottom','awning','hopper','sliding-2t','sliding-3t','pivot-v','pivot-h','tilt-turn','louvre'];
 const DOOR_TYPES   = ['door-single','door-double','door-sliding','door-bifold','door-french'];
+
+// Obayashi BIM modelling guide type reference codes
+const TYPE_REFS = {
+  'fixed':          'W-FIX',
+  'casement-left':  'W-CS-L',
+  'casement-right': 'W-CS-R',
+  'casement-top':   'W-CS-T',
+  'casement-bottom':'W-CS-B',
+  'awning':         'W-AW',
+  'hopper':         'W-HP',
+  'sliding-2t':     'W-SL2',
+  'sliding-3t':     'W-SL3',
+  'pivot-v':        'W-PV-V',
+  'pivot-h':        'W-PV-H',
+  'tilt-turn':      'W-TT',
+  'louvre':         'W-LV',
+  'door-single':    'D-SG',
+  'door-double':    'D-DB',
+  'door-sliding':   'D-SL',
+  'door-bifold':    'D-BF',
+  'door-french':    'D-FR',
+};
 
 // ============================================================
 // STATE
@@ -1462,6 +1503,162 @@ function renderInspector() {
   renderPaneForm();
   renderDimensionsTable();
   renderSectionDiagram();
+  renderPlanView();
+}
+
+function renderPlanView() {
+  const svg = document.getElementById('plan-diagram');
+  if (!svg) return;
+  svg.innerHTML = '';
+  const f = S.c.frame;
+  const fw = frameWidths(f);
+  const W = f.overallWidth, D = f.depth;
+  const SVW = 240, SVH = 90;
+  const padX = 6, padY = 8;
+  const scaleX = (SVW - padX*2) / W;
+  const scaleY = (SVH - padY*2) / D;
+
+  svg.setAttribute('viewBox', `0 0 ${SVW} ${SVH}`);
+
+  // Background
+  svg.append(el('rect', {x:0,y:0,width:SVW,height:SVH,fill:'#15171C'}));
+
+  // Helper: mm → svg coords
+  const px = x => padX + x * scaleX;
+  const py = y => padY + y * scaleY;
+  const pw = w => w * scaleX;
+  const ph = h => h * scaleY;
+
+  const frameCol   = '#32364A';
+  const frameEdge  = '#484C5E';
+  const glassCol   = '#4A9EFF';
+  const sashCol    = '#3A5070';
+  const swingCol   = 'rgba(74,158,255,0.45)';
+  const threshCol  = 'rgba(255,153,68,0.85)';
+
+  // Outer frame top rail (header) and bottom rail (sill)
+  svg.append(el('rect',{x:px(0),y:py(0),width:pw(W),height:ph(fw.top),fill:frameCol,stroke:frameEdge,'stroke-width':0.8}));
+  svg.append(el('rect',{x:px(0),y:py(D-fw.bottom),width:pw(W),height:ph(fw.bottom),fill:frameCol,stroke:frameEdge,'stroke-width':0.8}));
+
+  // Collect leaf panes with their x-offsets in the composition
+  const leaves = [];
+  function collectLeaves(node, xOff, wAvail) {
+    if (node.kind === 'pane') { leaves.push({node, xOff, w: wAvail}); return; }
+    if (node.kind === 'split') {
+      if (node.axis === 'V') {
+        let prev = 0;
+        node.children.forEach((ch, i) => {
+          const r = i < node.dividers.length ? node.dividers[i].ratio : 1;
+          const chW = (r - prev) * wAvail;
+          collectLeaves(ch, xOff + prev * wAvail, chW);
+          prev = r;
+        });
+      } else {
+        // H-split: panes share the same x-range in plan; show the middle child as representative
+        const mid = Math.floor(node.children.length / 2);
+        collectLeaves(node.children[mid], xOff, wAvail);
+      }
+    }
+  }
+  const innerW = W - fw.left - fw.right;
+  collectLeaves(S.c.composition, fw.left, innerW);
+
+  // Left frame member
+  svg.append(el('rect',{x:px(0),y:py(0),width:pw(fw.left),height:ph(D),fill:frameCol,stroke:frameEdge,'stroke-width':0.8}));
+  // Right frame member
+  svg.append(el('rect',{x:px(W-fw.right),y:py(0),width:pw(fw.right),height:ph(D),fill:frameCol,stroke:frameEdge,'stroke-width':0.8}));
+
+  // Draw each pane cross-section
+  const sashT = 12; // visual sash thickness in mm
+  const glassMid = D / 2;
+
+  leaves.forEach(({node: pane, xOff, w}) => {
+    const x0 = px(xOff), x1 = px(xOff + w);
+    const paneW = pw(w);
+
+    // Thin mullion line between panes (except at frame edges)
+    if (xOff > fw.left + 0.5) {
+      svg.append(el('line',{x1:x0,y1:py(0),x2:x0,y2:py(D),stroke:frameEdge,'stroke-width':1.5,'pointer-events':'none'}));
+    }
+
+    const type = pane.type;
+    const isFixed = type === 'fixed' || type === 'louvre';
+    const isSliding = type === 'sliding-2t' || type === 'sliding-3t' || type === 'door-sliding';
+    const isCasementL = type === 'casement-left' || type === 'door-single';
+    const isCasementR = type === 'casement-right';
+    const isCasementT = type === 'casement-top' || type === 'awning';
+    const isCasementB = type === 'casement-bottom' || type === 'hopper';
+    const isTiltTurn  = type === 'tilt-turn';
+    const isDouble    = type === 'door-double' || type === 'door-french';
+    const isBifold    = type === 'door-bifold';
+    const isPivotV    = type === 'pivot-v';
+
+    if (isFixed) {
+      // Just a glass line at mid-depth
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isSliding) {
+      // Two staggered sash lines
+      const o = ph(sashT * 0.4);
+      svg.append(el('line',{x1:x0,y1:py(glassMid)-o,x2:x1,y2:py(glassMid)-o,stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid)+o,x2:x1,y2:py(glassMid)+o,stroke:glassCol,'stroke-width':1.2,'stroke-dasharray':'4,3','pointer-events':'none'}));
+    } else if (isCasementL || isTiltTurn) {
+      // Sash rect (outer face)
+      svg.append(el('rect',{x:x0,y:py(glassMid-sashT/2),width:paneW,height:ph(sashT),fill:sashCol,stroke:frameEdge,'stroke-width':0.6,opacity:0.7}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      // Swing arc from hinge side (left) showing door sweeping outward
+      const swingR = Math.min(paneW * 0.75, ph(D * 0.45));
+      svg.append(el('path',{d:`M ${x0} ${py(glassMid)} A ${swingR} ${swingR} 0 0 0 ${x0+swingR} ${py(glassMid-D*0.22)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x0+swingR,y2:py(glassMid-D*0.22),stroke:swingCol,'stroke-width':0.8,'stroke-dasharray':'3,3','pointer-events':'none'}));
+    } else if (isCasementR) {
+      svg.append(el('rect',{x:x0,y:py(glassMid-sashT/2),width:paneW,height:ph(sashT),fill:sashCol,stroke:frameEdge,'stroke-width':0.6,opacity:0.7}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      const swingR = Math.min(paneW * 0.75, ph(D * 0.45));
+      svg.append(el('path',{d:`M ${x1} ${py(glassMid)} A ${swingR} ${swingR} 0 0 1 ${x1-swingR} ${py(glassMid-D*0.22)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('line',{x1:x1,y1:py(glassMid),x2:x1-swingR,y2:py(glassMid-D*0.22),stroke:swingCol,'stroke-width':0.8,'stroke-dasharray':'3,3','pointer-events':'none'}));
+    } else if (isCasementT || isCasementB) {
+      // Top/bottom hung — in plan they look like a fixed pane (pivot axis at top or bottom, swing in elevation not plan)
+      svg.append(el('rect',{x:x0,y:py(glassMid-sashT/2),width:paneW,height:ph(sashT),fill:sashCol,stroke:frameEdge,'stroke-width':0.6,opacity:0.7}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isDouble) {
+      // Two leaves, one each side
+      const mid = (x0 + x1) / 2;
+      const swingR = Math.min(paneW * 0.38, ph(D * 0.45));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('path',{d:`M ${mid} ${py(glassMid)} A ${swingR} ${swingR} 0 0 0 ${mid-swingR} ${py(glassMid-D*0.22)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('path',{d:`M ${mid} ${py(glassMid)} A ${swingR} ${swingR} 0 0 1 ${mid+swingR} ${py(glassMid-D*0.22)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      // Threshold
+      svg.append(el('line',{x1:x0,y1:py(D-fw.bottom),x2:x1,y2:py(D-fw.bottom),stroke:threshCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isBifold) {
+      // Two fold panels each side of centre
+      const mid = (x0 + x1) / 2;
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:mid,y2:py(glassMid*0.55),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('line',{x1:x1,y1:py(glassMid),x2:mid,y2:py(glassMid*0.55),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(D-fw.bottom),x2:x1,y2:py(D-fw.bottom),stroke:threshCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isPivotV) {
+      // Pivot: sash shown angled in plan
+      const cx = (x0+x1)/2;
+      svg.append(el('line',{x1:x0+paneW*0.15,y1:py(glassMid*0.4),x2:x1-paneW*0.15,y2:py(D-glassMid*0.4),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('circle',{cx,r:2.5,cy:py(D/2),fill:glassCol,opacity:0.8,'pointer-events':'none'}));
+    } else {
+      // Fallback
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+    }
+
+    // Selected pane highlight
+    if (pane.id === S.sel) {
+      svg.append(el('rect',{x:x0+0.5,y:py(0)+0.5,width:paneW-1,height:ph(D)-1,fill:'none',stroke:'rgba(74,158,255,0.5)','stroke-width':1.5,'pointer-events':'none'}));
+    }
+  });
+
+  // Outer frame border
+  svg.append(el('rect',{x:px(0),y:py(0),width:pw(W),height:ph(D),fill:'none',stroke:frameEdge,'stroke-width':1.5}));
+
+  // Labels
+  const lbl2 = (x2,y2,txt) => {
+    const t2=el('text',{x:x2,y:y2,'text-anchor':'middle',fill:'rgba(120,130,150,0.8)','font-size':7,'font-family':'system-ui'});
+    t2.textContent=txt; svg.append(t2);
+  };
+  lbl2(SVW/2, SVH-1, `${W}mm wide  ·  ${D}mm depth`);
 }
 
 function renderFrameForm() {
@@ -1496,6 +1693,8 @@ function renderPaneForm() {
   body.classList.remove('disabled');
   setVal('pane-type-select', node.type);
   setVal('pane-label',        node.label||'');
+  const refEl = document.getElementById('pane-ref-code');
+  if (refEl) refEl.textContent = TYPE_REFS[node.type] ?? '—';
   setVal('pane-glass-product', node.glass.product);
   setVal('pane-glass-thickness', node.glass.thickness);
   const sashSec = document.getElementById('pane-sash-section');
@@ -1656,9 +1855,16 @@ function setVal(id, val) {
 // ============================================================
 // IMPORT / EXPORT
 // ============================================================
+function annotateRefs(node) {
+  if (node.kind === 'pane') return { ref: TYPE_REFS[node.type] ?? null, ...node };
+  if (node.kind === 'split') return { ...node, children: node.children.map(annotateRefs) };
+  return node;
+}
+
 function exportJSON() {
   S.c.meta.modifiedAt=new Date().toISOString();
-  const json=JSON.stringify(S.c, null, 2);
+  const exportData = { ...S.c, composition: annotateRefs(S.c.composition) };
+  const json=JSON.stringify(exportData, null, 2);
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
   a.download=`${S.c.meta.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.json`;
