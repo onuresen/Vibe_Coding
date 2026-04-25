@@ -359,6 +359,109 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
 .dim-input:not([readonly]) { border-bottom-color:var(--border); cursor:text; }
 .dim-input:not([readonly]):focus { outline:none; border-bottom-color:var(--accent); background:var(--accent-glow); }
 .dim-input[readonly] { cursor:default; }
+
+/* ── MOBILE: hidden on desktop ──────────────────────────── */
+#mobile-tab-bar { display: none; }
+
+@media (max-width: 768px) {
+  html { touch-action: manipulation; }
+
+  /* Workspace: single-column, tab switching */
+  #workspace {
+    grid-template-columns: 1fr;
+    position: relative;
+    overflow: hidden;
+  }
+  #sidebar, #canvas-area, #inspector {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  #canvas-area { display: none; }
+  #inspector   { display: none; }
+  #sidebar     { display: flex; overflow-y: auto; }
+
+  #workspace.mob-show-canvas   #canvas-area  { display: flex; }
+  #workspace.mob-show-canvas   #sidebar      { display: none; }
+  #workspace.mob-show-canvas   #inspector    { display: none; }
+  #workspace.mob-show-inspector #inspector   { display: flex; flex-direction: column; overflow-y: auto; }
+  #workspace.mob-show-inspector #sidebar     { display: none; }
+  #workspace.mob-show-inspector #canvas-area { display: none; }
+
+  /* Bottom tab bar */
+  #mobile-tab-bar {
+    display: flex;
+    flex: none;
+    height: 56px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    justify-content: stretch;
+    z-index: 100;
+  }
+  .mob-tab {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px; border: none; background: transparent;
+    color: var(--text-muted); font-size: 10px; font-weight: 500;
+    cursor: pointer; padding: 6px 0; min-height: 44px;
+    transition: color 0.12s, background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-tab:active { background: var(--bg-surface); }
+  .mob-tab.active { color: var(--accent); }
+  .mob-tab svg { flex-shrink: 0; }
+
+  /* Topbar: compact */
+  .brand-name     { display: none; }
+  #topbar         { padding: 0 8px; gap: 6px; }
+  #topbar-actions { gap: 4px; }
+  #window-title   { font-size: 12px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #btn-import     { display: none; }
+  #btn-undo       { padding: 5px 8px; font-size: 11px; }
+  #btn-templates  { padding: 5px 8px; font-size: 11px; }
+  #btn-new        { padding: 5px 8px; font-size: 11px; }
+  #btn-export     { padding: 5px 8px; font-size: 11px; }
+
+  /* Context toolbar: scrollable, large touch targets */
+  #ctx-toolbar {
+    height: auto; min-height: 52px; padding: 4px 8px;
+    gap: 4px; overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; flex-wrap: nowrap;
+  }
+  #ctx-toolbar button, #ctx-toolbar select {
+    min-height: 44px; font-size: 13px; padding: 6px 10px; white-space: nowrap;
+  }
+  .btn-label    { display: none; }
+  .ctx-label    { display: none; }
+  #selection-hint { display: none; }
+  #ctx-type-select { font-size: 13px; max-width: 130px; }
+
+  /* Type palette: larger cells */
+  #type-palette { gap: 6px; padding: 10px; }
+  .type-btn { min-height: 70px; padding: 8px 4px; font-size: 11px; }
+
+  /* Inspector: full-width forms */
+  #inspector { width: 100%; border-left: none; }
+  .form-row { flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .form-row label { flex: 0 0 100%; font-size: 12px; }
+  .form-row input, .form-row select {
+    width: 100%; font-size: 16px; padding: 8px 10px; text-align: left;
+  }
+  .form-row input[type="number"] { text-align: right; }
+  .accordion-header { padding: 14px; min-height: 44px; }
+  .accordion-body   { padding: 0 10px 10px; }
+  #dims-table       { font-size: 10px; }
+  #section-diagram-wrap, #plan-diagram-wrap { padding: 6px; }
+
+  /* Templates modal: full-screen */
+  #templates-box {
+    width: 100%; height: 100%; max-height: 100%;
+    border-radius: 0; border: none;
+  }
+  #templates-grid { grid-template-columns: repeat(2, 1fr); padding: 10px; gap: 8px; }
+}
 </style>
 </head>
 <body>
@@ -501,10 +604,10 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
     <!-- ── CANVAS AREA ─────────────────────────────────── -->
     <div id="canvas-area">
       <div id="ctx-toolbar">
-        <button class="btn btn-icon" id="btn-split-h" title="Split Horizontal (H)" disabled>⊟ Split H</button>
-        <button class="btn btn-icon" id="btn-split-v" title="Split Vertical (V)" disabled>⊞ Split V</button>
+        <button class="btn btn-icon" id="btn-split-h" title="Split Horizontal (H)" disabled>⊟ <span class="btn-label">Split H</span></button>
+        <button class="btn btn-icon" id="btn-split-v" title="Split Vertical (V)" disabled>⊞ <span class="btn-label">Split V</span></button>
         <div class="ctx-separator"></div>
-        <button class="btn btn-icon btn-danger" id="btn-delete" title="Delete Panel (Del)" disabled>✕ Delete</button>
+        <button class="btn btn-icon btn-danger" id="btn-delete" title="Delete Panel (Del)" disabled>✕ <span class="btn-label">Delete</span></button>
         <div class="ctx-separator"></div>
         <span class="ctx-label">Type:</span>
         <select id="ctx-type-select" disabled>
@@ -703,6 +806,20 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
 
     </div><!-- /inspector -->
   </div><!-- /workspace -->
+<div id="mobile-tab-bar">
+  <button class="mob-tab active" data-panel="sidebar" id="mob-tab-panels">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="6" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="4" width="8" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+    <span>Panels</span>
+  </button>
+  <button class="mob-tab" data-panel="canvas" id="mob-tab-canvas">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="5" width="10" height="10" rx="1" fill="currentColor" opacity="0.25"/></svg>
+    <span>Canvas</span>
+  </button>
+  <button class="mob-tab" data-panel="inspector" id="mob-tab-inspector">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="4" y1="6" x2="16" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="10" x2="12" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span>Inspector</span>
+  </button>
+</div>
 </div><!-- /app -->
 
 <!-- ── TEMPLATES MODAL ──────────────────────────────────────── -->
@@ -2346,6 +2463,117 @@ function zoomAtCenter(factor) {
 // INIT
 // ============================================================
 document.getElementById('btn-undo').disabled = true;
+
+// ============================================================
+// MOBILE: TAB BAR + TOUCH SUPPORT
+// ============================================================
+(function() {
+  const workspace = document.getElementById('workspace');
+  const mainSvg   = document.getElementById('main-svg');
+  const isMobile  = () => window.innerWidth <= 768;
+
+  // ── Tab switcher ──────────────────────────────────────────
+  const panels = {
+    sidebar:   { tab: document.getElementById('mob-tab-panels'),   cls: '' },
+    canvas:    { tab: document.getElementById('mob-tab-canvas'),   cls: 'mob-show-canvas' },
+    inspector: { tab: document.getElementById('mob-tab-inspector'),cls: 'mob-show-inspector' },
+  };
+  let currentPanel = 'sidebar';
+
+  function switchTab(name) {
+    workspace.classList.remove('mob-show-canvas', 'mob-show-inspector');
+    if (panels[name].cls) workspace.classList.add(panels[name].cls);
+    Object.values(panels).forEach(p => p.tab.classList.remove('active'));
+    panels[name].tab.classList.add('active');
+    if (name === 'canvas' && currentPanel !== 'canvas') {
+      requestAnimationFrame(() => renderCanvas());
+    }
+    currentPanel = name;
+  }
+
+  Object.keys(panels).forEach(name => {
+    panels[name].tab.addEventListener('click', () => switchTab(name));
+  });
+
+  // Auto-navigate to canvas after tapping a type button
+  document.querySelectorAll('.type-btn').forEach(btn => {
+    btn.addEventListener('click', () => { if (isMobile()) setTimeout(() => switchTab('canvas'), 120); });
+  });
+  // ── Touch pan (single finger on empty canvas) ─────────────
+  let touchPan  = null;
+  let pinchState = null;
+
+  function touchDist(a, b) {
+    const dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+    return Math.sqrt(dx*dx + dy*dy);
+  }
+  function touchMid(a, b) {
+    return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+  }
+
+  mainSvg.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      if (e.target.closest('[data-id]')) return; // let tap-select work
+      touchPan = { lx: e.touches[0].clientX, ly: e.touches[0].clientY };
+    } else if (e.touches.length === 2) {
+      e.preventDefault();
+      touchPan = null;
+      pinchState = { dist: touchDist(e.touches[0], e.touches[1]),
+                     mid:  touchMid(e.touches[0], e.touches[1]) };
+    }
+  }, { passive: false });
+
+  mainSvg.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && touchPan) {
+      if (!_vbox) return;
+      const rect = document.getElementById('canvas').getBoundingClientRect();
+      const sx = _vbox.w / rect.width, sy = _vbox.h / rect.height;
+      _vbox.x -= (e.touches[0].clientX - touchPan.lx) * sx;
+      _vbox.y -= (e.touches[0].clientY - touchPan.ly) * sy;
+      touchPan.lx = e.touches[0].clientX;
+      touchPan.ly = e.touches[0].clientY;
+      mainSvg.setAttribute('viewBox', `${_vbox.x} ${_vbox.y} ${_vbox.w} ${_vbox.h}`);
+    } else if (e.touches.length === 2 && pinchState) {
+      const newDist = touchDist(e.touches[0], e.touches[1]);
+      const mid     = touchMid(e.touches[0], e.touches[1]);
+      const factor  = newDist / pinchState.dist;
+      const pt      = svgPt(mainSvg, mid.x, mid.y);
+      zoomAt(pt.x, pt.y, factor);
+      pinchState.dist = newDist;
+      pinchState.mid  = mid;
+      mainSvg.setAttribute('viewBox', `${_vbox.x} ${_vbox.y} ${_vbox.w} ${_vbox.h}`);
+    }
+  }, { passive: false });
+
+  mainSvg.addEventListener('touchend', e => {
+    if (e.touches.length < 2) pinchState = null;
+    if (e.touches.length === 0) touchPan = null;
+  });
+
+  // ── Touch divider drag ────────────────────────────────────
+  mainSvg.addEventListener('touchstart', e => {
+    const handle = e.target.closest('rect[cursor="ew-resize"], rect[cursor="ns-resize"]');
+    if (!handle) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    handle.dispatchEvent(new MouseEvent('mousedown', { bubbles:true, cancelable:true, clientX:t.clientX, clientY:t.clientY, button:0 }));
+  }, { passive: false });
+
+  document.addEventListener('touchmove', e => {
+    if (!S.drag) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles:true, cancelable:true, clientX:t.clientX, clientY:t.clientY }));
+  }, { passive: false });
+
+  document.addEventListener('touchend', e => {
+    if (!S.drag) return;
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles:true, cancelable:true, button:0 }));
+  });
+
+})();
+
 render();
 </script>
 </body>
