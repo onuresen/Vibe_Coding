@@ -1,0 +1,2580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Window Configurator</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-app:      #15171C;
+  --bg-panel:    #1E2128;
+  --bg-surface:  #252830;
+  --bg-input:    #1A1D23;
+  --border:      #32363F;
+  --border-light:#3E4250;
+  --accent:      #4A9EFF;
+  --accent-dim:  rgba(74,158,255,0.15);
+  --accent-glow: rgba(74,158,255,0.08);
+  --text-primary:#E2E5EA;
+  --text-muted:  #7A8190;
+  --text-dim:    #4A5060;
+  --danger:      #FF5F57;
+  --success:     #30C96A;
+  --frame-fill:  #2E3240;
+  --frame-edge:  #454A5A;
+  --scrollbar:   #2A2D35;
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: var(--text-primary); font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+
+/* ── SCROLLBAR ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-app); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+
+/* ── APP SHELL ─────────────────────────────────────────── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── TOPBAR ────────────────────────────────────────────── */
+#topbar {
+  flex: none; height: 46px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; gap: 12px;
+  user-select: none;
+}
+#topbar-brand { display: flex; align-items: center; gap: 10px; }
+.brand-logo { width: 28px; height: 28px; }
+.brand-name { font-size: 14px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-primary); }
+.brand-name span { color: var(--accent); }
+#topbar-center { flex: 1; display: flex; justify-content: center; }
+#window-title {
+  font-size: 13px; color: var(--text-muted); cursor: default;
+  padding: 4px 10px; border-radius: 4px; transition: background 0.15s;
+}
+#window-title:hover { background: var(--bg-surface); color: var(--text-primary); cursor: text; }
+#topbar-actions { display: flex; gap: 6px; }
+
+/* ── BUTTONS ───────────────────────────────────────────── */
+.btn {
+  padding: 5px 12px; border-radius: 5px; border: 1px solid var(--border-light);
+  background: var(--bg-surface); color: var(--text-primary);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--border); border-color: var(--border-light); }
+.btn:active { background: var(--bg-input); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: #5AADFF; border-color: #5AADFF; }
+.btn-danger { background: var(--bg-surface); border-color: var(--border-light); color: var(--danger); }
+.btn-danger:hover { background: rgba(255,95,87,0.12); border-color: var(--danger); }
+.btn-icon {
+  padding: 5px 8px; font-size: 13px;
+  background: var(--bg-surface); border: 1px solid var(--border-light);
+  border-radius: 5px; cursor: pointer; color: var(--text-muted); transition: all 0.12s;
+}
+.btn-icon:hover { color: var(--text-primary); background: var(--border); }
+.btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── WORKSPACE ─────────────────────────────────────────── */
+#workspace {
+  flex: 1; display: grid;
+  grid-template-columns: 220px 1fr 290px;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ───────────────────────────────────────────── */
+#sidebar {
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-section {
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-section-title {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+/* Type palette */
+#type-palette {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  padding: 10px 12px;
+}
+.type-btn {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 6px 4px; gap: 4px; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--bg-surface);
+  cursor: pointer; transition: all 0.12s; color: var(--text-muted);
+  font-size: 10px; text-align: center; min-height: 56px;
+  justify-content: center;
+}
+.type-btn:hover { border-color: var(--accent); color: var(--text-primary); background: var(--accent-glow); }
+.type-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+.type-btn svg { flex-shrink: 0; }
+.type-btn-label { font-size: 9px; line-height: 1.2; }
+
+/* Panel outline tree */
+#outline-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#outline-tree { flex: 1; overflow-y: auto; padding: 6px 0; }
+.outline-item {
+  display: flex; align-items: center; gap: 6px;
+  height: 28px; padding-right: 12px;
+  cursor: pointer; border-radius: 4px; margin: 0 6px 1px;
+  transition: background 0.1s;
+}
+.outline-item:hover { background: var(--bg-surface); }
+.outline-item.selected { background: var(--accent-dim); color: var(--accent); }
+.outline-icon { font-size: 12px; width: 16px; text-align: center; flex-shrink: 0; }
+.outline-label { font-size: 12px; truncate: ellipsis; overflow: hidden; white-space: nowrap; }
+
+/* ── CANVAS AREA ───────────────────────────────────────── */
+#canvas-area { display: flex; flex-direction: column; background: var(--bg-app); overflow: hidden; }
+
+/* Context toolbar */
+#ctx-toolbar {
+  flex: none; height: 42px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 12px; gap: 6px;
+}
+.ctx-separator { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.ctx-label { font-size: 11px; color: var(--text-muted); }
+#ctx-type-select {
+  background: var(--bg-surface); border: 1px solid var(--border-light);
+  color: var(--text-primary); border-radius: 4px; padding: 4px 8px;
+  font-size: 12px; cursor: pointer;
+}
+#ctx-type-select:disabled { opacity: 0.4; cursor: not-allowed; }
+#ctx-type-select option { background: var(--bg-surface); }
+
+#canvas {
+  flex: 1; overflow: hidden; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+#main-svg { width: 100%; height: 100%; display: block; }
+
+/* ── INSPECTOR ─────────────────────────────────────────── */
+#inspector {
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;
+}
+
+/* Accordion */
+.accordion { border-bottom: 1px solid var(--border); }
+.accordion-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+  user-select: none; transition: background 0.1s;
+}
+.accordion-header:hover { background: var(--bg-surface); }
+.acc-arrow { font-size: 9px; color: var(--text-muted); transition: transform 0.15s; }
+.accordion-body { padding: 0 14px 12px; }
+.accordion-body.hidden { display: none; }
+
+/* Form rows */
+.form-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 7px; gap: 8px;
+}
+.form-row label { font-size: 11px; color: var(--text-muted); flex: 1; white-space: nowrap; }
+.form-row input, .form-row select {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-primary); border-radius: 4px; padding: 4px 7px;
+  font-size: 12px; width: 90px; text-align: right;
+  transition: border-color 0.1s;
+}
+.form-row input:focus, .form-row select:focus {
+  outline: none; border-color: var(--accent);
+}
+.form-row input[type="text"] { text-align: left; width: 100%; }
+.form-row select { width: 100%; text-align: left; }
+.form-row select option { background: var(--bg-surface); }
+.form-section-divider {
+  height: 1px; background: var(--border); margin: 10px 0;
+}
+.form-subsection-title {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-dim); margin: 8px 0 6px;
+}
+
+/* Section diagram */
+#section-diagram-wrap {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 5px; padding: 8px; margin-bottom: 10px;
+  display: flex; justify-content: center;
+}
+#section-diagram { display: block; }
+#plan-diagram-wrap {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 5px; padding: 8px; margin-bottom: 10px;
+  display: flex; justify-content: center;
+}
+#plan-diagram { display: block; }
+.ref-chip {
+  font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px;
+  font-weight: 600; letter-spacing: 0.05em;
+  color: var(--accent); background: var(--accent-dim);
+  border: 1px solid rgba(74,158,255,0.25);
+  border-radius: 4px; padding: 1px 7px;
+  user-select: all;
+}
+
+/* Pane inspector disabled state */
+#pane-inspector-body.disabled {
+  opacity: 0.4; pointer-events: none;
+}
+
+/* Dimensions table */
+#dims-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 8px; }
+#dims-table th {
+  text-align: left; color: var(--text-dim); font-weight: 600;
+  padding: 4px 6px; border-bottom: 1px solid var(--border);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+#dims-table td { padding: 4px 6px; color: var(--text-primary); border-bottom: 1px solid rgba(50,54,63,0.5); }
+#dims-table tr:hover td { background: var(--bg-surface); }
+#dims-table tr.selected-row td { background: var(--accent-dim); }
+.dims-total-row { display: flex; justify-content: space-between; padding: 6px 0 0; }
+.dims-total-label { font-size: 11px; color: var(--text-muted); }
+.dims-total-val { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+
+/* Keyboard shortcuts hint */
+#shortcuts-hint {
+  padding: 10px 14px;
+  font-size: 10px; color: var(--text-dim); line-height: 1.8;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+.shortcut { display: flex; justify-content: space-between; }
+.shortcut kbd {
+  background: var(--bg-surface); border: 1px solid var(--border-light);
+  border-radius: 3px; padding: 1px 5px; font-size: 10px;
+  font-family: monospace; color: var(--text-muted);
+}
+
+/* ── TOOLTIP ───────────────────────────────────────────── */
+#dim-tooltip {
+  position: fixed; display: none; pointer-events: none; z-index: 200;
+  background: #1E2128; border: 1px solid #4A9EFF;
+  border-radius: 5px; padding: 5px 10px;
+  font-size: 11px; font-family: system-ui, sans-serif;
+  color: #E2E5EA; white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  letter-spacing: 0.02em;
+}
+#dim-tooltip .tt-row { display: flex; align-items: center; gap: 8px; }
+#dim-tooltip .tt-val { color: #4A9EFF; font-weight: 600; }
+#dim-tooltip .tt-sep { color: #3E4250; }
+
+/* ── PAN CURSOR ────────────────────────────────────────── */
+#canvas.can-pan { cursor: grab; }
+#canvas.panning { cursor: grabbing !important; }
+#canvas.can-pan #main-svg { cursor: grab; }
+#canvas.panning #main-svg { cursor: grabbing; }
+
+/* ── ZOOM INDICATOR ────────────────────────────────────── */
+#zoom-indicator {
+  position: absolute; bottom: 10px; right: 10px;
+  background: rgba(30,33,40,0.85); border: 1px solid #32363F;
+  border-radius: 4px; padding: 3px 8px;
+  font-size: 10px; color: #7A8190;
+  pointer-events: none; font-family: monospace;
+  backdrop-filter: blur(4px);
+}
+
+/* ── ACTIVE TOGGLE BUTTON ──────────────────────────────── */
+.btn-icon.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* ── OPENING TYPE TOGGLE ───────────────────────────────── */
+#opening-type-toggle { display:flex; gap:4px; padding:4px 0 6px; }
+.opening-btn {
+  flex:1; padding:5px 0; border-radius:4px; border:1px solid var(--border);
+  background:var(--bg-surface); color:var(--text-muted);
+  font-size:11px; font-weight:600; cursor:pointer; text-align:center;
+  transition:all 0.12s;
+}
+.opening-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+.door-type-palette { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:0 0 4px; }
+
+/* ── TEMPLATES MODAL ───────────────────────────────────── */
+#templates-modal {
+  position:fixed; inset:0; z-index:500;
+  background:rgba(0,0,0,0.72); display:none;
+  align-items:center; justify-content:center;
+}
+#templates-modal.open { display:flex; }
+#templates-box {
+  background:var(--bg-panel); border:1px solid var(--border);
+  border-radius:8px; width:680px; max-height:82vh;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+#templates-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; border-bottom:1px solid var(--border);
+}
+#templates-header h2 { font-size:13px; font-weight:600; }
+#templates-tabs { display:flex; gap:4px; padding:10px 16px 0; }
+.tpl-tab {
+  padding:4px 14px; border-radius:4px; border:1px solid var(--border);
+  background:var(--bg-surface); color:var(--text-muted);
+  font-size:11px; font-weight:600; cursor:pointer; transition:all 0.12s;
+}
+.tpl-tab.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+#templates-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+  padding:14px 16px 16px; overflow-y:auto;
+}
+.template-card {
+  border:1px solid var(--border); border-radius:6px;
+  background:var(--bg-surface); cursor:pointer;
+  transition:border-color 0.12s, background 0.12s;
+  display:flex; flex-direction:column; align-items:center;
+  padding:10px 8px 8px; gap:5px;
+}
+.template-card:hover { border-color:var(--accent); background:var(--accent-glow); }
+.template-card svg { display:block; }
+.template-card-name { font-size:11px; font-weight:600; color:var(--text-primary); text-align:center; }
+.template-card-desc { font-size:9px; color:var(--text-muted); text-align:center; line-height:1.4; }
+
+/* ── DIM INPUT ─────────────────────────────────────────── */
+.dim-input {
+  background:transparent; border:none;
+  border-bottom:1px solid transparent;
+  color:var(--text-primary); font-size:11px;
+  text-align:right; padding:1px 2px; width:52px;
+}
+.dim-input:not([readonly]) { border-bottom-color:var(--border); cursor:text; }
+.dim-input:not([readonly]):focus { outline:none; border-bottom-color:var(--accent); background:var(--accent-glow); }
+.dim-input[readonly] { cursor:default; }
+
+/* ── MOBILE: hidden on desktop ──────────────────────────── */
+#mobile-tab-bar { display: none; }
+
+@media (max-width: 768px) {
+  html { touch-action: manipulation; }
+
+  /* Workspace: single-column, tab switching */
+  #workspace {
+    grid-template-columns: 1fr;
+    position: relative;
+    overflow: hidden;
+  }
+  #sidebar, #canvas-area, #inspector {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  #canvas-area { display: none; }
+  #inspector   { display: none; }
+  #sidebar     { display: flex; overflow-y: auto; }
+
+  #workspace.mob-show-canvas   #canvas-area  { display: flex; }
+  #workspace.mob-show-canvas   #sidebar      { display: none; }
+  #workspace.mob-show-canvas   #inspector    { display: none; }
+  #workspace.mob-show-inspector #inspector   { display: flex; flex-direction: column; overflow-y: auto; }
+  #workspace.mob-show-inspector #sidebar     { display: none; }
+  #workspace.mob-show-inspector #canvas-area { display: none; }
+
+  /* Bottom tab bar */
+  #mobile-tab-bar {
+    display: flex;
+    flex: none;
+    height: 56px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    justify-content: stretch;
+    z-index: 100;
+  }
+  .mob-tab {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px; border: none; background: transparent;
+    color: var(--text-muted); font-size: 10px; font-weight: 500;
+    cursor: pointer; padding: 6px 0; min-height: 44px;
+    transition: color 0.12s, background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-tab:active { background: var(--bg-surface); }
+  .mob-tab.active { color: var(--accent); }
+  .mob-tab svg { flex-shrink: 0; }
+
+  /* Topbar: compact */
+  .brand-name     { display: none; }
+  #topbar         { padding: 0 8px; gap: 6px; }
+  #topbar-actions { gap: 4px; }
+  #window-title   { font-size: 12px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #btn-import     { display: none; }
+  #btn-undo       { padding: 5px 8px; font-size: 11px; }
+  #btn-templates  { padding: 5px 8px; font-size: 11px; }
+  #btn-new        { padding: 5px 8px; font-size: 11px; }
+  #btn-export     { padding: 5px 8px; font-size: 11px; }
+
+  /* Context toolbar: scrollable, large touch targets */
+  #ctx-toolbar {
+    height: auto; min-height: 52px; padding: 4px 8px;
+    gap: 4px; overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; flex-wrap: nowrap;
+  }
+  #ctx-toolbar button, #ctx-toolbar select {
+    min-height: 44px; font-size: 13px; padding: 6px 10px; white-space: nowrap;
+  }
+  .btn-label    { display: none; }
+  .ctx-label    { display: none; }
+  #selection-hint { display: none; }
+  #ctx-type-select { font-size: 13px; max-width: 130px; }
+
+  /* Type palette: larger cells */
+  #type-palette { gap: 6px; padding: 10px; }
+  .type-btn { min-height: 70px; padding: 8px 4px; font-size: 11px; }
+
+  /* Inspector: full-width forms */
+  #inspector { width: 100%; border-left: none; }
+  .form-row { flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .form-row label { flex: 0 0 100%; font-size: 12px; }
+  .form-row input, .form-row select {
+    width: 100%; font-size: 16px; padding: 8px 10px; text-align: left;
+  }
+  .form-row input[type="number"] { text-align: right; }
+  .accordion-header { padding: 14px; min-height: 44px; }
+  .accordion-body   { padding: 0 10px 10px; }
+  #dims-table       { font-size: 10px; }
+  #section-diagram-wrap, #plan-diagram-wrap { padding: 6px; }
+
+  /* Templates modal: full-screen */
+  #templates-box {
+    width: 100%; height: 100%; max-height: 100%;
+    border-radius: 0; border: none;
+  }
+  #templates-grid { grid-template-columns: repeat(2, 1fr); padding: 10px; gap: 8px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── TOPBAR ─────────────────────────────────────────── -->
+  <div id="topbar">
+    <div id="topbar-brand">
+      <svg class="brand-logo" viewBox="0 0 28 28" fill="none">
+        <rect x="1" y="1" width="26" height="26" rx="4" fill="#252830" stroke="#3E4250"/>
+        <rect x="3" y="3" width="10" height="22" rx="1" fill="#3A3E4A" stroke="#4A9EFF" stroke-width="0.8"/>
+        <rect x="15" y="3" width="10" height="10" rx="1" fill="#3A3E4A" stroke="#4A9EFF" stroke-width="0.8"/>
+        <rect x="15" y="15" width="10" height="10" rx="1" fill="#3A3E4A" stroke="#4A9EFF" stroke-width="0.8"/>
+        <line x1="5" y1="7" x2="11" y2="14" stroke="rgba(74,158,255,0.6)" stroke-width="0.8"/>
+        <line x1="11" y1="7" x2="5" y2="14" stroke="rgba(74,158,255,0.6)" stroke-width="0.8"/>
+      </svg>
+      <span class="brand-name">id<span>:window</span></span>
+    </div>
+    <div id="topbar-center">
+      <span id="window-title" title="Double-click to rename">New Window</span>
+    </div>
+    <div id="topbar-actions">
+      <button class="btn" id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
+      <button class="btn" id="btn-templates" title="Quick-Start Templates">Templates</button>
+      <button class="btn" id="btn-new" title="New (Ctrl+N)">New</button>
+      <button class="btn" id="btn-import" title="Import JSON">Import</button>
+      <button class="btn btn-primary" id="btn-export" title="Export JSON (Ctrl+E)">Export</button>
+    </div>
+  </div>
+
+  <!-- ── WORKSPACE ──────────────────────────────────────── -->
+  <div id="workspace">
+
+    <!-- ── SIDEBAR ──────────────────────────────────────── -->
+    <div id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Opening Type</div>
+        <div id="opening-type-toggle">
+          <button class="opening-btn active" data-otype="window">Window</button>
+          <button class="opening-btn" data-otype="door">Door</button>
+        </div>
+        <div class="sidebar-section-title" style="margin-top:4px">Panel Types</div>
+        <div id="palette-window">
+        <div id="type-palette">
+          <!-- Fixed -->
+          <button class="type-btn" data-type="fixed" title="Fixed Glass">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,195,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/></svg>
+            <span class="type-btn-label">Fixed</span>
+          </button>
+          <!-- Casement Left -->
+          <button class="type-btn" data-type="casement-left" title="Casement (Hinge Left)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="34" y1="2" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="24" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Casement L</span>
+          </button>
+          <!-- Casement Right -->
+          <button class="type-btn" data-type="casement-right" title="Casement (Hinge Right)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Casement R</span>
+          </button>
+          <!-- Awning -->
+          <button class="type-btn" data-type="awning" title="Awning (Hinge Top)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(160,215,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="24" x2="18" y2="2" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="24" x2="18" y2="2" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Awning</span>
+          </button>
+          <!-- Hopper -->
+          <button class="type-btn" data-type="hopper" title="Hopper (Hinge Bottom)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(160,215,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Hopper</span>
+          </button>
+          <!-- Tilt & Turn -->
+          <button class="type-btn" data-type="tilt-turn" title="Tilt & Turn">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,215,145,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="18" y2="2" stroke="#4AFFBB" stroke-width="1"/><line x1="34" y1="24" x2="18" y2="2" stroke="#4AFFBB" stroke-width="1"/></svg>
+            <span class="type-btn-label">Tilt-Turn</span>
+          </button>
+          <!-- Sliding 2T -->
+          <button class="type-btn" data-type="sliding-2t" title="Sliding 2-Track">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,200,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="31" y1="13" x2="27" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="31" y1="13" x2="27" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/></svg>
+            <span class="type-btn-label">Sliding 2T</span>
+          </button>
+          <!-- Sliding 3T -->
+          <button class="type-btn" data-type="sliding-3t" title="Sliding 3-Track">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,200,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="31" y1="13" x2="27" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="31" y1="13" x2="27" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="13" y1="4" x2="13" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="23" y1="4" x2="23" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/></svg>
+            <span class="type-btn-label">Sliding 3T</span>
+          </button>
+          <!-- Pivot -->
+          <button class="type-btn" data-type="pivot-v" title="Pivot Vertical">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,180,230,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="3" x2="18" y2="23" stroke="#4A9EFF" stroke-width="1.2"/><path d="M18 8 A7 7 0 0 1 18 18" stroke="#4A9EFF" stroke-width="1" fill="none"/><path d="M18 8 A7 7 0 0 0 18 18" stroke="#4A9EFF" stroke-width="1" fill="none"/></svg>
+            <span class="type-btn-label">Pivot V</span>
+          </button>
+          <!-- Casement Top -->
+          <button class="type-btn" data-type="casement-top" title="Casement (Hinge Top)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="24" x2="18" y2="2" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="24" x2="18" y2="2" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Top Hung</span>
+          </button>
+          <!-- Casement Bottom -->
+          <button class="type-btn" data-type="casement-bottom" title="Casement (Hinge Bottom)">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(140,210,175,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Bottom Hung</span>
+          </button>
+          <!-- Louvre -->
+          <button class="type-btn" data-type="louvre" title="Louvre">
+            <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(220,200,160,0.3)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="8" x2="31" y2="8" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="18" x2="31" y2="18" stroke="#4A9EFF" stroke-width="1.2"/></svg>
+            <span class="type-btn-label">Louvre</span>
+          </button>
+        </div>
+        </div><!-- /palette-window -->
+        <!-- Door palette -->
+        <div id="palette-door" style="display:none">
+          <div class="door-type-palette">
+            <button class="type-btn" data-type="door-single" title="Single Door">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="2" y2="24" stroke="#4A9EFF" stroke-width="1.5"/><path d="M 2 24 A 20 20 0 0 1 22 4" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">Single</span>
+            </button>
+            <button class="type-btn" data-type="door-double" title="Double Door">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1" stroke-dasharray="3,2"/><path d="M 2 24 A 14 14 0 0 1 16 10" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 34 24 A 14 14 0 0 0 20 10" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">Double</span>
+            </button>
+            <button class="type-btn" data-type="door-sliding" title="Sliding Door">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="5" y1="13" x2="9" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">Sliding</span>
+            </button>
+            <button class="type-btn" data-type="door-bifold" title="Bifold Door">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="11" y1="2" x2="18" y2="14" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="14" x2="25" y2="2" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">Bifold</span>
+            </button>
+            <button class="type-btn" data-type="door-french" title="French Doors">
+              <svg width="36" height="26" viewBox="0 0 36 26"><rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1" stroke-dasharray="3,2"/><path d="M 2 24 A 12 12 0 0 1 14 12" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 34 24 A 12 12 0 0 0 22 12" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/></svg>
+              <span class="type-btn-label">French</span>
+            </button>
+          </div>
+        </div><!-- /palette-door -->
+      </div>
+
+      <div id="outline-section" class="sidebar-section" style="border-bottom:none; flex:1; overflow:hidden; display:flex; flex-direction:column;">
+        <div class="sidebar-section-title">Panel Tree</div>
+        <div id="outline-tree"></div>
+      </div>
+    </div>
+
+    <!-- ── CANVAS AREA ─────────────────────────────────── -->
+    <div id="canvas-area">
+      <div id="ctx-toolbar">
+        <button class="btn btn-icon" id="btn-split-h" title="Split Horizontal (H)" disabled>⊟ <span class="btn-label">Split H</span></button>
+        <button class="btn btn-icon" id="btn-split-v" title="Split Vertical (V)" disabled>⊞ <span class="btn-label">Split V</span></button>
+        <div class="ctx-separator"></div>
+        <button class="btn btn-icon btn-danger" id="btn-delete" title="Delete Panel (Del)" disabled>✕ <span class="btn-label">Delete</span></button>
+        <div class="ctx-separator"></div>
+        <span class="ctx-label">Type:</span>
+        <select id="ctx-type-select" disabled>
+          <optgroup label="Windows" id="ctx-window-optgroup">
+            <option value="fixed">Fixed</option>
+            <option value="casement-left">Casement Left</option>
+            <option value="casement-right">Casement Right</option>
+            <option value="casement-top">Top Hung</option>
+            <option value="casement-bottom">Bottom Hung</option>
+            <option value="awning">Awning</option>
+            <option value="hopper">Hopper</option>
+            <option value="sliding-2t">Sliding 2-Track</option>
+            <option value="sliding-3t">Sliding 3-Track</option>
+            <option value="pivot-v">Pivot Vertical</option>
+            <option value="pivot-h">Pivot Horizontal</option>
+            <option value="tilt-turn">Tilt & Turn</option>
+            <option value="louvre">Louvre</option>
+          </optgroup>
+          <optgroup label="Doors" id="ctx-door-optgroup" style="display:none">
+            <option value="door-single">Single Door</option>
+            <option value="door-double">Double Door</option>
+            <option value="door-sliding">Sliding Door</option>
+            <option value="door-bifold">Bifold Door</option>
+            <option value="door-french">French Doors</option>
+          </optgroup>
+        </select>
+        <div class="ctx-separator"></div>
+        <button class="btn btn-icon" id="btn-dims-toggle" title="Toggle Dimension Lines (D)">⊥ Dims</button>
+        <button class="btn btn-icon" id="btn-fit" title="Fit to Canvas (F)">⊡ Fit</button>
+        <div style="flex:1"></div>
+        <span id="selection-hint" style="font-size:11px;color:var(--text-dim)">Click a panel to select</span>
+      </div>
+      <div id="canvas">
+        <svg id="main-svg" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="zoom-indicator">100%</div>
+      </div>
+    </div>
+
+    <!-- ── INSPECTOR ───────────────────────────────────── -->
+    <div id="inspector">
+
+      <!-- Frame accordion -->
+      <div class="accordion">
+        <div class="accordion-header" data-target="frame-body">
+          <span class="acc-arrow">▼</span> Frame
+        </div>
+        <div class="accordion-body" id="frame-body">
+          <div id="section-diagram-wrap">
+            <svg id="section-diagram" width="220" height="70" viewBox="0 0 220 70"></svg>
+          </div>
+          <div class="form-subsection-title" style="margin-bottom:4px">Plan View</div>
+          <div id="plan-diagram-wrap">
+            <svg id="plan-diagram" width="240" height="90" viewBox="0 0 1200 100"></svg>
+          </div>
+          <div class="form-subsection-title">Overall Dimensions</div>
+          <div class="form-row"><label>Width (mm)</label><input type="number" id="frame-width" min="100" max="10000" step="1"/></div>
+          <div class="form-row"><label>Height (mm)</label><input type="number" id="frame-height" min="100" max="10000" step="1"/></div>
+          <div class="form-section-divider"></div>
+          <div class="form-subsection-title">Opening Type</div>
+          <div class="form-row">
+            <label>Type</label>
+            <select id="frame-opening-type" style="width:120px">
+              <option value="window">Window</option>
+              <option value="door">Door</option>
+            </select>
+          </div>
+          <div class="form-section-divider"></div>
+          <div class="form-subsection-title">Frame Profile</div>
+          <div class="form-row"><label>Thickness (mm)</label><input type="number" id="frame-thickness" min="10" max="300" step="1"/></div>
+          <div class="form-row"><label>Depth (mm)</label><input type="number" id="frame-depth" min="10" max="500" step="1"/></div>
+          <div class="form-row"><label>Inner Offset (mm)</label><input type="number" id="frame-inner-offset" min="0" max="200" step="1"/></div>
+          <div class="form-row"><label>Outer Offset (mm)</label><input type="number" id="frame-outer-offset" min="0" max="200" step="1"/></div>
+          <div class="form-subsection-title" style="margin-top:8px">Per-Side Widths <span style="font-weight:400;color:var(--text-dim);text-transform:none;letter-spacing:0">(overrides thickness)</span></div>
+          <div class="form-row"><label>Top (mm)</label><input type="number" id="frame-top-width" min="10" max="300" step="1" placeholder="—"/></div>
+          <div class="form-row"><label>Bottom (mm)</label><input type="number" id="frame-bottom-width" min="10" max="300" step="1" placeholder="—"/></div>
+          <div class="form-row"><label>Left (mm)</label><input type="number" id="frame-left-width" min="10" max="300" step="1" placeholder="—"/></div>
+          <div class="form-row"><label>Right (mm)</label><input type="number" id="frame-right-width" min="10" max="300" step="1" placeholder="—"/></div>
+          <div class="form-section-divider"></div>
+          <div class="form-subsection-title">Material</div>
+          <div class="form-row">
+            <label>Material</label>
+            <select id="frame-material" style="width:120px">
+              <option value="aluminium">Aluminium</option>
+              <option value="timber">Timber</option>
+              <option value="upvc">uPVC</option>
+              <option value="steel">Steel</option>
+              <option value="composite">Composite</option>
+            </select>
+          </div>
+          <div class="form-row"><label>Finish</label><input type="text" id="frame-finish" placeholder="e.g. Anodised Black"/></div>
+        </div>
+      </div>
+
+      <!-- Selected Panel accordion -->
+      <div class="accordion">
+        <div class="accordion-header" data-target="pane-body">
+          <span class="acc-arrow">▼</span> Selected Panel
+        </div>
+        <div class="accordion-body" id="pane-body">
+          <div id="pane-inspector-body" class="disabled">
+            <div class="form-row">
+              <label>Type</label>
+              <select id="pane-type-select" style="width:140px">
+                <optgroup label="Windows" id="pane-window-optgroup">
+                  <option value="fixed">Fixed</option>
+                  <option value="casement-left">Casement Left</option>
+                  <option value="casement-right">Casement Right</option>
+                  <option value="casement-top">Top Hung</option>
+                  <option value="casement-bottom">Bottom Hung</option>
+                  <option value="awning">Awning</option>
+                  <option value="hopper">Hopper</option>
+                  <option value="sliding-2t">Sliding 2-Track</option>
+                  <option value="sliding-3t">Sliding 3-Track</option>
+                  <option value="pivot-v">Pivot Vertical</option>
+                  <option value="pivot-h">Pivot Horizontal</option>
+                  <option value="tilt-turn">Tilt &amp; Turn</option>
+                  <option value="louvre">Louvre</option>
+                </optgroup>
+                <optgroup label="Doors" id="pane-door-optgroup" style="display:none">
+                  <option value="door-single">Single Door</option>
+                  <option value="door-double">Double Door</option>
+                  <option value="door-sliding">Sliding Door</option>
+                  <option value="door-bifold">Bifold Door</option>
+                  <option value="door-french">French Doors</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="form-row"><label>Label</label><input type="text" id="pane-label" placeholder="Optional label"/></div>
+            <div class="form-row"><label>Ref</label><span id="pane-ref-code" class="ref-chip">—</span></div>
+            <div class="form-section-divider"></div>
+            <div class="form-subsection-title">Glass</div>
+            <div class="form-row">
+              <label>Product</label>
+              <select id="pane-glass-product" style="width:120px">
+                <option value="clear">Clear</option>
+                <option value="low-e">Low-E</option>
+                <option value="laminated">Laminated</option>
+                <option value="obscure">Obscure</option>
+                <option value="tinted">Tinted</option>
+                <option value="reflective">Reflective</option>
+              </select>
+            </div>
+            <div class="form-row"><label>Thickness (mm)</label><input type="number" id="pane-glass-thickness" min="4" max="60" step="1"/></div>
+            <div class="form-section-divider"></div>
+            <div id="pane-sash-section">
+              <div class="form-subsection-title">Sash</div>
+              <div class="form-row"><label>Thickness (mm)</label><input type="number" id="pane-sash-thickness" min="10" max="200" step="1"/></div>
+              <div class="form-row">
+                <label>Handle Side</label>
+                <select id="pane-handle-side" style="width:100px">
+                  <option value="right">Right</option>
+                  <option value="left">Left</option>
+                  <option value="top">Top</option>
+                  <option value="bottom">Bottom</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dimensions accordion -->
+      <div class="accordion">
+        <div class="accordion-header" data-target="dims-body">
+          <span class="acc-arrow">▼</span> Dimensions
+        </div>
+        <div class="accordion-body" id="dims-body">
+          <table id="dims-table">
+            <thead>
+              <tr><th>Panel</th><th>W mm</th><th>H mm</th><th>m²</th></tr>
+            </thead>
+            <tbody id="dims-tbody"></tbody>
+          </table>
+          <div class="dims-total-row">
+            <span class="dims-total-label">Total glazed area</span>
+            <span class="dims-total-val" id="dims-total">0.000 m²</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shortcuts hint -->
+      <div id="shortcuts-hint">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:6px">Shortcuts</div>
+        <div class="shortcut"><span>Split Horizontal</span><kbd>H</kbd></div>
+        <div class="shortcut"><span>Split Vertical</span><kbd>V</kbd></div>
+        <div class="shortcut"><span>Delete Panel</span><kbd>Del</kbd></div>
+        <div class="shortcut"><span>Undo</span><kbd>Ctrl+Z</kbd></div>
+        <div class="shortcut"><span>Deselect</span><kbd>Esc</kbd></div>
+        <div class="shortcut"><span>Export</span><kbd>Ctrl+E</kbd></div>
+        <div class="shortcut"><span>Fit to Canvas</span><kbd>F</kbd></div>
+        <div class="shortcut"><span>Toggle Dims</span><kbd>D</kbd></div>
+        <div class="shortcut"><span>Zoom In/Out</span><kbd>+ / -</kbd></div>
+        <div class="shortcut"><span>Pan Canvas</span><kbd>Middle Mouse</kbd></div>
+        <div class="shortcut"><span>Zoom Canvas</span><kbd>Scroll Wheel</kbd></div>
+      </div>
+
+    </div><!-- /inspector -->
+  </div><!-- /workspace -->
+<div id="mobile-tab-bar">
+  <button class="mob-tab active" data-panel="sidebar" id="mob-tab-panels">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="6" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="4" width="8" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+    <span>Panels</span>
+  </button>
+  <button class="mob-tab" data-panel="canvas" id="mob-tab-canvas">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="5" width="10" height="10" rx="1" fill="currentColor" opacity="0.25"/></svg>
+    <span>Canvas</span>
+  </button>
+  <button class="mob-tab" data-panel="inspector" id="mob-tab-inspector">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="4" y1="6" x2="16" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="10" x2="12" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span>Inspector</span>
+  </button>
+</div>
+</div><!-- /app -->
+
+<!-- ── TEMPLATES MODAL ──────────────────────────────────────── -->
+<div id="templates-modal">
+  <div id="templates-box">
+    <div id="templates-header">
+      <h2>Quick-Start Templates</h2>
+      <button class="btn-icon" id="btn-close-templates">✕</button>
+    </div>
+    <div id="templates-tabs">
+      <button class="tpl-tab active" data-ttype="window">Windows</button>
+      <button class="tpl-tab" data-ttype="door">Doors</button>
+    </div>
+    <div id="templates-grid"></div>
+  </div>
+</div>
+
+<div id="dim-tooltip"></div>
+
+<script>
+'use strict';
+
+// ============================================================
+// CONSTANTS & DEFAULTS
+// ============================================================
+const MIN_PANE_MM = 60;
+const SVG_MARGIN = 160;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const PANE_TYPE_LABELS = {
+  'fixed':'Fixed','casement-left':'Casement L','casement-right':'Casement R',
+  'casement-top':'Top Hung','casement-bottom':'Bottom Hung',
+  'awning':'Awning','hopper':'Hopper','sliding-2t':'Sliding 2T',
+  'sliding-3t':'Sliding 3T','pivot-v':'Pivot V','pivot-h':'Pivot H',
+  'tilt-turn':'Tilt-Turn','louvre':'Louvre',
+  'sliding-single':'Single Slide','hung-double':'Double Hung',
+  'projecting':'Projecting','tate-suberidashi':'Vert. Slide-Out',
+  'door-single':'Single Door','door-double':'Double Door',
+  'door-sliding':'Sliding Door','door-bifold':'Bifold Door','door-french':'French Doors',
+  'door-pocket':'Pocket Door','door-overhead':'Overhead Door',
+  'door-accordion':'Accordion Door','door-parent-child':'Parent-Child Door'
+};
+const PANE_TYPE_ICONS = {
+  'fixed':'▭','casement-left':'◁','casement-right':'▷',
+  'casement-top':'△','casement-bottom':'▽',
+  'awning':'⌒','hopper':'⌣','sliding-2t':'↔',
+  'sliding-3t':'⟺','pivot-v':'⊕','pivot-h':'⊗',
+  'tilt-turn':'◈','louvre':'≡',
+  'sliding-single':'→','hung-double':'↕',
+  'projecting':'⌅','tate-suberidashi':'↗',
+  'door-single':'🚪','door-double':'⟨⟩',
+  'door-sliding':'↦','door-bifold':'⋈','door-french':'⟪⟫',
+  'door-pocket':'⇥','door-overhead':'⊟',
+  'door-accordion':'〰','door-parent-child':'⊣'
+};
+const GLASS_COLORS = {
+  'fixed':              'rgba(120,185,230,0.38)',
+  'casement-left':      'rgba(100,200,155,0.38)',
+  'casement-right':     'rgba(100,200,155,0.38)',
+  'casement-top':       'rgba(100,200,155,0.38)',
+  'casement-bottom':    'rgba(100,200,155,0.38)',
+  'awning':             'rgba(120,200,160,0.38)',
+  'hopper':             'rgba(120,200,160,0.38)',
+  'sliding-2t':         'rgba(80,210,190,0.38)',
+  'sliding-3t':         'rgba(80,210,190,0.38)',
+  'pivot-v':            'rgba(180,150,230,0.38)',
+  'pivot-h':            'rgba(180,150,230,0.38)',
+  'tilt-turn':          'rgba(200,210,100,0.38)',
+  'louvre':             'rgba(220,185,130,0.38)',
+  'sliding-single':     'rgba(80,210,190,0.38)',
+  'hung-double':        'rgba(80,195,210,0.38)',
+  'projecting':         'rgba(120,200,160,0.38)',
+  'tate-suberidashi':   'rgba(100,200,155,0.38)',
+  'door-single':        'rgba(200,170,120,0.32)',
+  'door-double':        'rgba(200,170,120,0.32)',
+  'door-sliding':       'rgba(200,170,120,0.32)',
+  'door-bifold':        'rgba(200,170,120,0.32)',
+  'door-french':        'rgba(200,170,120,0.32)',
+  'door-pocket':        'rgba(200,170,120,0.32)',
+  'door-overhead':      'rgba(180,155,110,0.32)',
+  'door-accordion':     'rgba(200,170,120,0.32)',
+  'door-parent-child':  'rgba(200,170,120,0.32)',
+};
+const WINDOW_TYPES = ['fixed','casement-left','casement-right','casement-top','casement-bottom','awning','hopper','sliding-2t','sliding-3t','pivot-v','pivot-h','tilt-turn','louvre','sliding-single','hung-double','projecting','tate-suberidashi'];
+const DOOR_TYPES   = ['door-single','door-double','door-sliding','door-bifold','door-french','door-pocket','door-overhead','door-accordion','door-parent-child'];
+
+// Obayashi BIM modelling guide type reference codes
+const TYPE_REFS = {
+  'fixed':              'W-FIX',
+  'casement-left':      'W-CS-L',
+  'casement-right':     'W-CS-R',
+  'casement-top':       'W-CS-T',
+  'casement-bottom':    'W-CS-B',
+  'awning':             'W-AW',
+  'hopper':             'W-HP',
+  'sliding-2t':         'W-SL2',
+  'sliding-3t':         'W-SL3',
+  'pivot-v':            'W-PV-V',
+  'pivot-h':            'W-PV-H',
+  'tilt-turn':          'W-TT',
+  'louvre':             'W-LV',
+  'sliding-single':     'W-SL1',
+  'hung-double':        'W-HD',
+  'projecting':         'W-PJ',
+  'tate-suberidashi':   'W-TSS',
+  'door-single':        'D-SG',
+  'door-double':        'D-DB',
+  'door-sliding':       'D-SL',
+  'door-bifold':        'D-BF',
+  'door-french':        'D-FR',
+  'door-pocket':        'D-PK',
+  'door-overhead':      'D-OH',
+  'door-accordion':     'D-AC',
+  'door-parent-child':  'D-PC',
+};
+
+// ============================================================
+// STATE
+// ============================================================
+function uid() { return crypto.randomUUID(); }
+
+function mkPane() {
+  return { id:uid(), kind:'pane', type:'fixed', label:'',
+    glass:{ product:'clear', thickness:24, uValue:null },
+    sash:{ thickness:50, direction:null, handleSide:'right' } };
+}
+
+function mkComposition() {
+  return {
+    schemaVersion:'1.0',
+    openingType:'window',
+    meta:{ id:uid(), name:'New Window', createdAt:new Date().toISOString(), modifiedAt:new Date().toISOString() },
+    frame:{ overallWidth:1200, overallHeight:900, unit:'mm', thickness:60, depth:100,
+      topWidth:null, bottomWidth:null, leftWidth:null, rightWidth:null,
+      innerOffset:0, outerOffset:0, material:'aluminium', finish:'' },
+    composition: mkPane()
+  };
+}
+
+function frameWidths(f) {
+  const t = f.thickness;
+  return { top: f.topWidth??t, bottom: f.bottomWidth??t, left: f.leftWidth??t, right: f.rightWidth??t };
+}
+
+const S = {
+  c: mkComposition(),
+  sel: null,
+  drag: null,
+  pan: null,            // { lastX, lastY } while middle-mouse panning
+  undoStack: [],
+  dirty: false,
+  showDims: true,       // dimension lines visibility toggle
+};
+
+// Pan/zoom viewport — null means "fit to content" on next render
+let _vbox = null;
+
+function resetViewBox() { _vbox = null; }
+
+function initVbox() {
+  const f = S.c.frame, M = SVG_MARGIN;
+  _vbox = { x: -M, y: -M, w: f.overallWidth + 2*M, h: f.overallHeight + 2*M };
+}
+
+function zoomAt(ptX, ptY, factor) {
+  if (!_vbox) initVbox();
+  const newW = _vbox.w / factor;
+  const newH = _vbox.h / factor;
+  const baseW = S.c.frame.overallWidth + 2*SVG_MARGIN;
+  if (newW < baseW * 0.08 || newW > baseW * 5) return;
+  _vbox = {
+    x: ptX - (ptX - _vbox.x) / factor,
+    y: ptY - (ptY - _vbox.y) / factor,
+    w: newW, h: newH
+  };
+  updateZoomIndicator();
+}
+
+function currentZoomPct() {
+  if (!_vbox) return 100;
+  const baseW = S.c.frame.overallWidth + 2*SVG_MARGIN;
+  return Math.round((baseW / _vbox.w) * 100);
+}
+
+function updateZoomIndicator() {
+  const el2 = document.getElementById('zoom-indicator');
+  if (el2) el2.textContent = currentZoomPct() + '%';
+}
+
+// ============================================================
+// TREE OPERATIONS
+// ============================================================
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+function findNode(node, id) {
+  if (node.id === id) return node;
+  if (node.kind === 'split') for (const c of node.children) { const f = findNode(c, id); if (f) return f; }
+  return null;
+}
+
+function findParent(root, id) {
+  if (root.kind !== 'split') return null;
+  for (let i = 0; i < root.children.length; i++) {
+    if (root.children[i].id === id) return { parent: root, index: i };
+    const f = findParent(root.children[i], id);
+    if (f) return f;
+  }
+  return null;
+}
+
+function computeRect(node, x, y, w, h, targetId) {
+  if (node.id === targetId) return { x, y, w, h };
+  if (node.kind !== 'split') return null;
+  for (let i = 0; i < node.children.length; i++) {
+    const sr = i === 0 ? 0 : node.dividers[i-1].ratio;
+    const er = i === node.children.length-1 ? 1 : node.dividers[i].ratio;
+    const rect = node.axis === 'V'
+      ? computeRect(node.children[i], x+sr*w, y, (er-sr)*w, h, targetId)
+      : computeRect(node.children[i], x, y+sr*h, w, (er-sr)*h, targetId);
+    if (rect) return rect;
+  }
+  return null;
+}
+
+function nodeRect(id) {
+  const f = S.c.frame;
+  const fw = frameWidths(f);
+  return computeRect(S.c.composition, fw.left, fw.top, f.overallWidth-fw.left-fw.right, f.overallHeight-fw.top-fw.bottom, id);
+}
+
+function pushUndo() {
+  S.undoStack.push(clone(S.c));
+  if (S.undoStack.length > 50) S.undoStack.shift();
+  document.getElementById('btn-undo').disabled = false;
+}
+
+function splitNode(id, axis) {
+  const node = findNode(S.c.composition, id);
+  if (!node || node.kind !== 'pane') return;
+  pushUndo();
+  const childA = clone(node); childA.id = uid();
+  const childB = mkPane(); childB.type = node.type; childB.glass = clone(node.glass); childB.sash = clone(node.sash);
+  const split = { id:uid(), kind:'split', axis, dividers:[{ratio:0.5}], children:[childA, childB] };
+  const pr = findParent(S.c.composition, id);
+  if (!pr) S.c.composition = split;
+  else pr.parent.children[pr.index] = split;
+  S.sel = childA.id;
+  S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
+  render();
+}
+
+function deleteNode(id) {
+  if (S.c.composition.id === id) return;
+  const pr = findParent(S.c.composition, id);
+  if (!pr) return;
+  pushUndo();
+  const { parent, index } = pr;
+  parent.children.splice(index, 1);
+  const divIdx = Math.min(index, parent.dividers.length-1);
+  if (parent.dividers.length > 0) parent.dividers.splice(divIdx, 1);
+  if (parent.children.length === 1) {
+    const survivor = parent.children[0];
+    const gpr = findParent(S.c.composition, parent.id);
+    if (!gpr) S.c.composition = survivor;
+    else gpr.parent.children[gpr.index] = survivor;
+  } else if (parent.children.length > 0) {
+    const n = parent.children.length;
+    parent.dividers = Array.from({length:n-1}, (_,i) => ({ratio:(i+1)/n}));
+  }
+  S.sel = null; S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
+  render();
+}
+
+function assignType(id, type) {
+  const node = findNode(S.c.composition, id);
+  if (!node || node.kind !== 'pane') return;
+  pushUndo();
+  node.type = type;
+  if (type !== 'fixed' && !node.sash) node.sash = { thickness:50, direction:null, handleSide:'right' };
+  S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
+  render();
+}
+
+function syncOpeningType(otype) {
+  S.c.openingType = otype;
+  S.dirty = true;
+  document.getElementById('palette-window').style.display = otype==='window' ? '' : 'none';
+  document.getElementById('palette-door').style.display   = otype==='door'   ? '' : 'none';
+  ['pane-door-optgroup','ctx-door-optgroup'].forEach(id=>{
+    const el2=document.getElementById(id); if(el2) el2.style.display = otype==='door' ? '' : 'none';
+  });
+  ['pane-window-optgroup','ctx-window-optgroup'].forEach(id=>{
+    const el2=document.getElementById(id); if(el2) el2.style.display = otype==='window' ? '' : 'none';
+  });
+  document.querySelectorAll('.opening-btn').forEach(b=>b.classList.toggle('active', b.dataset.otype===otype));
+  setVal('frame-opening-type', otype);
+  updateTopbar();
+}
+
+function findAxisParent(root, targetId, splitAxis) {
+  if (root.kind !== 'split') return null;
+  for (let i=0; i<root.children.length; i++) {
+    if (root.children[i].id === targetId) {
+      return root.axis === splitAxis ? { split:root, childIndex:i } : null;
+    }
+    const found = findAxisParent(root.children[i], targetId, splitAxis);
+    if (found) return found;
+  }
+  return null;
+}
+
+function setNodeDimension(nodeId, axis, targetMm) {
+  const splitAxis = axis==='W' ? 'V' : 'H';
+  const result = findAxisParent(S.c.composition, nodeId, splitAxis);
+  if (!result) return;
+  const { split, childIndex } = result;
+  const rect = nodeRect(split.id);
+  if (!rect) return;
+  const parentDim = splitAxis==='V' ? rect.w : rect.h;
+  const minStep = MIN_PANE_MM / parentDim;
+  const clampedMm = Math.max(MIN_PANE_MM, Math.min(targetMm, parentDim - MIN_PANE_MM*(split.children.length-1)));
+  const newSpan = clampedMm / parentDim;
+  const prevR = childIndex===0 ? 0 : split.dividers[childIndex-1].ratio;
+  pushUndo();
+  if (childIndex === split.children.length-1) {
+    if (split.dividers.length > 0) {
+      const lowerBound = childIndex>=2 ? split.dividers[childIndex-2].ratio+minStep : minStep;
+      split.dividers[childIndex-1].ratio = Math.max(lowerBound, Math.min(1-minStep, 1-newSpan));
+    }
+  } else {
+    const upperBound = childIndex<split.dividers.length-1 ? split.dividers[childIndex+1].ratio-minStep : 1-minStep;
+    split.dividers[childIndex].ratio = Math.max(prevR+minStep, Math.min(upperBound, prevR+newSpan));
+  }
+  S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
+  render();
+}
+
+// ============================================================
+// SVG HELPERS
+// ============================================================
+function el(tag, attrs) {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+  return e;
+}
+function line(x1,y1,x2,y2,stroke,sw) {
+  return el('line',{x1,y1,x2,y2,stroke,'stroke-width':sw,'pointer-events':'none'});
+}
+function path(d,stroke,sw) {
+  return el('path',{d,stroke,'stroke-width':sw,fill:'none','pointer-events':'none'});
+}
+
+// ============================================================
+// OPERATION SYMBOLS
+// ============================================================
+function drawSymbol(g, type, x, y, w, h) {
+  const cx=x+w/2, cy=y+h/2;
+  const sw = Math.max(1.5, Math.min(w,h)*0.015);
+  const col = 'rgba(74,158,255,0.75)';
+  const col2 = 'rgba(74,255,170,0.65)';
+
+  switch(type) {
+    case 'casement-left':
+      g.append(line(x+w,y,   x, cy, col, sw));
+      g.append(line(x+w,y+h, x, cy, col, sw));
+      { const r=Math.min(w,h)*0.28; g.append(path(`M ${x} ${cy-r} A ${r} ${r} 0 0 1 ${x} ${cy+r}`,col,sw*0.8)); }
+      break;
+    case 'casement-right':
+      g.append(line(x,y,   x+w, cy, col, sw));
+      g.append(line(x,y+h, x+w, cy, col, sw));
+      { const r=Math.min(w,h)*0.28; g.append(path(`M ${x+w} ${cy-r} A ${r} ${r} 0 0 0 ${x+w} ${cy+r}`,col,sw*0.8)); }
+      break;
+    case 'casement-top':
+    case 'awning':
+      g.append(line(x,  y+h, cx, y, col, sw));
+      g.append(line(x+w,y+h, cx, y, col, sw));
+      { const r=Math.min(w,h)*0.25; g.append(path(`M ${cx-r} ${y} A ${r} ${r} 0 0 0 ${cx+r} ${y}`,col,sw*0.8)); }
+      break;
+    case 'casement-bottom':
+    case 'hopper':
+      g.append(line(x,  y, cx, y+h, col, sw));
+      g.append(line(x+w,y, cx, y+h, col, sw));
+      { const r=Math.min(w,h)*0.25; g.append(path(`M ${cx-r} ${y+h} A ${r} ${r} 0 0 1 ${cx+r} ${y+h}`,col,sw*0.8)); }
+      break;
+    case 'tilt-turn':
+      g.append(line(x,y,   x+w, cy, col, sw));
+      g.append(line(x,y+h, x+w, cy, col, sw));
+      g.append(line(x,  y+h, cx, y, col2, sw*0.85));
+      g.append(line(x+w,y+h, cx, y, col2, sw*0.85));
+      break;
+    case 'sliding-2t': {
+      const m=w*0.15; const ay=cy;
+      g.append(line(x+m,ay, x+w-m,ay, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.07,ay-h*0.07, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.07,ay+h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.07,ay-h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.07,ay+h*0.07, col, sw));
+      g.append(el('line',{x1:cx,y1:y+h*0.15,x2:cx,y2:y+h*0.85,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'}));
+      break;
+    }
+    case 'sliding-3t': {
+      const m=w*0.1; const ay=cy;
+      g.append(line(x+m,ay, x+w-m,ay, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.06,ay-h*0.07, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.06,ay+h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.06,ay-h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.06,ay+h*0.07, col, sw));
+      const dx=w/3;
+      [dx,dx*2].forEach(dv => g.append(el('line',{x1:x+dv,y1:y+h*0.15,x2:x+dv,y2:y+h*0.85,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'})));
+      break;
+    }
+    case 'pivot-v': {
+      g.append(line(cx,y+h*0.05, cx,y+h*0.95, col, sw));
+      const r=Math.min(w,h)*0.28;
+      g.append(path(`M ${cx} ${cy-r} A ${r} ${r} 0 0 1 ${cx} ${cy+r}`,col,sw*0.8));
+      g.append(path(`M ${cx} ${cy-r} A ${r} ${r} 0 0 0 ${cx} ${cy+r}`,col,sw*0.8));
+      break;
+    }
+    case 'pivot-h': {
+      g.append(line(x+w*0.05,cy, x+w*0.95,cy, col, sw));
+      const r=Math.min(w,h)*0.28;
+      g.append(path(`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`,col,sw*0.8));
+      g.append(path(`M ${cx-r} ${cy} A ${r} ${r} 0 0 0 ${cx+r} ${cy}`,col,sw*0.8));
+      break;
+    }
+    case 'louvre': {
+      const n = Math.max(3, Math.floor(h/55));
+      for (let i=1;i<n;i++) { const sy=y+h*i/n; g.append(line(x+w*0.08,sy, x+w*0.92,sy, col, sw)); }
+      break;
+    }
+    case 'door-single': {
+      const r=Math.min(w*0.85, h*0.85);
+      g.append(line(x, y, x, y+h, col, sw));
+      g.append(path(`M ${x} ${y+h} A ${r} ${r} 0 0 1 ${x+r} ${y+h}`, col, sw*0.8));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-double': {
+      const r2=Math.min(w*0.44, h*0.7);
+      g.append(line(x+w/2, y, x+w/2, y+h, 'rgba(74,158,255,0.35)', sw*0.7));
+      g.append(path(`M ${x} ${y+h} A ${r2} ${r2} 0 0 1 ${x+r2} ${y+h}`, col, sw*0.8));
+      g.append(path(`M ${x+w} ${y+h} A ${r2} ${r2} 0 0 0 ${x+w-r2} ${y+h}`, col, sw*0.8));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-sliding': {
+      const m=w*0.15; const ay=cy;
+      g.append(line(x+m,ay, x+w-m,ay, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.07,ay-h*0.07, col, sw));
+      g.append(line(x+m,ay, x+m+w*0.07,ay+h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.07,ay-h*0.07, col, sw));
+      g.append(line(x+w-m,ay, x+w-m-w*0.07,ay+h*0.07, col, sw));
+      g.append(el('line',{x1:cx,y1:y+h*0.15,x2:cx,y2:y+h*0.85,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'}));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-bifold': {
+      const tp=w*0.25;
+      g.append(line(x+tp, y, x+w/2, y+h, col, sw));
+      g.append(line(x+w-tp, y, x+w/2, y+h, col, sw));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-french': {
+      const r3=Math.min(w*0.38, h*0.6);
+      g.append(line(x, y, x, y+h, col, sw));
+      g.append(line(x+w, y, x+w, y+h, col, sw));
+      g.append(path(`M ${x} ${y+h} A ${r3} ${r3} 0 0 1 ${x+r3} ${y}`, col, sw*0.8));
+      g.append(path(`M ${x+w} ${y+h} A ${r3} ${r3} 0 0 0 ${x+w-r3} ${y}`, col, sw*0.8));
+      g.append(line(x+w/2, y, x+w/2, y+h, 'rgba(74,158,255,0.35)', sw*0.7));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    // ── Japanese types ──────────────────────────────────────────
+    case 'sliding-single': {
+      // Left half: sliding leaf with arrow; right half: fixed (FIX label)
+      const divX = x + w * 0.55;
+      const m = w * 0.08;
+      // sliding arrow left→right on left half
+      g.append(line(x+m, cy, divX-m, cy, col, sw));
+      g.append(line(divX-m, cy, divX-m-w*0.07, cy-h*0.07, col, sw));
+      g.append(line(divX-m, cy, divX-m-w*0.07, cy+h*0.07, col, sw));
+      // dashed divider
+      g.append(el('line',{x1:divX,y1:y+h*0.1,x2:divX,y2:y+h*0.9,stroke:'rgba(74,158,255,0.4)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.06},${h*0.04}`,'pointer-events':'none'}));
+      // FIX text in right half
+      const fixT=el('text',{x:divX+(w-divX+x)*0.5,y:cy+h*0.05,fill:'rgba(74,158,255,0.65)','font-size':Math.max(8,Math.min(w,h)*0.1),'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'monospace'});
+      fixT.textContent='FIX'; g.append(fixT);
+      break;
+    }
+    case 'hung-double': {
+      // Two sash zones separated by horizontal bar; up arrow top, down arrow bottom
+      const midY = y + h * 0.5;
+      g.append(el('line',{x1:x+w*0.08,y1:midY,x2:x+w*0.92,y2:midY,stroke:'rgba(74,158,255,0.45)','stroke-width':sw*0.9,'pointer-events':'none'}));
+      // up arrow top zone
+      g.append(line(cx, y+h*0.15, cx, midY-h*0.05, col, sw));
+      g.append(line(cx, y+h*0.15, cx-w*0.07, y+h*0.26, col, sw));
+      g.append(line(cx, y+h*0.15, cx+w*0.07, y+h*0.26, col, sw));
+      // down arrow bottom zone
+      g.append(line(cx, midY+h*0.05, cx, y+h*0.85, col, sw));
+      g.append(line(cx, y+h*0.85, cx-w*0.07, y+h*0.74, col, sw));
+      g.append(line(cx, y+h*0.85, cx+w*0.07, y+h*0.74, col, sw));
+      break;
+    }
+    case 'projecting': {
+      // Bottom-hinged push-out: diagonals from bottom corners to bottom-centre + arc below
+      g.append(line(x, y, cx, y+h, col, sw));
+      g.append(line(x+w, y, cx, y+h, col, sw));
+      const rp=Math.min(w,h)*0.25;
+      g.append(path(`M ${cx-rp} ${y+h} A ${rp} ${rp} 0 0 0 ${cx+rp} ${y+h}`, col, sw*0.8));
+      break;
+    }
+    case 'tate-suberidashi': {
+      // Vertical slide-out: diagonal lines from top & bottom of left edge to centre + arc on left
+      g.append(line(x, y, cx, cy, col, sw));
+      g.append(line(x, y+h, cx, cy, col, sw));
+      const rts=Math.min(w,h)*0.28;
+      g.append(path(`M ${x} ${cy-rts} A ${rts} ${rts} 0 0 1 ${x} ${cy+rts}`, col, sw*0.8));
+      break;
+    }
+    case 'door-pocket': {
+      // Arrow pointing right + dashed pocket wall on right side + threshold
+      const pm = w*0.1;
+      g.append(line(x+pm, cy, x+w*0.7, cy, col, sw));
+      g.append(line(x+w*0.7, cy, x+w*0.6, cy-h*0.07, col, sw));
+      g.append(line(x+w*0.7, cy, x+w*0.6, cy+h*0.07, col, sw));
+      // dashed pocket wall
+      g.append(el('rect',{x:x+w*0.72,y:y+h*0.05,width:w*0.22,height:h*0.9,fill:'none',stroke:'rgba(74,158,255,0.4)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.06},${h*0.04}`,'pointer-events':'none'}));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-overhead': {
+      // Horizontal hatch lines (sectional panels) + threshold
+      const nOH = Math.max(4, Math.floor(h/60));
+      for(let i=1;i<nOH;i++){ const hy=y+h*i/nOH; g.append(line(x+w*0.06,hy, x+w*0.94,hy, col, sw*0.8)); }
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-accordion': {
+      // Zigzag fold lines across width + threshold
+      const nAC = Math.max(4, Math.round(w/120)*2);
+      const pts=[]; for(let i=0;i<=nAC;i++) pts.push(`${x+w*i/nAC},${i%2===0?y+h*0.1:y+h*0.9}`);
+      g.append(el('polyline',{points:pts.join(' '),fill:'none',stroke:col,'stroke-width':sw,'pointer-events':'none'}));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-parent-child': {
+      // Large leaf (70%) left arc + small leaf (30%) right arc + threshold
+      const bigW=w*0.68; const smallW=w*0.32;
+      const rBig=Math.min(bigW*0.9, h*0.85);
+      const rSmall=Math.min(smallW*0.9, h*0.5);
+      g.append(line(x, y, x, y+h, col, sw));
+      g.append(path(`M ${x} ${y+h} A ${rBig} ${rBig} 0 0 1 ${x+rBig} ${y+h}`, col, sw*0.8));
+      g.append(line(x+bigW, y, x+bigW, y+h, 'rgba(74,158,255,0.35)', sw*0.7));
+      g.append(line(x+w, y, x+w, y+h, col, sw));
+      g.append(path(`M ${x+w} ${y+h} A ${rSmall} ${rSmall} 0 0 0 ${x+w-rSmall} ${y+h}`, col, sw*0.8));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+  }
+}
+
+// ============================================================
+// CANVAS RENDER
+// ============================================================
+let _nodeRects = {};
+
+function renderCanvas() {
+  const svg = document.getElementById('main-svg');
+  svg.innerHTML = '';
+  _nodeRects = {};
+
+  const f = S.c.frame;
+  const W = f.overallWidth, H = f.overallHeight;
+  const M = SVG_MARGIN;
+  if (!_vbox) initVbox();
+  svg.setAttribute('viewBox', `${_vbox.x} ${_vbox.y} ${_vbox.w} ${_vbox.h}`);
+  updateZoomIndicator();
+
+  // Defs
+  const defs = el('defs', {});
+  const pat = el('pattern', {id:'gg',x:0,y:0,width:60,height:60,patternUnits:'userSpaceOnUse'});
+  pat.append(el('line',{x1:0,y1:0,x2:60,y2:0,stroke:'rgba(255,255,255,0.025)','stroke-width':1}));
+  pat.append(el('line',{x1:0,y1:0,x2:0,y2:60,stroke:'rgba(255,255,255,0.025)','stroke-width':1}));
+  defs.append(pat);
+  svg.append(defs);
+
+  // Canvas background
+  svg.append(el('rect',{x:-M,y:-M,width:W+2*M,height:H+2*M,fill:'#15171C'}));
+
+  // Subtle canvas grid
+  svg.append(el('rect',{x:-M,y:-M,width:W+2*M,height:H+2*M,fill:'url(#gg)'}));
+
+  // ── DIMENSION LINES ──────────────────────────────────────
+  if (S.showDims) {
+    const dimG = el('g',{opacity:1});
+    renderDimLines(dimG, f);
+    svg.append(dimG);
+  }
+
+  // ── FRAME SHADOW (depth effect) ──────────────────────────
+  svg.append(el('rect',{x:4,y:4,width:W,height:H,fill:'rgba(0,0,0,0.4)',rx:2}));
+
+  // ── FRAME MEMBERS ────────────────────────────────────────
+  const fw = frameWidths(f);
+  const frameColor = '#2A2D38';
+  const frameEdge = '#484C5E';
+  const frameHighlight = '#565A6E';
+
+  // Frame fill (outer rect, will be overlaid by panes in center)
+  svg.append(el('rect',{x:0,y:0,width:W,height:H,fill:frameColor,stroke:frameEdge,'stroke-width':2}));
+
+  // Draw 4 frame members (per-side widths)
+  // Top
+  svg.append(el('rect',{x:0,y:0,width:W,height:fw.top,fill:'#32364A',stroke:'none'}));
+  // Bottom
+  svg.append(el('rect',{x:0,y:H-fw.bottom,width:W,height:fw.bottom,fill:'#32364A'}));
+  // Left
+  svg.append(el('rect',{x:0,y:0,width:fw.left,height:H,fill:'#32364A'}));
+  // Right
+  svg.append(el('rect',{x:W-fw.right,y:0,width:fw.right,height:H,fill:'#32364A'}));
+
+  // Frame highlight lines (top/left of each member - 3D effect)
+  const hl='rgba(255,255,255,0.06)';
+  svg.append(el('line',{x1:0,y1:0,x2:W,y2:0,stroke:hl,'stroke-width':2}));
+  svg.append(el('line',{x1:0,y1:0,x2:0,y2:H,stroke:hl,'stroke-width':2}));
+  const sh='rgba(0,0,0,0.25)';
+  svg.append(el('line',{x1:W,y1:0,x2:W,y2:H,stroke:sh,'stroke-width':2}));
+  svg.append(el('line',{x1:0,y1:H,x2:W,y2:H,stroke:sh,'stroke-width':2}));
+
+  // Inner frame edge lines
+  svg.append(el('rect',{x:fw.left,y:fw.top,width:W-fw.left-fw.right,height:H-fw.top-fw.bottom,fill:'none',stroke:frameEdge,'stroke-width':1.5}));
+
+  // ── COMPOSITION NODES ────────────────────────────────────
+  const nodesG = el('g', {});
+  renderNodeRec(nodesG, S.c.composition, fw.left, fw.top, W-fw.left-fw.right, H-fw.top-fw.bottom);
+  svg.append(nodesG);
+
+  // ── SELECTION OVERLAY ────────────────────────────────────
+  if (S.sel) {
+    const r = _nodeRects[S.sel];
+    if (r) {
+      const sw = 3;
+      svg.append(el('rect',{x:r.x-sw,y:r.y-sw,width:r.w+sw*2,height:r.h+sw*2,fill:'none',stroke:'rgba(74,158,255,0.2)','stroke-width':sw*3,rx:1,'pointer-events':'none'}));
+      svg.append(el('rect',{x:r.x,y:r.y,width:r.w,height:r.h,fill:'none',stroke:'#4A9EFF','stroke-width':sw,rx:1,'pointer-events':'none'}));
+      // Corner markers
+      const cs=10;
+      [[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]].forEach(([cx2,cy2])=>{
+        svg.append(el('rect',{x:cx2-3,y:cy2-3,width:6,height:6,fill:'#4A9EFF',rx:1,'pointer-events':'none'}));
+      });
+    }
+  }
+
+  // SVG click (deselect)
+  svg.addEventListener('click', (e) => {
+    if (e.target === svg || e.target.tagName === 'svg') { S.sel=null; render(); }
+  });
+}
+
+function renderNodeRec(g, node, x, y, w, h) {
+  _nodeRects[node.id] = {x,y,w,h};
+  if (node.kind === 'pane') renderPane(g, node, x, y, w, h);
+  else renderSplit(g, node, x, y, w, h);
+}
+
+function renderPane(g, node, x, y, w, h) {
+  const gColor = GLASS_COLORS[node.type] || GLASS_COLORS['fixed'];
+  const isSelected = S.sel === node.id;
+
+  const paneG = el('g', {'data-id':node.id, cursor:'pointer'});
+
+  // Glass fill
+  paneG.append(el('rect',{x,y,width:w,height:h,fill:gColor}));
+
+  // Glass grid
+  paneG.append(el('rect',{x,y,width:w,height:h,fill:'url(#gg)','pointer-events':'none'}));
+
+  // Glass reflection
+  const rw = Math.min(w*0.35, h*0.35);
+  const reflPts = `${x},${y} ${x+rw},${y} ${x},${y+rw}`;
+  paneG.append(el('polygon',{points:reflPts,fill:'rgba(255,255,255,0.055)','pointer-events':'none'}));
+
+  // Operation symbol
+  if (node.type !== 'fixed') drawSymbol(paneG, node.type, x, y, w, h);
+
+  // Label
+  if (node.label && w > 80 && h > 40) {
+    const fs = Math.min(24, Math.max(10, Math.min(w,h)*0.07));
+    const t = el('text',{x:x+w/2,y:y+h/2,'text-anchor':'middle','dominant-baseline':'middle',fill:'rgba(255,255,255,0.55)','font-size':fs,'font-family':'system-ui','pointer-events':'none'});
+    t.textContent = node.label;
+    paneG.append(t);
+  }
+
+  // Type badge
+  if (w > 120 && h > 70) {
+    const fs2 = Math.min(18, w*0.055);
+    const badge = el('text',{x:x+6,y:y+h-6,fill:'rgba(255,255,255,0.28)','font-size':fs2,'font-family':'system-ui','pointer-events':'none'});
+    badge.textContent = PANE_TYPE_LABELS[node.type] || node.type;
+    paneG.append(badge);
+  }
+
+  // Border (subtle)
+  paneG.append(el('rect',{x,y,width:w,height:h,fill:'none',stroke:'rgba(80,90,110,0.6)','stroke-width':1,'pointer-events':'none'}));
+
+  paneG.addEventListener('click', (e) => { e.stopPropagation(); S.sel = node.id; render(); });
+  g.append(paneG);
+}
+
+function renderSplit(g, node, x, y, w, h) {
+  // Render children
+  for (let i=0; i<node.children.length; i++) {
+    const sr = i===0 ? 0 : node.dividers[i-1].ratio;
+    const er = i===node.children.length-1 ? 1 : node.dividers[i].ratio;
+    if (node.axis==='V') renderNodeRec(g, node.children[i], x+sr*w, y, (er-sr)*w, h);
+    else                  renderNodeRec(g, node.children[i], x, y+sr*h, w, (er-sr)*h);
+  }
+
+  // Divider handles
+  const HDIM = 8;
+  for (let i=0; i<node.dividers.length; i++) {
+    const ratio = node.dividers[i].ratio;
+    let hx, hy, hw, hh;
+    if (node.axis==='V') { hx=x+ratio*w-HDIM/2; hy=y; hw=HDIM; hh=h; }
+    else                  { hx=x; hy=y+ratio*h-HDIM/2; hw=w; hh=HDIM; }
+
+    const handle = el('rect',{x:hx,y:hy,width:hw,height:hh,
+      fill:'rgba(74,158,255,0.0)',stroke:'rgba(74,158,255,0.25)','stroke-width':1,
+      cursor: node.axis==='V' ? 'ew-resize' : 'ns-resize',
+      rx:1
+    });
+    handle.addEventListener('mouseenter', (e)=>{ handle.setAttribute('fill','rgba(74,158,255,0.18)'); showDividerTooltip(e, node, i, w, h); });
+    handle.addEventListener('mousemove', (e)=>{ moveDividerTooltip(e); });
+    handle.addEventListener('mouseleave', ()=>{ if (!S.drag) handle.setAttribute('fill','rgba(74,158,255,0.0)'); hideDividerTooltip(); });
+    handle.addEventListener('mousedown', (e)=>{ e.preventDefault(); e.stopPropagation(); hideDividerTooltip(); startDrag(e, node.id, i, node.axis, x, y, w, h); });
+    g.append(handle);
+
+    // Visual divider line
+    const dline = node.axis==='V'
+      ? el('line',{x1:x+ratio*w,y1:y,x2:x+ratio*w,y2:y+h,stroke:'rgba(80,90,110,0.8)','stroke-width':1.5,'pointer-events':'none'})
+      : el('line',{x1:x,y1:y+ratio*h,x2:x+w,y2:y+ratio*h,stroke:'rgba(80,90,110,0.8)','stroke-width':1.5,'pointer-events':'none'});
+    g.append(dline);
+  }
+}
+
+// ── DIMENSION LINES ──────────────────────────────────────────
+function renderDimLines(g, f) {
+  const W=f.overallWidth, H=f.overallHeight;
+  const dimCol='rgba(100,105,120,0.9)', textCol='rgba(160,165,180,0.9)', tickLen=14;
+  const topY=-65, leftX=-65, fs=28;
+
+  function dimLine(x1,y1,x2,y2) { return el('line',{x1,y1,x2,y2,stroke:dimCol,'stroke-width':1.2,'pointer-events':'none'}); }
+  function tick(x1,y1,x2,y2)    { return el('line',{x1,y1,x2,y2,stroke:dimCol,'stroke-width':1.5,'pointer-events':'none'}); }
+  function label(x2,y2,txt,rot) {
+    const t=el('text',{x:x2,y:y2,'text-anchor':'middle','dominant-baseline':'middle',fill:textCol,'font-size':fs,'font-family':'system-ui, sans-serif','pointer-events':'none'});
+    if(rot) t.setAttribute('transform',`rotate(${rot},${x2},${y2})`);
+    t.textContent=txt; return t;
+  }
+
+  // Overall width (top)
+  g.append(dimLine(0,topY,W,topY));
+  g.append(tick(0,topY-tickLen/2,0,topY+tickLen/2));
+  g.append(tick(W,topY-tickLen/2,W,topY+tickLen/2));
+  g.append(label(W/2,topY-22,`${W} mm`));
+
+  // Overall height (left)
+  g.append(dimLine(leftX,0,leftX,H));
+  g.append(tick(leftX-tickLen/2,0,leftX+tickLen/2,0));
+  g.append(tick(leftX-tickLen/2,H,leftX+tickLen/2,H));
+  g.append(label(leftX-25,H/2,`${H} mm`,-90));
+
+  // Extension lines (grey dashed from window corners to dim lines)
+  const ext='rgba(60,65,80,0.7)';
+  g.append(el('line',{x1:0,y1:0,x2:0,y2:topY,stroke:ext,'stroke-width':1,'stroke-dasharray':'4,4','pointer-events':'none'}));
+  g.append(el('line',{x1:W,y1:0,x2:W,y2:topY,stroke:ext,'stroke-width':1,'stroke-dasharray':'4,4','pointer-events':'none'}));
+  g.append(el('line',{x1:0,y1:0,x2:leftX,y2:0,stroke:ext,'stroke-width':1,'stroke-dasharray':'4,4','pointer-events':'none'}));
+  g.append(el('line',{x1:0,y1:H,x2:leftX,y2:H,stroke:ext,'stroke-width':1,'stroke-dasharray':'4,4','pointer-events':'none'}));
+
+  // Sub-dimensions for first level of composition
+  const comp = S.c.composition;
+  if (comp.kind === 'split') {
+    const fw2 = frameWidths(f);
+    const innerW = W-fw2.left-fw2.right, innerH = H-fw2.top-fw2.bottom;
+    renderSubDimLine(g, comp, fw2.left, fw2.top, innerW, innerH, topY, leftX, dimCol, textCol, tickLen, fs*0.78);
+  }
+}
+
+function renderSubDimLine(g, node, x, y, w, h, topY, leftX, dimCol, textCol, tickLen, fs) {
+  if (node.kind !== 'split') return;
+  for (let i=0; i<node.dividers.length; i++) {
+    const ratio = node.dividers[i].ratio;
+    if (node.axis==='V') {
+      const divX = x + ratio*w;
+      g.append(el('line',{x1:divX,y1:topY-tickLen/2,x2:divX,y2:topY+tickLen/2,stroke:dimCol,'stroke-width':1,'pointer-events':'none'}));
+      // Label previous segment
+      const prevX = i===0 ? x : x+node.dividers[i-1].ratio*w;
+      const segW = Math.round(divX-prevX);
+      const midX = (prevX+divX)/2;
+      const t=el('text',{x:midX,y:topY-22,fill:'rgba(120,130,150,0.7)','font-size':fs,'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'system-ui'});
+      t.textContent=segW; g.append(t);
+      if (i===node.dividers.length-1) {
+        const lastPrevX = x+ratio*w;
+        const lastW = Math.round((x+w)-lastPrevX);
+        const lastMid = (lastPrevX+(x+w))/2;
+        const t2=el('text',{x:lastMid,y:topY-22,fill:'rgba(120,130,150,0.7)','font-size':fs,'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'system-ui'});
+        t2.textContent=lastW; g.append(t2);
+      }
+    } else {
+      const divY = y + ratio*h;
+      g.append(el('line',{x1:leftX-tickLen/2,y1:divY,x2:leftX+tickLen/2,y2:divY,stroke:dimCol,'stroke-width':1,'pointer-events':'none'}));
+      const prevY = i===0 ? y : y+node.dividers[i-1].ratio*h;
+      const segH = Math.round(divY-prevY);
+      const midY = (prevY+divY)/2;
+      const t=el('text',{x:leftX-26,y:midY,fill:'rgba(120,130,150,0.7)','font-size':fs,'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'system-ui'});
+      t.setAttribute('transform',`rotate(-90,${leftX-26},${midY})`);
+      t.textContent=segH; g.append(t);
+      if (i===node.dividers.length-1) {
+        const lastPrevY = y+ratio*h;
+        const lastH = Math.round((y+h)-lastPrevY);
+        const lastMid = (lastPrevY+(y+h))/2;
+        const t2=el('text',{x:leftX-26,y:lastMid,fill:'rgba(120,130,150,0.7)','font-size':fs,'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'system-ui'});
+        t2.setAttribute('transform',`rotate(-90,${leftX-26},${lastMid})`);
+        t2.textContent=lastH; g.append(t2);
+      }
+    }
+  }
+}
+
+// ============================================================
+// TOOLTIP
+// ============================================================
+function showDividerTooltip(e, node, divIdx, w, h) {
+  const dim = node.axis === 'V' ? w : h;
+  const ratio = node.dividers[divIdx].ratio;
+  const prevR = divIdx === 0 ? 0 : node.dividers[divIdx-1].ratio;
+  const nextR = divIdx === node.dividers.length-1 ? 1 : node.dividers[divIdx+1].ratio;
+  const sizeA = Math.round((ratio - prevR) * dim);
+  const sizeB = Math.round((nextR - ratio) * dim);
+  const tt = document.getElementById('dim-tooltip');
+  tt.innerHTML = node.axis === 'V'
+    ? `<div class="tt-row"><span class="tt-val">${sizeA}</span><span class="tt-sep">mm ⟷ </span><span class="tt-val">${sizeB}</span><span class="tt-sep">mm</span></div>`
+    : `<div class="tt-row"><span class="tt-val">${sizeA}</span><span class="tt-sep">mm ⟵⟶ </span><span class="tt-val">${sizeB}</span><span class="tt-sep">mm</span></div>`;
+  tt.style.display = 'block';
+  tt.style.left = `${e.clientX + 14}px`;
+  tt.style.top  = `${e.clientY - 36}px`;
+}
+function moveDividerTooltip(e) {
+  const tt = document.getElementById('dim-tooltip');
+  tt.style.left = `${e.clientX + 14}px`;
+  tt.style.top  = `${e.clientY - 36}px`;
+}
+function hideDividerTooltip() {
+  document.getElementById('dim-tooltip').style.display = 'none';
+}
+
+// ============================================================
+// DRAG SYSTEM
+// ============================================================
+function svgPt(svg, cx, cy) {
+  const pt = svg.createSVGPoint(); pt.x=cx; pt.y=cy;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function startDrag(e, splitId, divIdx, axis, px, py, pw, ph) {
+  const svg = document.getElementById('main-svg');
+  const sp = svgPt(svg, e.clientX, e.clientY);
+  S.drag = { splitId, divIdx, axis, parentX:px, parentY:py, parentW:pw, parentH:ph,
+    startSvgX:sp.x, startSvgY:sp.y,
+    startRatio: findNode(S.c.composition, splitId).dividers[divIdx].ratio };
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup',   onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!S.drag) return;
+  const svg = document.getElementById('main-svg');
+  const sp = svgPt(svg, e.clientX, e.clientY);
+  const ds = S.drag;
+  const node = findNode(S.c.composition, ds.splitId);
+  if (!node) return;
+
+  let newRatio = ds.axis==='V'
+    ? (sp.x - ds.parentX) / ds.parentW
+    : (sp.y - ds.parentY) / ds.parentH;
+
+  const dim = ds.axis==='V' ? ds.parentW : ds.parentH;
+  const minStep = MIN_PANE_MM / dim;
+  const prevR = ds.divIdx>0 ? node.dividers[ds.divIdx-1].ratio : 0;
+  const nextR = ds.divIdx<node.dividers.length-1 ? node.dividers[ds.divIdx+1].ratio : 1;
+  newRatio = Math.max(prevR+minStep, Math.min(nextR-minStep, newRatio));
+  node.dividers[ds.divIdx].ratio = newRatio;
+
+  renderCanvas();
+  renderDimensionsTable();
+}
+
+function onDragEnd() {
+  S.drag=null; S.dirty=true;
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup',   onDragEnd);
+  updateTopbar();
+}
+
+// ============================================================
+// INSPECTOR
+// ============================================================
+function renderInspector() {
+  renderFrameForm();
+  renderPaneForm();
+  renderDimensionsTable();
+  renderSectionDiagram();
+  renderPlanView();
+}
+
+function renderPlanView() {
+  const svg = document.getElementById('plan-diagram');
+  if (!svg) return;
+  svg.innerHTML = '';
+  const f = S.c.frame;
+  const fw = frameWidths(f);
+  const W = f.overallWidth, D = f.depth;
+  const SVW = 240, SVH = 90;
+  const padX = 6, padY = 8;
+  const scaleX = (SVW - padX*2) / W;
+  const scaleY = (SVH - padY*2) / D;
+
+  svg.setAttribute('viewBox', `0 0 ${SVW} ${SVH}`);
+
+  // Background
+  svg.append(el('rect', {x:0,y:0,width:SVW,height:SVH,fill:'#15171C'}));
+
+  // Helper: mm → svg coords
+  const px = x => padX + x * scaleX;
+  const py = y => padY + y * scaleY;
+  const pw = w => w * scaleX;
+  const ph = h => h * scaleY;
+
+  const frameCol   = '#32364A';
+  const frameEdge  = '#484C5E';
+  const glassCol   = '#4A9EFF';
+  const sashCol    = '#3A5070';
+  const swingCol   = 'rgba(74,158,255,0.45)';
+  const threshCol  = 'rgba(255,153,68,0.85)';
+
+  // Outer frame top rail (header) and bottom rail (sill)
+  svg.append(el('rect',{x:px(0),y:py(0),width:pw(W),height:ph(fw.top),fill:frameCol,stroke:frameEdge,'stroke-width':0.8}));
+  svg.append(el('rect',{x:px(0),y:py(D-fw.bottom),width:pw(W),height:ph(fw.bottom),fill:frameCol,stroke:frameEdge,'stroke-width':0.8}));
+
+  // Collect leaf panes with their x-offsets in the composition
+  const leaves = [];
+  function collectLeaves(node, xOff, wAvail) {
+    if (node.kind === 'pane') { leaves.push({node, xOff, w: wAvail}); return; }
+    if (node.kind === 'split') {
+      if (node.axis === 'V') {
+        let prev = 0;
+        node.children.forEach((ch, i) => {
+          const r = i < node.dividers.length ? node.dividers[i].ratio : 1;
+          const chW = (r - prev) * wAvail;
+          collectLeaves(ch, xOff + prev * wAvail, chW);
+          prev = r;
+        });
+      } else {
+        // H-split: panes share the same x-range in plan; show the middle child as representative
+        const mid = Math.floor(node.children.length / 2);
+        collectLeaves(node.children[mid], xOff, wAvail);
+      }
+    }
+  }
+  const innerW = W - fw.left - fw.right;
+  collectLeaves(S.c.composition, fw.left, innerW);
+
+  // Left frame member
+  svg.append(el('rect',{x:px(0),y:py(0),width:pw(fw.left),height:ph(D),fill:frameCol,stroke:frameEdge,'stroke-width':0.8}));
+  // Right frame member
+  svg.append(el('rect',{x:px(W-fw.right),y:py(0),width:pw(fw.right),height:ph(D),fill:frameCol,stroke:frameEdge,'stroke-width':0.8}));
+
+  // Draw each pane cross-section
+  const sashT = 12; // visual sash thickness in mm
+  const glassMid = D / 2;
+
+  leaves.forEach(({node: pane, xOff, w}) => {
+    const x0 = px(xOff), x1 = px(xOff + w);
+    const paneW = pw(w);
+
+    // Thin mullion line between panes (except at frame edges)
+    if (xOff > fw.left + 0.5) {
+      svg.append(el('line',{x1:x0,y1:py(0),x2:x0,y2:py(D),stroke:frameEdge,'stroke-width':1.5,'pointer-events':'none'}));
+    }
+
+    const type = pane.type;
+    const isFixed = type === 'fixed' || type === 'louvre' || type === 'hung-double';
+    const isSliding = type === 'sliding-2t' || type === 'sliding-3t' || type === 'door-sliding';
+    const isCasementL = type === 'casement-left' || type === 'door-single';
+    const isCasementR = type === 'casement-right';
+    const isCasementT = type === 'casement-top' || type === 'awning';
+    const isCasementB = type === 'casement-bottom' || type === 'hopper';
+    const isTiltTurn  = type === 'tilt-turn';
+    const isDouble    = type === 'door-double' || type === 'door-french';
+    const isBifold    = type === 'door-bifold';
+    const isPivotV    = type === 'pivot-v';
+    const isSlidingSingle    = type === 'sliding-single';
+    const isProjecting       = type === 'projecting';
+    const isTateSuberidashi  = type === 'tate-suberidashi';
+    const isDoorPocket       = type === 'door-pocket';
+    const isDoorOverhead     = type === 'door-overhead';
+    const isDoorAccordion    = type === 'door-accordion';
+    const isDoorParentChild  = type === 'door-parent-child';
+
+    if (isFixed) {
+      // Just a glass line at mid-depth
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isSliding) {
+      // Two staggered sash lines
+      const o = ph(sashT * 0.4);
+      svg.append(el('line',{x1:x0,y1:py(glassMid)-o,x2:x1,y2:py(glassMid)-o,stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid)+o,x2:x1,y2:py(glassMid)+o,stroke:glassCol,'stroke-width':1.2,'stroke-dasharray':'4,3','pointer-events':'none'}));
+    } else if (isCasementL || isTiltTurn) {
+      // Sash rect (outer face)
+      svg.append(el('rect',{x:x0,y:py(glassMid-sashT/2),width:paneW,height:ph(sashT),fill:sashCol,stroke:frameEdge,'stroke-width':0.6,opacity:0.7}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      // Swing arc from hinge side (left) showing door sweeping outward
+      const swingR = Math.min(paneW * 0.75, ph(D * 0.45));
+      svg.append(el('path',{d:`M ${x0} ${py(glassMid)} A ${swingR} ${swingR} 0 0 0 ${x0+swingR} ${py(glassMid-D*0.22)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x0+swingR,y2:py(glassMid-D*0.22),stroke:swingCol,'stroke-width':0.8,'stroke-dasharray':'3,3','pointer-events':'none'}));
+    } else if (isCasementR) {
+      svg.append(el('rect',{x:x0,y:py(glassMid-sashT/2),width:paneW,height:ph(sashT),fill:sashCol,stroke:frameEdge,'stroke-width':0.6,opacity:0.7}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      const swingR = Math.min(paneW * 0.75, ph(D * 0.45));
+      svg.append(el('path',{d:`M ${x1} ${py(glassMid)} A ${swingR} ${swingR} 0 0 1 ${x1-swingR} ${py(glassMid-D*0.22)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('line',{x1:x1,y1:py(glassMid),x2:x1-swingR,y2:py(glassMid-D*0.22),stroke:swingCol,'stroke-width':0.8,'stroke-dasharray':'3,3','pointer-events':'none'}));
+    } else if (isCasementT || isCasementB) {
+      // Top/bottom hung — in plan they look like a fixed pane (pivot axis at top or bottom, swing in elevation not plan)
+      svg.append(el('rect',{x:x0,y:py(glassMid-sashT/2),width:paneW,height:ph(sashT),fill:sashCol,stroke:frameEdge,'stroke-width':0.6,opacity:0.7}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isDouble) {
+      // Two leaves, one each side
+      const mid = (x0 + x1) / 2;
+      const swingR = Math.min(paneW * 0.38, ph(D * 0.45));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('path',{d:`M ${mid} ${py(glassMid)} A ${swingR} ${swingR} 0 0 0 ${mid-swingR} ${py(glassMid-D*0.22)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('path',{d:`M ${mid} ${py(glassMid)} A ${swingR} ${swingR} 0 0 1 ${mid+swingR} ${py(glassMid-D*0.22)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      // Threshold
+      svg.append(el('line',{x1:x0,y1:py(D-fw.bottom),x2:x1,y2:py(D-fw.bottom),stroke:threshCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isBifold) {
+      // Two fold panels each side of centre
+      const mid = (x0 + x1) / 2;
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:mid,y2:py(glassMid*0.55),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('line',{x1:x1,y1:py(glassMid),x2:mid,y2:py(glassMid*0.55),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(D-fw.bottom),x2:x1,y2:py(D-fw.bottom),stroke:threshCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isPivotV) {
+      // Pivot: sash shown angled in plan
+      const cx = (x0+x1)/2;
+      svg.append(el('line',{x1:x0+paneW*0.15,y1:py(glassMid*0.4),x2:x1-paneW*0.15,y2:py(D-glassMid*0.4),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('circle',{cx,r:2.5,cy:py(D/2),fill:glassCol,opacity:0.8,'pointer-events':'none'}));
+    } else if (isSlidingSingle) {
+      // Sliding leaf at one depth + dashed FIX line at the other
+      const o = ph(sashT * 0.4);
+      svg.append(el('line',{x1:x0,y1:py(glassMid)-o,x2:x1,y2:py(glassMid)-o,stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid)+o,x2:x1*0.55+x0*0.45,y2:py(glassMid)+o,stroke:glassCol,'stroke-width':1.2,'stroke-dasharray':'4,3','pointer-events':'none'}));
+    } else if (isProjecting) {
+      // Sash rect at outer face + outward (exterior) swing arc from bottom edge of pane
+      svg.append(el('rect',{x:x0,y:py(glassMid-sashT/2),width:paneW,height:ph(sashT),fill:sashCol,stroke:frameEdge,'stroke-width':0.6,opacity:0.7}));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      const swingR = Math.min(paneW * 0.4, ph(D * 0.4));
+      const mcx = (x0+x1)/2;
+      svg.append(el('path',{d:`M ${mcx-swingR} ${py(glassMid)} A ${swingR} ${swingR} 0 0 0 ${mcx+swingR} ${py(glassMid)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+    } else if (isTateSuberidashi) {
+      // Sash on inner face + side swing arc (slides out then pivots on vertical axis)
+      svg.append(el('rect',{x:x0,y:py(D*0.25-sashT/2),width:paneW,height:ph(sashT),fill:sashCol,stroke:frameEdge,'stroke-width':0.6,opacity:0.7}));
+      svg.append(el('line',{x1:x0,y1:py(D*0.25),x2:x1,y2:py(D*0.25),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      const swingR2 = Math.min(paneW * 0.6, ph(D * 0.3));
+      svg.append(el('path',{d:`M ${x0} ${py(D*0.25)} A ${swingR2} ${swingR2} 0 0 0 ${x0+swingR2} ${py(D*0.25-D*0.18)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(D*0.25),x2:x0+swingR2,y2:py(D*0.25-D*0.18),stroke:swingCol,'stroke-width':0.8,'stroke-dasharray':'3,3','pointer-events':'none'}));
+    } else if (isDoorPocket) {
+      // Sash sliding into dashed pocket wall on right
+      const o2 = ph(sashT * 0.4);
+      svg.append(el('line',{x1:x0,y1:py(glassMid)-o2,x2:x1*0.6+x0*0.4,y2:py(glassMid)-o2,stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('line',{x1:x1*0.6+x0*0.4,y1:py(0)+ph(D)*0.05,x2:x1*0.6+x0*0.4,y2:py(0)+ph(D)*0.95,stroke:'rgba(74,158,255,0.4)','stroke-width':0.8,'stroke-dasharray':'4,3','pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(D-fw.bottom),x2:x1,y2:py(D-fw.bottom),stroke:threshCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isDoorOverhead) {
+      // Single glass line + overhead arc going outward (exterior)
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      const ohr = Math.min(paneW*0.45, ph(D*0.4));
+      const omcx = (x0+x1)/2;
+      svg.append(el('path',{d:`M ${omcx-ohr} ${py(glassMid)} A ${ohr} ${ohr} 0 0 0 ${omcx+ohr} ${py(glassMid)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(D-fw.bottom),x2:x1,y2:py(D-fw.bottom),stroke:threshCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isDoorAccordion) {
+      // Zigzag fold lines across depth + threshold
+      const nAP = Math.max(4, Math.round(paneW/30)*2);
+      const fpts = [];
+      for(let i=0;i<=nAP;i++) fpts.push(`${x0+paneW*i/nAP},${i%2===0?py(glassMid*0.4):py(glassMid)}`);
+      svg.append(el('polyline',{points:fpts.join(' '),fill:'none',stroke:glassCol,'stroke-width':1.2,'pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(D-fw.bottom),x2:x1,y2:py(D-fw.bottom),stroke:threshCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else if (isDoorParentChild) {
+      // Large leaf (70%) arc left + small leaf (30%) arc right + threshold
+      const bigX = x0 + paneW * 0.68;
+      const swingBig = Math.min(paneW*0.6, ph(D*0.45));
+      const swingSmall = Math.min(paneW*0.25, ph(D*0.3));
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+      svg.append(el('path',{d:`M ${x0} ${py(glassMid)} A ${swingBig} ${swingBig} 0 0 0 ${x0+swingBig} ${py(glassMid-D*0.22)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('path',{d:`M ${x1} ${py(glassMid)} A ${swingSmall} ${swingSmall} 0 0 1 ${x1-swingSmall} ${py(glassMid-D*0.15)}`,stroke:swingCol,fill:'none','stroke-width':1,'stroke-dasharray':'3,3','pointer-events':'none'}));
+      svg.append(el('line',{x1:x0,y1:py(D-fw.bottom),x2:x1,y2:py(D-fw.bottom),stroke:threshCol,'stroke-width':1.5,'pointer-events':'none'}));
+    } else {
+      // Fallback
+      svg.append(el('line',{x1:x0,y1:py(glassMid),x2:x1,y2:py(glassMid),stroke:glassCol,'stroke-width':1.5,'pointer-events':'none'}));
+    }
+
+    // Selected pane highlight
+    if (pane.id === S.sel) {
+      svg.append(el('rect',{x:x0+0.5,y:py(0)+0.5,width:paneW-1,height:ph(D)-1,fill:'none',stroke:'rgba(74,158,255,0.5)','stroke-width':1.5,'pointer-events':'none'}));
+    }
+  });
+
+  // Outer frame border
+  svg.append(el('rect',{x:px(0),y:py(0),width:pw(W),height:ph(D),fill:'none',stroke:frameEdge,'stroke-width':1.5}));
+
+  // Labels
+  const lbl2 = (x2,y2,txt) => {
+    const t2=el('text',{x:x2,y:y2,'text-anchor':'middle',fill:'rgba(120,130,150,0.8)','font-size':7,'font-family':'system-ui'});
+    t2.textContent=txt; svg.append(t2);
+  };
+  lbl2(SVW/2, SVH-1, `${W}mm wide  ·  ${D}mm depth`);
+}
+
+function renderFrameForm() {
+  const f=S.c.frame;
+  setVal('frame-width',     f.overallWidth);
+  setVal('frame-height',    f.overallHeight);
+  setVal('frame-thickness', f.thickness);
+  setVal('frame-depth',     f.depth);
+  setVal('frame-inner-offset', f.innerOffset);
+  setVal('frame-outer-offset', f.outerOffset);
+  setVal('frame-material',  f.material);
+  setVal('frame-finish',    f.finish);
+  // Per-side widths — empty string when null (inheriting)
+  const topW=document.getElementById('frame-top-width');    if(topW)    topW.value    = f.topWidth    ?? '';
+  const botW=document.getElementById('frame-bottom-width'); if(botW)    botW.value    = f.bottomWidth ?? '';
+  const lefW=document.getElementById('frame-left-width');   if(lefW)    lefW.value    = f.leftWidth   ?? '';
+  const rigW=document.getElementById('frame-right-width');  if(rigW)    rigW.value    = f.rightWidth  ?? '';
+  // Opening type
+  const otype = S.c.openingType || 'window';
+  setVal('frame-opening-type', otype);
+  document.getElementById('palette-window').style.display = otype==='window' ? '' : 'none';
+  document.getElementById('palette-door').style.display   = otype==='door'   ? '' : 'none';
+  document.querySelectorAll('.opening-btn').forEach(b=>b.classList.toggle('active', b.dataset.otype===otype));
+  ['pane-door-optgroup','ctx-door-optgroup'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=otype==='door'?'':'none';});
+  ['pane-window-optgroup','ctx-window-optgroup'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=otype==='window'?'':'none';});
+}
+
+function renderPaneForm() {
+  const node = S.sel ? findNode(S.c.composition, S.sel) : null;
+  const body = document.getElementById('pane-inspector-body');
+  if (!node || node.kind !== 'pane') { body.classList.add('disabled'); return; }
+  body.classList.remove('disabled');
+  setVal('pane-type-select', node.type);
+  setVal('pane-label',        node.label||'');
+  const refEl = document.getElementById('pane-ref-code');
+  if (refEl) refEl.textContent = TYPE_REFS[node.type] ?? '—';
+  setVal('pane-glass-product', node.glass.product);
+  setVal('pane-glass-thickness', node.glass.thickness);
+  const sashSec = document.getElementById('pane-sash-section');
+  sashSec.style.display = node.type==='fixed' ? 'none' : 'block';
+  if (node.sash) { setVal('pane-sash-thickness', node.sash.thickness); setVal('pane-handle-side', node.sash.handleSide||'right'); }
+}
+
+function renderDimensionsTable() {
+  const f=S.c.frame;
+  const fw=frameWidths(f);
+  const rows=[];
+  collectDims(S.c.composition, fw.left, fw.top, f.overallWidth-fw.left-fw.right, f.overallHeight-fw.top-fw.bottom, rows);
+  const tbody=document.getElementById('dims-tbody');
+  tbody.innerHTML='';
+  let total=0;
+  rows.forEach(r=>{
+    const area=(r.w*r.h/1e6).toFixed(3);
+    total+=parseFloat(area);
+    const tr=document.createElement('tr');
+    if (r.id===S.sel) tr.className='selected-row';
+    const wRound=Math.round(r.w), hRound=Math.round(r.h);
+    const canW=!!findAxisParent(S.c.composition,r.id,'V');
+    const canH=!!findAxisParent(S.c.composition,r.id,'H');
+    tr.innerHTML=`<td>${r.label||r.id.slice(0,7)+'…'}</td>`+
+      `<td><input class="dim-input" data-id="${r.id}" data-axis="W" data-orig="${wRound}" value="${wRound}" ${canW?'':'readonly'}/></td>`+
+      `<td><input class="dim-input" data-id="${r.id}" data-axis="H" data-orig="${hRound}" value="${hRound}" ${canH?'':'readonly'}/></td>`+
+      `<td>${area}</td>`;
+    tr.addEventListener('click',e=>{ if(e.target.tagName==='INPUT') return; S.sel=r.id;render(); });
+    tbody.appendChild(tr);
+  });
+  document.getElementById('dims-total').textContent=`${total.toFixed(3)} m²`;
+  // Event delegation for editable dim inputs
+  tbody.addEventListener('keydown', e=>{
+    if (e.key!=='Enter') return;
+    const inp=e.target; if(!inp.classList.contains('dim-input')||inp.readOnly) return;
+    const mm=parseFloat(inp.value);
+    if (!isNaN(mm) && mm>=MIN_PANE_MM && mm!==parseFloat(inp.dataset.orig)) setNodeDimension(inp.dataset.id, inp.dataset.axis, mm);
+    else inp.value=inp.dataset.orig;
+    inp.blur();
+  });
+  tbody.addEventListener('focusout', e=>{
+    const inp=e.target; if(!inp.classList.contains('dim-input')||inp.readOnly) return;
+    const mm=parseFloat(inp.value);
+    if (!isNaN(mm) && mm>=MIN_PANE_MM && mm!==parseFloat(inp.dataset.orig)) setNodeDimension(inp.dataset.id, inp.dataset.axis, mm);
+    else inp.value=inp.dataset.orig;
+  });
+}
+
+function collectDims(node, x, y, w, h, rows) {
+  if (node.kind==='pane') { rows.push({id:node.id,label:node.label,w,h}); return; }
+  for (let i=0;i<node.children.length;i++) {
+    const sr=i===0?0:node.dividers[i-1].ratio, er=i===node.children.length-1?1:node.dividers[i].ratio;
+    if (node.axis==='V') collectDims(node.children[i],x+sr*w,y,(er-sr)*w,h,rows);
+    else                  collectDims(node.children[i],x,y+sr*h,w,(er-sr)*h,rows);
+  }
+}
+
+function renderSectionDiagram() {
+  const svg=document.getElementById('section-diagram');
+  if (!svg) return;
+  svg.innerHTML='';
+  const f=S.c.frame;
+  const fw=frameWidths(f);
+  const SVW=220,SVH=70;
+  const scale=Math.min((SVW-40)/f.depth, (SVH-20)/fw.top);
+  const d=f.depth*scale, t=fw.top*scale;
+  const ox=(SVW-d)/2, oy=(SVH-t)/2;
+  svg.append(el('rect',{x:0,y:0,width:SVW,height:SVH,fill:'#15171C'}));
+  svg.append(el('rect',{x:ox-16,y:0,width:d+32,height:SVH,fill:'rgba(40,45,55,0.5)'}));
+  svg.append(el('rect',{x:ox,y:oy,width:d,height:t,fill:'#32364A',stroke:'#484C5E','stroke-width':1.5,rx:1}));
+  const maxDepth=Math.max(f.depth,1);
+  const glassX=ox+d*(f.outerOffset/maxDepth);
+  svg.append(el('line',{x1:glassX,y1:oy+2,x2:glassX,y2:oy+t-2,stroke:'#4A9EFF','stroke-width':3}));
+  const lbl=(x2,y2,txt,rot)=>{const t2=el('text',{x:x2,y:y2,'text-anchor':'middle',fill:'rgba(120,130,150,0.8)','font-size':9,'font-family':'system-ui'});if(rot)t2.setAttribute('transform',`rotate(${rot},${x2},${y2})`);t2.textContent=txt;svg.append(t2);};
+  lbl(SVW/2, SVH-3, `${f.depth}mm depth`);
+  // Show top label; if bottom differs add indicator
+  const topLabel = fw.top!==f.thickness ? `T:${fw.top}mm` : `${fw.top}mm`;
+  lbl(ox-8, SVH/2, topLabel, -90);
+  if (fw.bottom!==fw.top) {
+    const t3=el('text',{x:ox+d+18,y:SVH/2+3,'text-anchor':'middle',fill:'rgba(255,153,68,0.75)','font-size':8,'font-family':'system-ui'});
+    t3.textContent=`B:${fw.bottom}`; svg.append(t3);
+  }
+}
+
+function renderOutline() {
+  const c=document.getElementById('outline-tree');
+  c.innerHTML='';
+  renderOutlineNode(c, S.c.composition, 0);
+}
+
+function renderOutlineNode(c, node, depth) {
+  const d=document.createElement('div');
+  d.className='outline-item'+(node.id===S.sel?' selected':'');
+  d.style.paddingLeft=`${8+depth*16}px`;
+  const icon=node.kind==='split'?(node.axis==='V'?'⊞':'⊟'):(PANE_TYPE_ICONS[node.type]||'▭');
+  const lbl=node.kind==='split'?`Split ${node.axis} (${node.children.length})`:(node.label||PANE_TYPE_LABELS[node.type]||node.type);
+  d.innerHTML=`<span class="outline-icon">${icon}</span><span class="outline-label">${lbl}</span>`;
+  d.addEventListener('click',()=>{S.sel=node.id;render();});
+  c.appendChild(d);
+  if (node.kind==='split') node.children.forEach(ch=>renderOutlineNode(c,ch,depth+1));
+}
+
+// ============================================================
+// CONTEXT TOOLBAR
+// ============================================================
+function updateContextToolbar() {
+  const node=S.sel?findNode(S.c.composition,S.sel):null;
+  const isPane=node&&node.kind==='pane';
+  const isRoot=S.sel===S.c.composition.id;
+  document.getElementById('btn-split-h').disabled=!isPane;
+  document.getElementById('btn-split-v').disabled=!isPane;
+  document.getElementById('btn-delete').disabled=!S.sel||isRoot;
+  document.getElementById('ctx-type-select').disabled=!isPane;
+  if (isPane) document.getElementById('ctx-type-select').value=node.type;
+  // Update type palette active state
+  document.querySelectorAll('.type-btn').forEach(b=>{
+    b.classList.toggle('active', isPane && b.dataset.type===node.type);
+  });
+  // Hint
+  const hint=document.getElementById('selection-hint');
+  if (S.sel && node) {
+    hint.textContent=node.kind==='split'?`Split (${node.children.length} children)`:`Panel: ${PANE_TYPE_LABELS[node.type]||node.type}`;
+    hint.style.color='var(--text-muted)';
+  } else {
+    hint.textContent='Click a panel to select';
+    hint.style.color='var(--text-dim)';
+  }
+}
+
+// ============================================================
+// TOPBAR
+// ============================================================
+function updateTopbar() {
+  const t=document.getElementById('window-title');
+  t.textContent=S.c.meta.name+(S.dirty?' ●':'');
+  document.getElementById('btn-undo').disabled=S.undoStack.length===0;
+}
+
+// ============================================================
+// MASTER RENDER
+// ============================================================
+function render() {
+  renderCanvas();
+  renderInspector();
+  renderOutline();
+  updateTopbar();
+  updateContextToolbar();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function setVal(id, val) {
+  const el2=document.getElementById(id);
+  if (el2) el2.value=val;
+}
+
+// ============================================================
+// IMPORT / EXPORT
+// ============================================================
+function annotateRefs(node) {
+  if (node.kind === 'pane') return { ref: TYPE_REFS[node.type] ?? null, ...node };
+  if (node.kind === 'split') return { ...node, children: node.children.map(annotateRefs) };
+  return node;
+}
+
+function exportJSON() {
+  S.c.meta.modifiedAt=new Date().toISOString();
+  const exportData = { ...S.c, composition: annotateRefs(S.c.composition) };
+  const json=JSON.stringify(exportData, null, 2);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+  a.download=`${S.c.meta.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  S.dirty=false; updateTopbar();
+}
+
+function importJSON() {
+  if (S.dirty && !confirm('Unsaved changes will be lost. Continue?')) return;
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=(e)=>{
+    const f=e.target.files[0]; if(!f) return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      try {
+        const data=JSON.parse(ev.target.result);
+        if (!data.schemaVersion) { alert('Not a valid Window Configurator JSON.'); return; }
+        if (data.schemaVersion!=='1.0') { alert(`Unsupported schema version: ${data.schemaVersion}`); return; }
+        if (!('openingType' in data)) data.openingType = 'window';
+        if (!('topWidth' in data.frame)) { data.frame.topWidth=null; data.frame.bottomWidth=null; data.frame.leftWidth=null; data.frame.rightWidth=null; }
+        S.c=data; S.sel=null; S.dirty=false; S.undoStack=[];
+        resetViewBox();
+        render();
+      } catch(err) { alert('Failed to parse JSON: '+err.message); }
+    };
+    reader.readAsText(f);
+  };
+  inp.click();
+}
+
+function newComposition() {
+  if (S.dirty && !confirm('Unsaved changes will be lost. Create new window?')) return;
+  S.c=mkComposition(); S.sel=null; S.dirty=false; S.undoStack=[];
+  resetViewBox();
+  render();
+}
+
+function undo() {
+  if (!S.undoStack.length) return;
+  S.c=S.undoStack.pop(); S.sel=null;
+  render();
+}
+
+// ============================================================
+// TEMPLATES
+// ============================================================
+const TEMPLATES = {
+  window: [
+    { name:'Fixed Picture', desc:'Single fixed pane',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(120,185,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/>',
+      make(){ const c=mkComposition(); c.meta.name='Fixed Picture'; return c; } },
+    { name:'Single Casement', desc:'One casement-left pane',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="34" y1="2" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="24" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/>',
+      make(){ const c=mkComposition(); c.meta.name='Single Casement'; c.composition.type='casement-left'; return c; } },
+    { name:'Double Casement', desc:'Two casements side by side',
+      icon:'<rect x="2" y="2" width="14" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="20" y="2" width="14" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="4" y1="2" x2="15" y2="13" stroke="#4A9EFF" stroke-width="1"/><line x1="4" y1="24" x2="15" y2="13" stroke="#4A9EFF" stroke-width="1"/><line x1="32" y1="2" x2="21" y2="13" stroke="#4A9EFF" stroke-width="1"/><line x1="32" y1="24" x2="21" y2="13" stroke="#4A9EFF" stroke-width="1"/>',
+      make(){ const c=mkComposition(); c.meta.name='Double Casement'; const l=mkPane(); l.type='casement-right'; const r=mkPane(); r.type='casement-left'; c.composition={id:uid(),kind:'split',axis:'V',dividers:[{ratio:0.5}],children:[l,r]}; return c; } },
+    { name:'Sliding 2-Track', desc:'Single sliding panel',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(80,210,190,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/>',
+      make(){ const c=mkComposition(); c.meta.name='Sliding 2-Track'; c.composition.type='sliding-2t'; return c; } },
+    { name:'Awning over Fixed', desc:'Awning top, fixed bottom',
+      icon:'<rect x="2" y="2" width="32" height="10" fill="rgba(120,200,160,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="2" y="14" width="32" height="10" fill="rgba(120,185,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/>',
+      make(){ const c=mkComposition(); c.meta.name='Awning over Fixed'; const t=mkPane(); t.type='awning'; const b=mkPane(); b.type='fixed'; c.composition={id:uid(),kind:'split',axis:'H',dividers:[{ratio:0.35}],children:[t,b]}; return c; } },
+    { name:'Picture + Side Lites', desc:'Fixed centre, casements either side',
+      icon:'<rect x="2" y="2" width="9" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="13" y="2" width="10" height="22" fill="rgba(120,185,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="25" y="2" width="9" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/>',
+      make(){ const c=mkComposition(); c.meta.name='Picture + Side Lites'; c.frame.overallWidth=1800; const l=mkPane(); l.type='casement-right'; const m=mkPane(); m.type='fixed'; const r=mkPane(); r.type='casement-left'; c.composition={id:uid(),kind:'split',axis:'V',dividers:[{ratio:0.25},{ratio:0.75}],children:[l,m,r]}; return c; } },
+  ],
+  door: [
+    { name:'Single Door', desc:'Single swing door',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="2" y2="24" stroke="#4A9EFF" stroke-width="1.5"/><path d="M 2 24 A 20 20 0 0 1 22 4" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='Single Door'; c.openingType='door'; c.composition.type='door-single'; c.frame.overallWidth=900; c.frame.overallHeight=2100; return c; } },
+    { name:'Double Door', desc:'Two-leaf swing doors',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1" stroke-dasharray="3,2"/><path d="M 2 24 A 14 14 0 0 1 16 10" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 34 24 A 14 14 0 0 0 20 10" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='Double Door'; c.openingType='door'; const l=mkPane(); l.type='door-single'; const r=mkPane(); r.type='door-single'; c.composition={id:uid(),kind:'split',axis:'V',dividers:[{ratio:0.5}],children:[l,r]}; c.frame.overallWidth=1800; c.frame.overallHeight=2100; return c; } },
+    { name:'Sliding Door', desc:'Two-track sliding panel',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='Sliding Door'; c.openingType='door'; c.composition.type='door-sliding'; c.frame.overallWidth=1800; c.frame.overallHeight=2100; return c; } },
+    { name:'Bifold Door', desc:'Folding panel system',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="11" y1="2" x2="18" y2="14" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="14" x2="25" y2="2" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='Bifold Door'; c.openingType='door'; c.composition.type='door-bifold'; c.frame.overallWidth=2400; c.frame.overallHeight=2100; return c; } },
+    { name:'French Doors', desc:'Outswing pair with centre post',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="1" stroke-dasharray="3,2"/><path d="M 2 24 A 12 12 0 0 1 14 12" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 34 24 A 12 12 0 0 0 22 12" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='French Doors'; c.openingType='door'; const l=mkPane(); l.type='door-french'; const r=mkPane(); r.type='door-french'; c.composition={id:uid(),kind:'split',axis:'V',dividers:[{ratio:0.5}],children:[l,r]}; c.frame.overallWidth=1800; c.frame.overallHeight=2100; return c; } },
+    { name:'親子扉 Parent-Child', desc:'Large main leaf + small side leaf',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="2" y2="24" stroke="#4A9EFF" stroke-width="1.5"/><path d="M 2 24 A 18 18 0 0 1 20 6" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><line x1="24" y1="2" x2="24" y2="24" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="3,2"/><line x1="34" y1="2" x2="34" y2="24" stroke="#4A9EFF" stroke-width="1.2"/><path d="M 34 24 A 8 8 0 0 0 26 16" stroke="#4A9EFF" stroke-width="1" fill="none"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='親子扉 Parent-Child'; c.openingType='door'; c.composition.type='door-parent-child'; c.frame.overallWidth=1200; c.frame.overallHeight=2100; return c; } },
+    { name:'引込戸 Pocket Door', desc:'Single leaf slides into wall pocket',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="22" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="22" y1="13" x2="18" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="22" y1="13" x2="18" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><rect x="24" y="3" width="9" height="20" fill="none" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="3,2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='引込戸 Pocket Door'; c.openingType='door'; c.composition.type='door-pocket'; c.frame.overallWidth=900; c.frame.overallHeight=2100; return c; } },
+  ]
+};
+
+let _tplTab = 'window';
+
+function openTemplatesModal() {
+  document.getElementById('templates-modal').classList.add('open');
+  renderTemplatesGrid(_tplTab);
+}
+function closeTemplatesModal() {
+  document.getElementById('templates-modal').classList.remove('open');
+}
+function renderTemplatesGrid(ttype) {
+  _tplTab = ttype;
+  document.querySelectorAll('.tpl-tab').forEach(b=>b.classList.toggle('active', b.dataset.ttype===ttype));
+  const grid = document.getElementById('templates-grid');
+  grid.innerHTML = '';
+  (TEMPLATES[ttype]||[]).forEach(tpl=>{
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    card.innerHTML = `<svg width="72" height="50" viewBox="0 0 36 26">${tpl.icon}</svg><div class="template-card-name">${tpl.name}</div><div class="template-card-desc">${tpl.desc}</div>`;
+    card.addEventListener('click', ()=>{
+      if (S.dirty && !confirm('Unsaved changes will be lost. Load template?')) return;
+      S.c = tpl.make(); S.sel=null; S.dirty=false; S.undoStack=[];
+      syncOpeningType(S.c.openingType||'window');
+      resetViewBox(); closeTemplatesModal(); render();
+    });
+    grid.appendChild(card);
+  });
+}
+
+// ============================================================
+// EVENT BINDING
+// ============================================================
+
+// Topbar
+document.getElementById('btn-new').addEventListener('click', newComposition);
+document.getElementById('btn-import').addEventListener('click', importJSON);
+document.getElementById('btn-export').addEventListener('click', exportJSON);
+document.getElementById('btn-undo').addEventListener('click', undo);
+document.getElementById('window-title').addEventListener('dblclick', ()=>{
+  const n=prompt('Window name:', S.c.meta.name);
+  if (n!==null && n.trim()) { S.c.meta.name=n.trim(); S.dirty=true; updateTopbar(); }
+});
+
+// Context toolbar
+document.getElementById('btn-split-h').addEventListener('click', ()=>{ if(S.sel) splitNode(S.sel,'H'); });
+document.getElementById('btn-split-v').addEventListener('click', ()=>{ if(S.sel) splitNode(S.sel,'V'); });
+document.getElementById('btn-delete').addEventListener('click',  ()=>{ if(S.sel) deleteNode(S.sel); });
+document.getElementById('ctx-type-select').addEventListener('change', e=>{ if(S.sel) assignType(S.sel,e.target.value); });
+
+// Type palette
+document.querySelectorAll('.type-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if (!S.sel) return;
+    const node=findNode(S.c.composition,S.sel);
+    if (node && node.kind==='pane') assignType(S.sel, btn.dataset.type);
+  });
+});
+
+// Inspector — frame
+function bindNum(id, key, min=1, resetZoom=false) {
+  document.getElementById(id).addEventListener('change', e=>{
+    const v=parseFloat(e.target.value);
+    if (isNaN(v)||v<min) return;
+    S.c.frame[key]=v; S.dirty=true;
+    if (resetZoom) resetViewBox();
+    render();
+  });
+}
+bindNum('frame-width',        'overallWidth',  100, true);
+bindNum('frame-height',       'overallHeight', 100, true);
+bindNum('frame-thickness',    'thickness',     10);
+bindNum('frame-depth',        'depth',         10);
+bindNum('frame-inner-offset', 'innerOffset',   0);
+bindNum('frame-outer-offset', 'outerOffset',   0);
+document.getElementById('frame-material').addEventListener('change', e=>{ S.c.frame.material=e.target.value; S.dirty=true; updateTopbar(); });
+document.getElementById('frame-finish').addEventListener('input',  e=>{ S.c.frame.finish=e.target.value;    S.dirty=true; updateTopbar(); });
+
+// Per-side frame widths
+function bindFrameSide(id, key) {
+  document.getElementById(id).addEventListener('change', e=>{
+    const raw=e.target.value.trim();
+    if (raw==='') { S.c.frame[key]=null; }
+    else { const v=parseFloat(raw); if(!isNaN(v)&&v>=10) S.c.frame[key]=v; }
+    S.dirty=true; render();
+  });
+}
+bindFrameSide('frame-top-width',    'topWidth');
+bindFrameSide('frame-bottom-width', 'bottomWidth');
+bindFrameSide('frame-left-width',   'leftWidth');
+bindFrameSide('frame-right-width',  'rightWidth');
+
+// Opening type
+document.querySelectorAll('.opening-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ syncOpeningType(btn.dataset.otype); S.dirty=true; render(); });
+});
+document.getElementById('frame-opening-type').addEventListener('change', e=>{ syncOpeningType(e.target.value); S.dirty=true; render(); });
+
+// Templates
+document.getElementById('btn-templates').addEventListener('click', openTemplatesModal);
+document.getElementById('btn-close-templates').addEventListener('click', closeTemplatesModal);
+document.getElementById('templates-modal').addEventListener('click', e=>{ if(e.target===document.getElementById('templates-modal')) closeTemplatesModal(); });
+document.querySelectorAll('.tpl-tab').forEach(btn=>{ btn.addEventListener('click', ()=>renderTemplatesGrid(btn.dataset.ttype)); });
+
+// Inspector — pane
+document.getElementById('pane-type-select').addEventListener('change', e=>{ if(S.sel) assignType(S.sel,e.target.value); });
+document.getElementById('pane-label').addEventListener('input', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane') { node.label=e.target.value; S.dirty=true; renderCanvas(); renderOutline(); updateTopbar(); }
+});
+document.getElementById('pane-glass-thickness').addEventListener('change', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane') { node.glass.thickness=parseInt(e.target.value); S.dirty=true; updateTopbar(); }
+});
+document.getElementById('pane-glass-product').addEventListener('change', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane') { node.glass.product=e.target.value; S.dirty=true; updateTopbar(); }
+});
+document.getElementById('pane-sash-thickness').addEventListener('change', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane'&&node.sash) { node.sash.thickness=parseInt(e.target.value); S.dirty=true; updateTopbar(); }
+});
+document.getElementById('pane-handle-side').addEventListener('change', e=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane'&&node.sash) { node.sash.handleSide=e.target.value; S.dirty=true; updateTopbar(); }
+});
+
+// Accordion toggles
+document.querySelectorAll('.accordion-header').forEach(h=>{
+  h.addEventListener('click', ()=>{
+    const body=document.getElementById(h.dataset.target);
+    const arrow=h.querySelector('.acc-arrow');
+    const open=body.style.display!=='none'&&!body.classList.contains('hidden');
+    body.style.display=open?'none':'block';
+    if (arrow) arrow.style.transform=open?'rotate(-90deg)':'';
+  });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e=>{
+  if (document.getElementById('templates-modal').classList.contains('open')) {
+    if (e.key==='Escape') { closeTemplatesModal(); return; }
+    return;
+  }
+  const tag=document.activeElement.tagName;
+  if (tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
+  if (e.key==='Delete'||e.key==='Backspace') { if(S.sel) deleteNode(S.sel); }
+  else if ((e.key==='h'||e.key==='H')&&!e.ctrlKey) { if(S.sel){const n=findNode(S.c.composition,S.sel);if(n&&n.kind==='pane')splitNode(S.sel,'H');} }
+  else if ((e.key==='v'||e.key==='V')&&!e.ctrlKey) { if(S.sel){const n=findNode(S.c.composition,S.sel);if(n&&n.kind==='pane')splitNode(S.sel,'V');} }
+  else if ((e.key==='f'||e.key==='F')&&!e.ctrlKey) { resetViewBox(); renderCanvas(); }
+  else if ((e.key==='d'||e.key==='D')&&!e.ctrlKey) { toggleDims(); }
+  else if (e.key==='='||e.key==='+') { zoomAtCenter(1.2); renderCanvas(); }
+  else if (e.key==='-') { zoomAtCenter(1/1.2); renderCanvas(); }
+  else if (e.key==='Escape') { S.sel=null; render(); }
+  else if (e.ctrlKey&&e.key==='z') { e.preventDefault(); undo(); }
+  else if (e.ctrlKey&&e.key==='e') { e.preventDefault(); exportJSON(); }
+  else if (e.ctrlKey&&e.key==='n') { e.preventDefault(); newComposition(); }
+});
+
+// ── PAN & ZOOM EVENTS ────────────────────────────────────────
+const canvasDiv = document.getElementById('canvas');
+const mainSvg   = document.getElementById('main-svg');
+
+// Scroll-wheel zoom
+canvasDiv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const pt = svgPt(mainSvg, e.clientX, e.clientY);
+  const factor = e.deltaY < 0 ? 1.18 : 1/1.18;
+  zoomAt(pt.x, pt.y, factor);
+  renderCanvas();
+}, { passive: false });
+
+// Middle-mouse pan
+canvasDiv.addEventListener('mousedown', e=>{
+  if (e.button !== 1) return;
+  e.preventDefault();
+  S.pan = { lastX: e.clientX, lastY: e.clientY };
+  canvasDiv.classList.add('panning');
+});
+document.addEventListener('mousemove', e=>{
+  if (!S.pan) return;
+  if (!_vbox) initVbox();
+  const rect = canvasDiv.getBoundingClientRect();
+  // Scale: how many SVG units per screen pixel
+  const scaleX = _vbox.w / rect.width;
+  const scaleY = _vbox.h / rect.height;
+  _vbox.x -= (e.clientX - S.pan.lastX) * scaleX;
+  _vbox.y -= (e.clientY - S.pan.lastY) * scaleY;
+  S.pan.lastX = e.clientX;
+  S.pan.lastY = e.clientY;
+  renderCanvas();
+});
+document.addEventListener('mouseup', e=>{
+  if (e.button === 1 && S.pan) {
+    S.pan = null;
+    canvasDiv.classList.remove('panning');
+  }
+});
+
+// Fit & Dims buttons
+document.getElementById('btn-fit').addEventListener('click', ()=>{ resetViewBox(); renderCanvas(); });
+
+function toggleDims() {
+  S.showDims = !S.showDims;
+  document.getElementById('btn-dims-toggle').classList.toggle('active', S.showDims);
+  renderCanvas();
+}
+document.getElementById('btn-dims-toggle').addEventListener('click', toggleDims);
+// Dims on by default — set active class
+document.getElementById('btn-dims-toggle').classList.add('active');
+
+function zoomAtCenter(factor) {
+  if (!_vbox) initVbox();
+  const cx = _vbox.x + _vbox.w / 2;
+  const cy = _vbox.y + _vbox.h / 2;
+  zoomAt(cx, cy, factor);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('btn-undo').disabled = true;
+
+// ============================================================
+// MOBILE: TAB BAR + TOUCH SUPPORT
+// ============================================================
+(function() {
+  const workspace = document.getElementById('workspace');
+  const mainSvg   = document.getElementById('main-svg');
+  const isMobile  = () => window.innerWidth <= 768;
+
+  // ── Tab switcher ──────────────────────────────────────────
+  const panels = {
+    sidebar:   { tab: document.getElementById('mob-tab-panels'),   cls: '' },
+    canvas:    { tab: document.getElementById('mob-tab-canvas'),   cls: 'mob-show-canvas' },
+    inspector: { tab: document.getElementById('mob-tab-inspector'),cls: 'mob-show-inspector' },
+  };
+  let currentPanel = 'sidebar';
+
+  function switchTab(name) {
+    workspace.classList.remove('mob-show-canvas', 'mob-show-inspector');
+    if (panels[name].cls) workspace.classList.add(panels[name].cls);
+    Object.values(panels).forEach(p => p.tab.classList.remove('active'));
+    panels[name].tab.classList.add('active');
+    if (name === 'canvas' && currentPanel !== 'canvas') {
+      requestAnimationFrame(() => renderCanvas());
+    }
+    currentPanel = name;
+  }
+
+  Object.keys(panels).forEach(name => {
+    panels[name].tab.addEventListener('click', () => switchTab(name));
+  });
+
+  // Auto-navigate to canvas after tapping a type button
+  document.querySelectorAll('.type-btn').forEach(btn => {
+    btn.addEventListener('click', () => { if (isMobile()) setTimeout(() => switchTab('canvas'), 120); });
+  });
+  // ── Touch pan (single finger on empty canvas) ─────────────
+  let touchPan  = null;
+  let pinchState = null;
+
+  function touchDist(a, b) {
+    const dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+    return Math.sqrt(dx*dx + dy*dy);
+  }
+  function touchMid(a, b) {
+    return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+  }
+
+  mainSvg.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      if (e.target.closest('[data-id]')) return; // let tap-select work
+      touchPan = { lx: e.touches[0].clientX, ly: e.touches[0].clientY };
+    } else if (e.touches.length === 2) {
+      e.preventDefault();
+      touchPan = null;
+      pinchState = { dist: touchDist(e.touches[0], e.touches[1]),
+                     mid:  touchMid(e.touches[0], e.touches[1]) };
+    }
+  }, { passive: false });
+
+  mainSvg.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && touchPan) {
+      if (!_vbox) return;
+      const rect = document.getElementById('canvas').getBoundingClientRect();
+      const sx = _vbox.w / rect.width, sy = _vbox.h / rect.height;
+      _vbox.x -= (e.touches[0].clientX - touchPan.lx) * sx;
+      _vbox.y -= (e.touches[0].clientY - touchPan.ly) * sy;
+      touchPan.lx = e.touches[0].clientX;
+      touchPan.ly = e.touches[0].clientY;
+      mainSvg.setAttribute('viewBox', `${_vbox.x} ${_vbox.y} ${_vbox.w} ${_vbox.h}`);
+    } else if (e.touches.length === 2 && pinchState) {
+      const newDist = touchDist(e.touches[0], e.touches[1]);
+      const mid     = touchMid(e.touches[0], e.touches[1]);
+      const factor  = newDist / pinchState.dist;
+      const pt      = svgPt(mainSvg, mid.x, mid.y);
+      zoomAt(pt.x, pt.y, factor);
+      pinchState.dist = newDist;
+      pinchState.mid  = mid;
+      mainSvg.setAttribute('viewBox', `${_vbox.x} ${_vbox.y} ${_vbox.w} ${_vbox.h}`);
+    }
+  }, { passive: false });
+
+  mainSvg.addEventListener('touchend', e => {
+    if (e.touches.length < 2) pinchState = null;
+    if (e.touches.length === 0) touchPan = null;
+  });
+
+  // ── Touch divider drag ────────────────────────────────────
+  mainSvg.addEventListener('touchstart', e => {
+    const handle = e.target.closest('rect[cursor="ew-resize"], rect[cursor="ns-resize"]');
+    if (!handle) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    handle.dispatchEvent(new MouseEvent('mousedown', { bubbles:true, cancelable:true, clientX:t.clientX, clientY:t.clientY, button:0 }));
+  }, { passive: false });
+
+  document.addEventListener('touchmove', e => {
+    if (!S.drag) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles:true, cancelable:true, clientX:t.clientX, clientY:t.clientY }));
+  }, { passive: false });
+
+  document.addEventListener('touchend', e => {
+    if (!S.drag) return;
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles:true, cancelable:true, button:0 }));
+  });
+
+})();
+
+render();
+</script>
+</body>
+</html>
