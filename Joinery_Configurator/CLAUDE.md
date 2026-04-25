@@ -171,6 +171,14 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | `door-sliding` | Sliding Door | `D-SL` | Yes | Arrow + threshold |
 | `door-bifold` | Bifold Door | `D-BF` | Yes | Fold lines + threshold |
 | `door-french` | French Doors | `D-FR` | Yes | Two arcs + threshold |
+| `sliding-single` | Single Slide (片引き) | `W-SL1` | Yes | Single arrow + FIX label |
+| `hung-double` | Double Hung (上げ下げ窓) | `W-HD` | Yes | Up/down arrows + mid divider |
+| `projecting` | Projecting (突出し窓) | `W-PJ` | Yes | Bottom diagonals + outward arc |
+| `tate-suberidashi` | Vert. Slide-Out (縦すべり出し窓) | `W-TSS` | Yes | Left diagonals + side arc |
+| `door-pocket` | Pocket Door (引込戸) | `D-PK` | Yes | Arrow + dashed pocket wall |
+| `door-overhead` | Overhead Door (オーバーヘッドドア) | `D-OH` | Yes | Horizontal hatch + threshold |
+| `door-accordion` | Accordion Door (アコーディオンドア) | `D-AC` | Yes | Zigzag folds + threshold |
+| `door-parent-child` | Parent-Child Door (親子扉) | `D-PC` | Yes | Large arc + small arc + threshold |
 
 ---
 
@@ -241,6 +249,14 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 - [x] **BIM type reference codes** — `TYPE_REFS` map assigns every panel type an Obayashi-aligned code (e.g. `W-CS-L`, `D-SL`); displayed as a styled chip in the Selected Panel inspector; exported in JSON as `"ref"` field on each pane node
 - [x] **Plan / top view** — SVG plan diagram in the Frame inspector shows the full composition as a horizontal cross-section (viewed from above); renders frame rails, mullions, glass lines, sash profiles, and opening-swing arcs per pane type; highlights selected panel; updates on every state change
 
+### ✅ Phase 10 — Japanese Window & Door Types (JIS A 0150)
+- [x] **4 new window types** — 片引き (Single Slide `W-SL1`), 上げ下げ窓 (Double Hung `W-HD`), 突出し窓 (Projecting `W-PJ`), 縦すべり出し窓 (Vert. Slide-Out `W-TSS`)
+- [x] **4 new door types** — 引込戸 (Pocket `D-PK`), オーバーヘッドドア (Overhead `D-OH`), アコーディオンドア (Accordion `D-AC`), 親子扉 (Parent-Child `D-PC`)
+- [x] **Elevation symbols** — JIS-aligned SVG operation symbols for all 8 new types in `drawSymbol()`
+- [x] **Plan view** — cross-section rendering for all 8 new types in `renderPlanView()`
+- [x] **Templates** — 親子扉 and 引込戸 presets added to Templates modal
+- [x] **CLAUDE.md** — Panel Type Reference table and Changelog updated
+
 ---
 
 ## Schema Notes (v1.0 extensions, 2026-04-24)
@@ -260,3 +276,4 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | 2026-04-24 | v0.2 | Phase 7 polish: SVG pan/zoom, dimension toggle, divider tooltips, zoom indicator |
 | 2026-04-24 | v0.3 | Phase 8: editable dimensions, per-side frame widths, door types + opening mode, templates modal |
 | 2026-04-25 | v0.4 | Phase 9: Obayashi BIM type reference codes (W-FIX, W-CS-L, D-SL etc.) + plan/top view SVG in inspector |
+| 2026-04-25 | v0.5 | Phase 10: 8 Japanese JIS-aligned panel types (片引き, 上げ下げ窓, 突出し, 縦すべり出し, 引込戸, オーバーヘッド, アコーディオン, 親子扉) with elevation symbols, plan view, templates |
