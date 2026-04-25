@@ -179,6 +179,15 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | `door-overhead` | Overhead Door (オーバーヘッドドア) | `D-OH` | Yes | Horizontal hatch + threshold |
 | `door-accordion` | Accordion Door (アコーディオンドア) | `D-AC` | Yes | Zigzag folds + threshold |
 | `door-parent-child` | Parent-Child Door (親子扉) | `D-PC` | Yes | Large arc + small arc + threshold |
+| `casement-double` | Double Casement (両開き) | `W-CS-DB` | Yes | Both leaves swing from centre |
+| `outward-tilt` | Outward Tilt (外倒し) | `W-OT` | Yes | Top-hung opens outward-up (WPS_T) |
+| `sliding-apart` | Slide Apart (引分け) | `W-SLA` | Yes | Two panels slide from centre |
+| `sliding-left` | Single Slide L (片引き左勝手) | `W-SL1-L` | Yes | Left-handed single slide + FIX |
+| `door-sliding-apart` | Door Slide Apart (引分け扉) | `D-SLA` | Yes | Two door panels slide apart |
+| `door-free-swing` | Free Swing (自由戸) | `D-FS` | Yes | Swings both directions (café door) |
+| `door-bypass` | Bypass Door (立て引き) | `D-BP` | Yes | Two panels on overlapping tracks |
+
+**Curtain Wall types** share the same operation IDs as windows but resolve to `CuPnl-*` BIM codes when `openingType = "curtain"`. Available subset: fixed, casement-left/right, casement-double, louvre, sliding-single, sliding-left, sliding-apart, projecting, tate-suberidashi, outward-tilt, pivot-v, door-parent-child.
 
 ---
 
@@ -257,11 +266,20 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 - [x] **Templates** — 親子扉 and 引込戸 presets added to Templates modal
 - [x] **CLAUDE.md** — Panel Type Reference table and Changelog updated
 
+### ✅ Phase 11 — Obayashi Catalog Extension + Bilingual + Curtain Wall
+- [x] **7 new operation types** — 両開き (`W-CS-DB`), 外倒し (`W-OT`), 引分け (`W-SLA`), 片引き左勝手 (`W-SL1-L`), 引分け扉 (`D-SLA`), 自由戸 (`D-FS`), 立て引き (`D-BP`) — derived from Obayashi WPS/VPS family thumbnails
+- [x] **Bilingual catalog** — `label_ja` field on all 33 types; `L(typeId)` helper returns current-language label
+- [x] **EN / JA toggle** — `EN | JA` button pair in topbar; preference saved to localStorage; all palette labels, dropdown options, and optgroup headers switch live via `applyLang()`
+- [x] **Curtain Wall category** — 3rd opening type (`"curtain"`) alongside Window and Door; `Window | Door | Curtain` toggle; 12-type curtain palette with CuPnl_ BIM codes; `getRef(typeId, openingCategory)` resolves correct code per context
+- [x] **Context-aware BIM refs** — exported JSON `"ref"` field reflects opening category (e.g. `CuPnl-F` for fixed curtain, `W-FIX` for fixed window)
+- [x] **New templates** — 3 extra window (両開き, 引分け, 4枚建引違い) + 4 curtain (Fixed, 片開き, 引分け, 両開き) presets in Templates modal
+- [x] **Elevation + plan symbols** — `drawSymbol()` and `renderPlanView()` cases for all 7 new types
+
 ---
 
 ## Schema Notes (v1.0 extensions, 2026-04-24)
 
-- `WindowComposition.openingType`: `"window" | "door"` (migrated from old JSON if absent)
+- `WindowComposition.openingType`: `"window" | "door" | "curtain"` (migrated from old JSON if absent)
 - `frame.topWidth / bottomWidth / leftWidth / rightWidth`: `number | null` — `null` means inherit from `frame.thickness`
 - New pane types: `door-single`, `door-double`, `door-sliding`, `door-bifold`, `door-french`
 - Helper `frameWidths(f)` returns `{top, bottom, left, right}` resolving nulls — used everywhere in rendering
@@ -277,3 +295,4 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | 2026-04-24 | v0.3 | Phase 8: editable dimensions, per-side frame widths, door types + opening mode, templates modal |
 | 2026-04-25 | v0.4 | Phase 9: Obayashi BIM type reference codes (W-FIX, W-CS-L, D-SL etc.) + plan/top view SVG in inspector |
 | 2026-04-25 | v0.5 | Phase 10: 8 Japanese JIS-aligned panel types (片引き, 上げ下げ窓, 突出し, 縦すべり出し, 引込戸, オーバーヘッド, アコーディオン, 親子扉) with elevation symbols, plan view, templates |
+| 2026-04-26 | v0.6 | Phase 11: 7 new Obayashi-derived types (両開き, 外倒し, 引分け, 片引き左, 引分け扉, 自由戸, 立て引き); EN/JA bilingual toggle; Curtain Wall 3rd category with CuPnl-* BIM codes; 7 new templates |

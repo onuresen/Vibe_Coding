@@ -7,20 +7,94 @@
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// ── Type labels & icons ──────────────────────────────────────
+// ── Language ─────────────────────────────────────────────────
+let LANG = localStorage.getItem('joinery-lang') || 'en';
+function setLang(lang) { LANG = lang; localStorage.setItem('joinery-lang', lang); }
+function getLang() { return LANG; }
+
+// ── Type labels (English) ─────────────────────────────────────
 const PANE_TYPE_LABELS = {
-  'fixed':'Fixed','casement-left':'Casement L','casement-right':'Casement R',
-  'casement-top':'Top Hung','casement-bottom':'Bottom Hung',
-  'awning':'Awning','hopper':'Hopper','sliding-2t':'Sliding 2T',
-  'sliding-3t':'Sliding 3T','pivot-v':'Pivot V','pivot-h':'Pivot H',
-  'tilt-turn':'Tilt-Turn','louvre':'Louvre',
-  'sliding-single':'Single Slide','hung-double':'Double Hung',
-  'projecting':'Projecting','tate-suberidashi':'Vert. Slide-Out',
-  'door-single':'Single Door','door-double':'Double Door',
-  'door-sliding':'Sliding Door','door-bifold':'Bifold Door','door-french':'French Doors',
-  'door-pocket':'Pocket Door','door-overhead':'Overhead Door',
-  'door-accordion':'Accordion Door','door-parent-child':'Parent-Child Door'
+  'fixed':              'Fixed',
+  'casement-left':      'Casement L',
+  'casement-right':     'Casement R',
+  'casement-top':       'Top Hung',
+  'casement-bottom':    'Bottom Hung',
+  'awning':             'Awning',
+  'hopper':             'Hopper',
+  'sliding-2t':         'Sliding 2T',
+  'sliding-3t':         'Sliding 3T',
+  'pivot-v':            'Pivot V',
+  'pivot-h':            'Pivot H',
+  'tilt-turn':          'Tilt-Turn',
+  'louvre':             'Louvre',
+  'sliding-single':     'Single Slide R',
+  'hung-double':        'Double Hung',
+  'projecting':         'Projecting',
+  'tate-suberidashi':   'Vert. Slide-Out',
+  // New operation types
+  'casement-double':    'Double Casement',
+  'outward-tilt':       'Outward Tilt',
+  'sliding-apart':      'Slide Apart',
+  'sliding-left':       'Single Slide L',
+  // Door types
+  'door-single':        'Single Door',
+  'door-double':        'Double Door',
+  'door-sliding':       'Sliding Door',
+  'door-bifold':        'Bifold Door',
+  'door-french':        'French Doors',
+  'door-pocket':        'Pocket Door',
+  'door-overhead':      'Overhead Door',
+  'door-accordion':     'Accordion Door',
+  'door-parent-child':  'Parent-Child Door',
+  // New door types
+  'door-sliding-apart': 'Door Slide Apart',
+  'door-free-swing':    'Free Swing',
+  'door-bypass':        'Bypass Door',
 };
+
+// ── Type labels (Japanese / JIS A 0150) ──────────────────────
+const PANE_TYPE_LABELS_JA = {
+  'fixed':              '嵌殺し',
+  'casement-left':      '片開き（左勝手）',
+  'casement-right':     '片開き（右勝手）',
+  'casement-top':       '上吊り',
+  'casement-bottom':    '下吊り',
+  'awning':             '外倒し（下辺蝶番）',
+  'hopper':             '内倒し',
+  'sliding-2t':         '引違い',
+  'sliding-3t':         '3枚建引違い',
+  'pivot-v':            '縦軸回転',
+  'pivot-h':            '横軸回転',
+  'tilt-turn':          '内倒し兼用回転',
+  'louvre':             'ガラリ',
+  'sliding-single':     '片引き（右勝手）',
+  'hung-double':        '上げ下げ窓',
+  'projecting':         '突出し',
+  'tate-suberidashi':   '縦辷出し',
+  'casement-double':    '両開き',
+  'outward-tilt':       '外倒し',
+  'sliding-apart':      '引分け',
+  'sliding-left':       '片引き（左勝手）',
+  'door-single':        '片開き扉',
+  'door-double':        '両開き扉',
+  'door-sliding':       '引き戸',
+  'door-bifold':        '折れ戸',
+  'door-french':        'フランス扉',
+  'door-pocket':        '引込戸',
+  'door-overhead':      'オーバーヘッドドア',
+  'door-accordion':     'アコーディオンドア',
+  'door-parent-child':  '親子扉',
+  'door-sliding-apart': '引分け扉',
+  'door-free-swing':    '自由戸',
+  'door-bypass':        '立て引き',
+};
+
+// Returns label in current language
+function L(typeId) {
+  if (LANG === 'ja') return PANE_TYPE_LABELS_JA[typeId] ?? PANE_TYPE_LABELS[typeId] ?? typeId;
+  return PANE_TYPE_LABELS[typeId] ?? typeId;
+}
+
 const PANE_TYPE_ICONS = {
   'fixed':'▭','casement-left':'◁','casement-right':'▷',
   'casement-top':'△','casement-bottom':'▽',
@@ -29,11 +103,15 @@ const PANE_TYPE_ICONS = {
   'tilt-turn':'◈','louvre':'≡',
   'sliding-single':'→','hung-double':'↕',
   'projecting':'⌅','tate-suberidashi':'↗',
+  'casement-double':'⇔','outward-tilt':'⌅',
+  'sliding-apart':'↔','sliding-left':'←',
   'door-single':'🚪','door-double':'⟨⟩',
   'door-sliding':'↦','door-bifold':'⋈','door-french':'⟪⟫',
   'door-pocket':'⇥','door-overhead':'⊟',
-  'door-accordion':'〰','door-parent-child':'⊣'
+  'door-accordion':'〰','door-parent-child':'⊣',
+  'door-sliding-apart':'⇔','door-free-swing':'↺','door-bypass':'⊡',
 };
+
 const GLASS_COLORS = {
   'fixed':              'rgba(120,185,230,0.38)',
   'casement-left':      'rgba(100,200,155,0.38)',
@@ -52,6 +130,10 @@ const GLASS_COLORS = {
   'hung-double':        'rgba(80,195,210,0.38)',
   'projecting':         'rgba(120,200,160,0.38)',
   'tate-suberidashi':   'rgba(100,200,155,0.38)',
+  'casement-double':    'rgba(100,200,155,0.38)',
+  'outward-tilt':       'rgba(120,200,160,0.38)',
+  'sliding-apart':      'rgba(80,210,190,0.38)',
+  'sliding-left':       'rgba(80,210,190,0.38)',
   'door-single':        'rgba(200,170,120,0.32)',
   'door-double':        'rgba(200,170,120,0.32)',
   'door-sliding':       'rgba(200,170,120,0.32)',
@@ -61,11 +143,30 @@ const GLASS_COLORS = {
   'door-overhead':      'rgba(180,155,110,0.32)',
   'door-accordion':     'rgba(200,170,120,0.32)',
   'door-parent-child':  'rgba(200,170,120,0.32)',
+  'door-sliding-apart': 'rgba(200,170,120,0.32)',
+  'door-free-swing':    'rgba(200,170,120,0.32)',
+  'door-bypass':        'rgba(200,170,120,0.32)',
 };
-const WINDOW_TYPES = ['fixed','casement-left','casement-right','casement-top','casement-bottom','awning','hopper','sliding-2t','sliding-3t','pivot-v','pivot-h','tilt-turn','louvre','sliding-single','hung-double','projecting','tate-suberidashi'];
-const DOOR_TYPES   = ['door-single','door-double','door-sliding','door-bifold','door-french','door-pocket','door-overhead','door-accordion','door-parent-child'];
 
-// ── BIM reference codes (Obayashi modelling guide) ───────────
+const WINDOW_TYPES = [
+  'fixed','casement-left','casement-right','casement-top','casement-bottom',
+  'awning','hopper','sliding-2t','sliding-3t','pivot-v','pivot-h','tilt-turn','louvre',
+  'sliding-single','sliding-left','hung-double','projecting','tate-suberidashi',
+  'casement-double','outward-tilt','sliding-apart',
+];
+const DOOR_TYPES = [
+  'door-single','door-double','door-sliding','door-bifold','door-french',
+  'door-pocket','door-overhead','door-accordion','door-parent-child',
+  'door-sliding-apart','door-free-swing','door-bypass',
+];
+// Curtain wall panel types (subset of operation types, different BIM codes)
+const CURTAIN_TYPES = [
+  'fixed','casement-left','casement-right','casement-double',
+  'louvre','sliding-single','sliding-left','sliding-apart',
+  'projecting','tate-suberidashi','outward-tilt','pivot-v','door-parent-child',
+];
+
+// ── BIM reference codes ───────────────────────────────────────
 const TYPE_REFS = {
   'fixed':              'W-FIX',
   'casement-left':      'W-CS-L',
@@ -84,6 +185,10 @@ const TYPE_REFS = {
   'hung-double':        'W-HD',
   'projecting':         'W-PJ',
   'tate-suberidashi':   'W-TSS',
+  'casement-double':    'W-CS-DB',
+  'outward-tilt':       'W-OT',
+  'sliding-apart':      'W-SLA',
+  'sliding-left':       'W-SL1-L',
   'door-single':        'D-SG',
   'door-double':        'D-DB',
   'door-sliding':       'D-SL',
@@ -93,7 +198,33 @@ const TYPE_REFS = {
   'door-overhead':      'D-OH',
   'door-accordion':     'D-AC',
   'door-parent-child':  'D-PC',
+  'door-sliding-apart': 'D-SLA',
+  'door-free-swing':    'D-FS',
+  'door-bypass':        'D-BP',
 };
+
+// Curtain wall overrides (Obayashi CuPnl series)
+const CURTAIN_REFS = {
+  'fixed':              'CuPnl-F',
+  'casement-left':      'CuPnl-D',
+  'casement-right':     'CuPnl-D',
+  'casement-double':    'CuPnl-R',
+  'louvre':             'CuPnl-G',
+  'sliding-single':     'CuPnl-H',
+  'sliding-left':       'CuPnl-H',
+  'sliding-apart':      'CuPnl-HC',
+  'projecting':         'CuPnl-P',
+  'tate-suberidashi':   'CuPnl-S',
+  'outward-tilt':       'CuPnl-T',
+  'pivot-v':            'CuPnl-A',
+  'door-parent-child':  'CuPnl-Y',
+};
+
+// Returns the correct BIM ref depending on opening category
+function getRef(typeId, openingCategory) {
+  if (openingCategory === 'curtain') return CURTAIN_REFS[typeId] ?? TYPE_REFS[typeId] ?? '—';
+  return TYPE_REFS[typeId] ?? '—';
+}
 
 // ============================================================
 // SVG HELPERS
@@ -132,6 +263,7 @@ function drawSymbol(g, type, x, y, w, h) {
       break;
     case 'casement-top':
     case 'awning':
+    case 'outward-tilt':
       g.append(line(x,  y+h, cx, y, col, sw));
       g.append(line(x+w,y+h, cx, y, col, sw));
       { const r=Math.min(w,h)*0.25; g.append(path(`M ${cx-r} ${y} A ${r} ${r} 0 0 0 ${cx+r} ${y}`,col,sw*0.8)); }
@@ -148,6 +280,18 @@ function drawSymbol(g, type, x, y, w, h) {
       g.append(line(x,  y+h, cx, y, col2, sw*0.85));
       g.append(line(x+w,y+h, cx, y, col2, sw*0.85));
       break;
+    case 'casement-double': {
+      // Both leaves swing outward — left hinge + right hinge, meeting at centre
+      const mid = cx;
+      g.append(line(mid,y, x,   cy, col, sw));
+      g.append(line(mid,y+h, x, cy, col, sw));
+      { const r=Math.min(w*0.45,h)*0.28; g.append(path(`M ${x} ${cy-r} A ${r} ${r} 0 0 1 ${x} ${cy+r}`,col,sw*0.8)); }
+      g.append(line(mid,y, x+w,   cy, col, sw));
+      g.append(line(mid,y+h, x+w, cy, col, sw));
+      { const r=Math.min(w*0.45,h)*0.28; g.append(path(`M ${x+w} ${cy-r} A ${r} ${r} 0 0 0 ${x+w} ${cy+r}`,col,sw*0.8)); }
+      g.append(el('line',{x1:mid,y1:y+h*0.08,x2:mid,y2:y+h*0.92,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.6,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'}));
+      break;
+    }
     case 'sliding-2t': {
       const m=w*0.15; const ay=cy;
       g.append(line(x+m,ay, x+w-m,ay, col, sw));
@@ -167,6 +311,18 @@ function drawSymbol(g, type, x, y, w, h) {
       g.append(line(x+w-m,ay, x+w-m-w*0.06,ay+h*0.07, col, sw));
       const dx=w/3;
       [dx,dx*2].forEach(dv => g.append(el('line',{x1:x+dv,y1:y+h*0.15,x2:x+dv,y2:y+h*0.85,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'})));
+      break;
+    }
+    case 'sliding-apart': {
+      // Two panels slide from centre outward
+      const m3=w*0.12, ay3=cy;
+      g.append(line(cx-m3, ay3, x+m3,   ay3, col, sw));
+      g.append(line(x+m3, ay3, x+m3+w*0.07, ay3-h*0.07, col, sw));
+      g.append(line(x+m3, ay3, x+m3+w*0.07, ay3+h*0.07, col, sw));
+      g.append(line(cx+m3, ay3, x+w-m3, ay3, col, sw));
+      g.append(line(x+w-m3, ay3, x+w-m3-w*0.07, ay3-h*0.07, col, sw));
+      g.append(line(x+w-m3, ay3, x+w-m3-w*0.07, ay3+h*0.07, col, sw));
+      g.append(el('line',{x1:cx,y1:y+h*0.15,x2:cx,y2:y+h*0.85,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'}));
       break;
     }
     case 'pivot-v': {
@@ -231,6 +387,38 @@ function drawSymbol(g, type, x, y, w, h) {
       g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
       break;
     }
+    case 'door-sliding-apart': {
+      // Two door panels slide apart from centre + threshold
+      const m4=w*0.12, ay4=cy;
+      g.append(line(cx-m4, ay4, x+m4,   ay4, col, sw));
+      g.append(line(x+m4, ay4, x+m4+w*0.07, ay4-h*0.07, col, sw));
+      g.append(line(x+m4, ay4, x+m4+w*0.07, ay4+h*0.07, col, sw));
+      g.append(line(cx+m4, ay4, x+w-m4, ay4, col, sw));
+      g.append(line(x+w-m4, ay4, x+w-m4-w*0.07, ay4-h*0.07, col, sw));
+      g.append(line(x+w-m4, ay4, x+w-m4-w*0.07, ay4+h*0.07, col, sw));
+      g.append(el('line',{x1:cx,y1:y+h*0.15,x2:cx,y2:y+h*0.85,stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.05},${h*0.04}`,'pointer-events':'none'}));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-free-swing': {
+      // Swings both directions — arc outward + dashed arc inward
+      const rF=Math.min(w*0.78, h*0.78);
+      g.append(line(x, y, x, y+h, col, sw));
+      g.append(path(`M ${x} ${y+h} A ${rF} ${rF} 0 0 1 ${Math.min(x+rF,x+w)} ${y+h}`, col, sw*0.8));
+      g.append(el('path',{d:`M ${x} ${y+h} A ${rF} ${rF} 0 0 0 ${Math.min(x+rF,x+w)} ${y+h}`,stroke:col,fill:'none','stroke-width':sw*0.7,'stroke-dasharray':`${w*0.05},${w*0.04}`,'pointer-events':'none'}));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'door-bypass': {
+      // Two panels on overlapping parallel tracks
+      const ay5L=cy-h*0.09, ay5R=cy+h*0.09;
+      const overlap=w*0.15;
+      g.append(line(x+w*0.05, ay5L, x+w*0.55+overlap, ay5L, col, sw));
+      g.append(line(x+w*0.55-overlap, ay5R, x+w*0.95, ay5R, col, sw));
+      g.append(el('rect',{x:x+w*0.55-overlap,y:y+h*0.18,width:overlap*2,height:h*0.64,fill:'rgba(74,158,255,0.08)',stroke:'rgba(74,158,255,0.35)','stroke-width':sw*0.5,'pointer-events':'none'}));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
     // ── Japanese types ──────────────────────────────────────────
     case 'sliding-single': {
       const divX = x + w * 0.55;
@@ -241,6 +429,18 @@ function drawSymbol(g, type, x, y, w, h) {
       g.append(el('line',{x1:divX,y1:y+h*0.1,x2:divX,y2:y+h*0.9,stroke:'rgba(74,158,255,0.4)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.06},${h*0.04}`,'pointer-events':'none'}));
       const fixT=el('text',{x:divX+(w-divX+x)*0.5,y:cy+h*0.05,fill:'rgba(74,158,255,0.65)','font-size':Math.max(8,Math.min(w,h)*0.1),'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'monospace'});
       fixT.textContent='FIX'; g.append(fixT);
+      break;
+    }
+    case 'sliding-left': {
+      // Mirror of sliding-single: panel on right slides left; FIX on left
+      const divX2 = x + w * 0.45;
+      const m2 = w * 0.08;
+      g.append(line(divX2+m2, cy, x+w-m2, cy, col, sw));
+      g.append(line(divX2+m2, cy, divX2+m2+w*0.07, cy-h*0.07, col, sw));
+      g.append(line(divX2+m2, cy, divX2+m2+w*0.07, cy+h*0.07, col, sw));
+      g.append(el('line',{x1:divX2,y1:y+h*0.1,x2:divX2,y2:y+h*0.9,stroke:'rgba(74,158,255,0.4)','stroke-width':sw*0.7,'stroke-dasharray':`${h*0.06},${h*0.04}`,'pointer-events':'none'}));
+      const fixT2=el('text',{x:x+(divX2-x)*0.5,y:cy+h*0.05,fill:'rgba(74,158,255,0.65)','font-size':Math.max(8,Math.min(w,h)*0.1),'text-anchor':'middle','dominant-baseline':'middle','pointer-events':'none','font-family':'monospace'});
+      fixT2.textContent='FIX'; g.append(fixT2);
       break;
     }
     case 'hung-double': {
@@ -328,6 +528,15 @@ const TEMPLATES = {
     { name:'Picture + Side Lites', desc:'Fixed centre, casements either side',
       icon:'<rect x="2" y="2" width="9" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="13" y="2" width="10" height="22" fill="rgba(120,185,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/><rect x="25" y="2" width="9" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/>',
       make(){ const c=mkComposition(); c.meta.name='Picture + Side Lites'; c.frame.overallWidth=1800; const l=mkPane(); l.type='casement-right'; const m=mkPane(); m.type='fixed'; const r=mkPane(); r.type='casement-left'; c.composition={id:uid(),kind:'split',axis:'V',dividers:[{ratio:0.25},{ratio:0.75}],children:[l,m,r]}; return c; } },
+    { name:'両開き Double Casement', desc:'Both leaves swing outward from centre',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="2" y2="12" stroke="#4A9EFF" stroke-width="1.1"/><line x1="18" y1="24" x2="2" y2="12" stroke="#4A9EFF" stroke-width="1.1"/><line x1="18" y1="2" x2="34" y2="12" stroke="#4A9EFF" stroke-width="1.1"/><line x1="18" y1="24" x2="34" y2="12" stroke="#4A9EFF" stroke-width="1.1"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="0.7" stroke-dasharray="2,2"/>',
+      make(){ const c=mkComposition(); c.meta.name='両開き Double Casement'; c.composition.type='casement-double'; c.frame.overallWidth=1400; return c; } },
+    { name:'引分け Slide Apart', desc:'Two panels slide from centre outward',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(80,210,190,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="8" y1="13" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="13" x2="5" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="13" x2="5" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="28" y1="13" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="13" x2="31" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="13" x2="31" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/>',
+      make(){ const c=mkComposition(); c.meta.name='引分け Slide Apart'; c.composition.type='sliding-apart'; c.frame.overallWidth=1600; return c; } },
+    { name:'4枚建引違い 4-Track', desc:'4-panel sliding window',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(80,210,190,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="10" y1="4" x2="10" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="26" y1="4" x2="26" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/>',
+      make(){ const c=mkComposition(); c.meta.name='4枚建引違い'; c.composition.type='sliding-3t'; c.frame.overallWidth=2000; return c; } },
   ],
   door: [
     { name:'Single Door', desc:'Single swing door',
@@ -351,5 +560,25 @@ const TEMPLATES = {
     { name:'引込戸 Pocket Door', desc:'Single leaf slides into wall pocket',
       icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="22" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="22" y1="13" x2="18" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="22" y1="13" x2="18" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><rect x="24" y="3" width="9" height="20" fill="none" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="3,2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
       make(){ const c=mkComposition(); c.meta.name='引込戸 Pocket Door'; c.openingType='door'; c.composition.type='door-pocket'; c.frame.overallWidth=900; c.frame.overallHeight=2100; return c; } },
-  ]
+    { name:'引分け扉 Door Slide Apart', desc:'Two panels slide apart from centre',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="8" y1="13" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="13" x2="5" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="13" x2="5" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="28" y1="13" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="13" x2="31" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="13" x2="31" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='引分け扉 Door Slide Apart'; c.openingType='door'; c.composition.type='door-sliding-apart'; c.frame.overallWidth=1800; c.frame.overallHeight=2100; return c; } },
+    { name:'自由戸 Free Swing', desc:'Swings both directions (café door)',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="2" y2="24" stroke="#4A9EFF" stroke-width="1.5"/><path d="M 2 24 A 20 20 0 0 1 22 4" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 2 24 A 20 20 0 0 0 22 4" stroke="#4A9EFF" stroke-width="1" fill="none" stroke-dasharray="3,2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='自由戸 Free Swing'; c.openingType='door'; c.composition.type='door-free-swing'; c.frame.overallWidth=900; c.frame.overallHeight=2100; return c; } },
+  ],
+  curtain: [
+    { name:'CuPnl 嵌殺し Fixed', desc:'Fixed curtain wall panel',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(120,185,230,0.4)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="34" y2="24" stroke="rgba(74,158,255,0.3)" stroke-width="0.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='CuPnl 嵌殺し Fixed'; c.openingType='curtain'; c.composition.type='fixed'; c.frame.overallWidth=1000; c.frame.overallHeight=3000; return c; } },
+    { name:'CuPnl 片開き Casement', desc:'Single casement curtain panel',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="34" y1="2" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="24" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/>',
+      make(){ const c=mkComposition(); c.meta.name='CuPnl 片開き Casement'; c.openingType='curtain'; c.composition.type='casement-left'; c.frame.overallWidth=1000; c.frame.overallHeight=3000; return c; } },
+    { name:'CuPnl 引分け Slide Apart', desc:'Sliding-apart curtain panel',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(80,210,190,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="8" y1="13" x2="2" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="13" x2="5" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="13" x2="5" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="28" y1="13" x2="34" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="13" x2="31" y2="10" stroke="#4A9EFF" stroke-width="1.2"/><line x1="34" y1="13" x2="31" y2="16" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/>',
+      make(){ const c=mkComposition(); c.meta.name='CuPnl 引分け Slide Apart'; c.openingType='curtain'; c.composition.type='sliding-apart'; c.frame.overallWidth=1500; c.frame.overallHeight=3000; return c; } },
+    { name:'CuPnl 両開き Double', desc:'Double casement curtain panel',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(100,200,155,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="18" y1="2" x2="2" y2="12" stroke="#4A9EFF" stroke-width="1.1"/><line x1="18" y1="24" x2="2" y2="12" stroke="#4A9EFF" stroke-width="1.1"/><line x1="18" y1="2" x2="34" y2="12" stroke="#4A9EFF" stroke-width="1.1"/><line x1="18" y1="24" x2="34" y2="12" stroke="#4A9EFF" stroke-width="1.1"/>',
+      make(){ const c=mkComposition(); c.meta.name='CuPnl 両開き Double'; c.openingType='curtain'; c.composition.type='casement-double'; c.frame.overallWidth=1200; c.frame.overallHeight=3000; return c; } },
+  ],
 };
