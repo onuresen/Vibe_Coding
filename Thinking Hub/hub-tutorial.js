@@ -28,7 +28,7 @@ const HubTutorial = (() => {
       .ht-tooltip {
         position: fixed;
         background: var(--surface, #1a1a1f);
-        border: 1px solid rgba(184, 240, 51, 0.3);
+        border: 1px solid var(--accent-glow);
         border-radius: 12px;
         width: 320px;
         padding: 20px;

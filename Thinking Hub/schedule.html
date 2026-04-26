@@ -156,6 +156,22 @@
       color: var(--text);
     }
 
+    .sch-import-btn .import-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      background: var(--accent);
+      color: #111;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-left: 5px;
+      line-height: 1;
+    }
+
     .sch-filter {
       display: flex;
       gap: 4px;
@@ -1133,7 +1149,7 @@
 
     <div class="sch-sidebar-actions">
       <button class="sch-add-btn" onclick="openDrawer(null)">+ Add Item</button>
-      <button class="sch-import-btn" onclick="openImportModal()"
+      <button class="sch-import-btn" id="import-btn" onclick="openImportModal()"
         title="Import tasks &amp; milestones from Project Hub">↓ Import</button>
     </div>
 
@@ -2020,7 +2036,7 @@
         } else if (document.getElementById('sch-drawer').classList.contains('open')) {
           closeDrawer();
         } else {
-          try { window.parent.postMessage({ type: 'hub-home' }, '*'); } catch { }
+          try { window.parent.postMessage({ type: 'hub-home' }, window.location.origin || '*'); } catch { }
         }
         return;
       }
@@ -2028,6 +2044,77 @@
         scrollToToday();
       }
     });
+
+    // ═══════════════════════════════════════════════════════════════
+    // Auto-sync imported Project Hub items
+    // ═══════════════════════════════════════════════════════════════
+    function syncFromProjectHub() {
+      const raw = HubStorage.get('project-hub-v1');
+      if (!raw) return;
+      let phData;
+      try { phData = JSON.parse(raw); } catch { return; }
+
+      const taskMap = {};
+      const msMap = {};
+      for (const project of (phData.projects || [])) {
+        for (const task of (project.tasks || [])) {
+          taskMap[task.id] = { task, project };
+        }
+        for (const ms of (project.milestones || [])) {
+          msMap[ms.id] = { ms, project };
+        }
+      }
+
+      let changed = false;
+      state.items.forEach(item => {
+        if (item.sourceTool !== 'project-hub') return;
+        const entry = taskMap[item.sourceId] || msMap[item.sourceId];
+        if (!entry) return;
+        const src = entry.task || entry.ms;
+        const srcTitle = src.title || src.name || '';
+        const srcDate = src.due || src.date || item.start;
+        const srcDone = !!src.done;
+        if (item.title !== srcTitle || item.start !== srcDate || item.end !== srcDate || item.done !== srcDone) {
+          item.title = srcTitle;
+          item.start = srcDate;
+          item.end = srcDate;
+          item.done = srcDone;
+          changed = true;
+        }
+      });
+
+      if (changed) { saveState(); render(); }
+    }
+
+    function updateImportBadge() {
+      const btn = document.getElementById('import-btn');
+      if (!btn) return;
+      const raw = HubStorage.get('project-hub-v1');
+      if (!raw) return;
+      let phData;
+      try { phData = JSON.parse(raw); } catch { return; }
+
+      const existingSourceIds = new Set(
+        state.items.filter(it => it.sourceTool === 'project-hub').map(it => it.sourceId)
+      );
+      let newCount = 0;
+      for (const project of (phData.projects || [])) {
+        for (const task of (project.tasks || [])) {
+          if (task.due && !existingSourceIds.has(task.id)) newCount++;
+        }
+        for (const ms of (project.milestones || [])) {
+          if (ms.date && !existingSourceIds.has(ms.id)) newCount++;
+        }
+      }
+
+      const existing = btn.querySelector('.import-badge');
+      if (newCount > 0) {
+        if (existing) { existing.textContent = newCount; }
+        else { btn.insertAdjacentHTML('beforeend', `<span class="import-badge">${newCount}</span>`); }
+      } else {
+        if (existing) existing.remove();
+      }
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // Project select helpers
@@ -2052,7 +2139,12 @@
     state = loadState();
     try {
       _populateProjectSelect();
-      HubData.onChange(_populateProjectSelect);
+      updateImportBadge();
+      HubData.onChange(() => {
+        _populateProjectSelect();
+        syncFromProjectHub();
+        updateImportBadge();
+      });
     } catch { }
     render();
     setTimeout(scrollToToday, 160);

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spatial Canvas - Thinking Hub</title>
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="theme.css">
   <script src="hub-storage.js"></script>
   <script src="hub-links.js"></script>
@@ -844,7 +844,30 @@
   </script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      HubBootstrap.start('decision-hub');
+      HubBootstrap.start('canvas-hub');
+    });
+
+    window.addEventListener('message', (e) => {
+      if (!e.data || e.data.type !== 'hub-highlight') return;
+      const nodeId = e.data.itemId;
+      if (!nodeId) return;
+      const node = db.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      // Pan canvas so the node is centred in the viewport
+      const vw = document.getElementById('canvas-wrap').clientWidth;
+      const vh = document.getElementById('canvas-wrap').clientHeight;
+      offsetX = vw / 2 - node.x * scale;
+      offsetY = vh / 2 - node.y * scale;
+      updateTransform();
+
+      // Flash the node element
+      const el = document.querySelector(`.node[data-id="${nodeId}"]`);
+      if (el) {
+        el.style.transition = 'box-shadow 0.15s';
+        el.style.boxShadow = '0 0 0 3px var(--accent)';
+        setTimeout(() => { el.style.boxShadow = ''; }, 1800);
+      }
     });
   </script>
 </body>

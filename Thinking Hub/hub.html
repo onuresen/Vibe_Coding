@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Thinking Hub</title>
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="theme.css">
 
   <script src="hub-storage.js"></script>
@@ -565,6 +565,19 @@
       flex-shrink: 0;
     }
 
+    .stat-item[data-item-id] {
+      cursor: pointer;
+      border-radius: 5px;
+      padding: 1px 4px;
+      margin: 0 -4px;
+      transition: background 0.1s;
+    }
+
+    .stat-item[data-item-id]:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
     .stat-badge {
       font-family: var(--font-mono);
       font-size: 9px;
@@ -617,6 +630,32 @@
       height: 100%;
       border: none;
       display: none;
+    }
+
+    /* ── Loading progress bar (4D) ─────────────────── */
+    @keyframes progress-run {
+      0%   { transform: translateX(-100%); }
+      60%  { transform: translateX(20%); }
+      100% { transform: translateX(110%); }
+    }
+    #load-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    #load-bar.active { opacity: 1; }
+    #load-bar::after {
+      content: '';
+      display: block;
+      height: 100%;
+      width: 60%;
+      background: var(--accent);
+      animation: progress-run 0.9s ease infinite;
     }
 
     /* ── Data Modal ─────────────────────────────────── */
@@ -801,6 +840,8 @@
         <div class="app-grid" id="app-grid"></div>
       </div>
 
+      <!-- Loading progress bar -->
+      <div id="load-bar"></div>
       <!-- App iframe -->
       <iframe id="app-frame" src="about:blank" allowfullscreen></iframe>
     </div>
@@ -814,6 +855,13 @@
       <div class="data-modal-desc">Download a complete snapshot of all your local Thinking Hub data (projects, tasks,
         ideas, decisions, schedule).</div>
       <div class="data-size" id="data-size-str">0 KB in local storage</div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:10px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Obsidian Vault Name</div>
+        <input id="obsidian-vault-name" placeholder="e.g. My Vault" oninput="saveVaultSetting(this.value)"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);padding:8px 10px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box">
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">Enables "Open in Obsidian" links in Project Hub &amp; Decision Hub</div>
+      </div>
 
       <div class="data-btn-row">
         <button class="data-btn primary" onclick="exportHubData()">Export Backup (.json)</button>
@@ -893,6 +941,46 @@
         icon: '🧰',
         file: 'tool-portfolio.html',
         desc: 'Curated map of tools, platforms, and vendors'
+      },
+      {
+        id: 'focus-hub',
+        label: 'Focus Timer',
+        group: 'DO',
+        icon: '◉',
+        file: 'focus-hub.html',
+        desc: 'Pomodoro-style focus sessions linked to your tasks'
+      },
+      {
+        id: 'log-hub',
+        label: 'Daily Log',
+        group: 'DO',
+        icon: '◷',
+        file: 'log-hub.html',
+        desc: 'Private daily journal with mood tracking and streak calendar'
+      },
+      {
+        id: 'review-hub',
+        label: 'Weekly Review',
+        group: 'DO',
+        icon: '◈',
+        file: 'review-hub.html',
+        desc: 'Structured weekly ritual — done, capture, next week big rocks'
+      },
+      {
+        id: 'retro-hub',
+        label: 'Retro Board',
+        group: 'TEAM',
+        icon: '⟳',
+        file: 'retro-hub.html',
+        desc: 'Async retrospectives with emoji reactions and markdown export'
+      },
+      {
+        id: 'assumptions-hub',
+        label: 'Assumption Tracker',
+        group: 'DECIDE',
+        icon: '◇',
+        file: 'assumptions-hub.html',
+        desc: 'Track key assumptions through their lifecycle — from assumed to validated'
       }
     ];
 
@@ -1007,13 +1095,16 @@
 
       // Load iframe
       const frame = document.getElementById('app-frame');
+      const loadBar = document.getElementById('load-bar');
+      loadBar.classList.add('active');
       frame.src = app.file;
       frame.style.display = 'block';
 
       // Send highlight once the tool finishes loading
       frame.onload = () => {
+        loadBar.classList.remove('active');
         if (_pendingHighlight) {
-          frame.contentWindow.postMessage({ type: 'hub-highlight', itemId: _pendingHighlight }, '*');
+          frame.contentWindow.postMessage({ type: 'hub-highlight', itemId: _pendingHighlight }, window.location.origin || '*');
           _pendingHighlight = null;
         }
         // Sync theme into iframe
@@ -1114,7 +1205,7 @@
           const rows = shown.map(p => {
             const open = (p.tasks || []).filter(t => !t.done).length;
             const all = (p.tasks || []).length;
-            return `<div class="stat-item">
+            return `<div class="stat-item" data-tool="project-hub" data-item-id="${_esc(p.id || '')}">
           <div class="stat-item-dot" style="background:${p.color || 'var(--text3)'}"></div>
           <div class="stat-item-text">${_esc(p.name)}</div>
           <div class="stat-item-meta">${open} / ${all} open</div>
@@ -1141,7 +1232,7 @@
           const shown = upcoming.slice(0, 3);
           const rows = shown.map(it => {
             const label = new Date(it.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            return `<div class="stat-item">
+            return `<div class="stat-item" data-tool="schedule" data-item-id="${_esc(it.id || '')}">
           <div class="stat-item-dot" style="background:${it.color || 'var(--text3)'}"></div>
           <div class="stat-item-text">${_esc(it.title)}</div>
           <div class="stat-item-meta">${label}</div>
@@ -1156,18 +1247,18 @@
         }
       } catch { }
 
-      // ── Decision Log (decision-log-v1) ────────────────────────────────────────
+      // ── Decision Hub (decision-hub-v1) ────────────────────────────────────────
       try {
-        const dl = JSON.parse(localStorage.getItem('decision-log-v1') || '{}');
-        const entries = dl.entries || [];
+        const dl = JSON.parse(localStorage.getItem('decision-hub-v1') || '[]');
+        const entries = Array.isArray(dl) ? dl : (dl.entries || []);
         if (entries.length) {
           const shown = entries.slice(0, 3);
-          const rows = shown.map(e => `<div class="stat-item">
+          const rows = shown.map(e => `<div class="stat-item" data-tool="decision-hub" data-item-id="${_esc(e.id || '')}">
         <span class="stat-badge ${_esc(e.type || 'note')}">${_esc(e.type || 'note')}</span>
         <div class="stat-item-text">${_esc(e.title || '(untitled)')}</div>
       </div>`).join('');
           widgets.push({
-            id: 'decision-log', icon: '◎', title: 'Decision Log',
+            id: 'decision-hub', icon: '◎', title: 'Decision Hub',
             count: `${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'}`,
             body: rows,
             more: entries.length > 3 ? `+${entries.length - 3} more` : ''
@@ -1182,7 +1273,7 @@
         if (questions.length) {
           const qLabel = (km.labels && km.labels.Q) || 'Question';
           const shown = questions.slice(0, 3);
-          const rows = shown.map(q => `<div class="stat-item">
+          const rows = shown.map(q => `<div class="stat-item" data-tool="kmqt-board" data-item-id="${_esc(q.id || '')}">
         <div class="stat-item-dot" style="background:var(--accent);opacity:.45"></div>
         <div class="stat-item-text">${_esc(q.text || '')}</div>
       </div>`).join('');
@@ -1213,7 +1304,16 @@
         <span>${w.more}</span>
         <span>Open →</span>
       </div>`;
-        card.addEventListener('click', () => openApp(w.id));
+        card.addEventListener('click', e => {
+          const item = e.target.closest('.stat-item[data-item-id]');
+          if (item && item.dataset.itemId) {
+            e.stopPropagation();
+            _pendingHighlight = item.dataset.itemId;
+            openApp(item.dataset.tool);
+          } else {
+            openApp(w.id);
+          }
+        });
         grid.appendChild(card);
       });
     }
@@ -1359,11 +1459,31 @@
       goHome();
       setTimeout(() => {
         HubTutorial.start([
-          { element: '.home-greeting', title: 'Welcome to Thinking Hub', text: 'This is your comprehensive workspace for ideation, planning, and decision making.' },
-          { element: '.sidebar-nav', title: 'The Tools', text: 'Use the sidebar to quickly switch between your specialized apps without opening new tabs.' },
-          { element: '.session-bar', title: 'Contextual Sessions', text: 'You can name your session here (e.g. "Q3 Planning") to keep track of what you are focused on right now.' },
-          { element: '.cloud-status-row', title: 'Cloud Sync', text: 'By default, everything saves instantly to your local browser. Click "Connect" to join a shared workspace and sync data.' },
-          { element: '#app-grid', title: 'Launch an App', text: 'Click any tool here or in the sidebar to get started. Have fun exploring!' }
+          {
+            element: '.home-greeting',
+            title: 'Welcome to Thinking Hub',
+            text: 'This is your connected workspace — 8 specialised tools that share data, link to each other, and build on your work across sessions.'
+          },
+          {
+            element: '[data-app="project-hub"]',
+            title: '1 — Plan: Project Hub',
+            text: 'Start by creating a project and adding tasks with due dates. Those tasks flow automatically into Schedule, and you can promote ideas from Idea Swiper directly into tasks here.'
+          },
+          {
+            element: '[data-app="idea-swiper"]',
+            title: '2 — Think: Idea Swiper → KMQT',
+            text: 'Dump every idea into Idea Swiper and swipe to sort (Like / Super / Nope). Strong ideas land in Project Hub. Messy ones go to the KMQT Board to be unpacked into Known facts, Questions, and next Tries.'
+          },
+          {
+            element: '[data-app="decision-hub"]',
+            title: '3 — Decide: Decision Hub',
+            text: 'Log decisions with problem framing, option mapping, and stakeholder alignment votes. Link decisions to tasks and ideas — open questions can be sent straight to the KMQT Q-column.'
+          },
+          {
+            element: '[data-app="graph-hub"]',
+            title: '4 — See Everything: Graph + Search',
+            text: 'The Dependency Graph shows how all your items connect across tools. Press ⌘K (or Ctrl+K) anywhere to instantly search across every project, idea, decision, and note.'
+          }
         ]);
       }, 100);
     }
@@ -1371,9 +1491,16 @@
     // ── Data Export / Import ──────────────────────────────────────────────────────
 
     let _modalTrigger = null;
+    function saveVaultSetting(v) {
+      const s = HubStorage.get('hub-settings-v1') || {};
+      HubStorage.set('hub-settings-v1', { ...s, obsidianVault: v.trim() });
+    }
+
     function openDataModal() {
       _modalTrigger = document.activeElement;
       document.getElementById('data-modal').style.display = 'flex';
+      const s = HubStorage.get('hub-settings-v1') || {};
+      document.getElementById('obsidian-vault-name').value = s.obsidianVault || '';
       // Move focus inside the modal
       const firstBtn = document.querySelector('#data-modal .data-btn');
       if (firstBtn) setTimeout(() => firstBtn.focus(), 50);

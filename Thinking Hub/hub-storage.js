@@ -327,10 +327,15 @@ window.HubStorage = (() => {
     const pending = [..._writeQueue];
     _writeQueue = [];
     for (const item of pending) {
+      const retries = (item.retries || 0) + 1;
       try {
         await _pushToSupabase(item.key, item.value);
       } catch {
-        _writeQueue.push(item); // re-queue if still failing
+        if (retries < 3) {
+          _writeQueue.push({ ...item, retries });
+        } else {
+          console.warn('[HubStorage] dropping queued item after 3 failures:', item.key);
+        }
       }
     }
   }
@@ -348,9 +353,10 @@ window.HubStorage = (() => {
       const existing = document.querySelector(`script[src="${src}"]`);
       if (existing) { resolve(); return; }
       const s = document.createElement('script');
+      const timer = setTimeout(() => reject(new Error('Script load timeout: ' + src)), 10000);
       s.src = src;
-      s.onload  = resolve;
-      s.onerror = () => reject(new Error('Failed to load: ' + src));
+      s.onload  = () => { clearTimeout(timer); resolve(); };
+      s.onerror = () => { clearTimeout(timer); reject(new Error('Failed to load: ' + src)); };
       document.head.appendChild(s);
     });
   }

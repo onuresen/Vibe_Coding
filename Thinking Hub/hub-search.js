@@ -144,7 +144,7 @@ const HubSearch = (() => {
       setTimeout(() => {
         const frame = document.getElementById('app-frame');
         if (frame && frame.contentWindow) {
-          frame.contentWindow.postMessage({ type: 'hub-highlight', itemId: item.id }, '*');
+          frame.contentWindow.postMessage({ type: 'hub-highlight', itemId: item.id }, window.location.origin || '*');
         }
       }, 500);
     }
@@ -235,7 +235,7 @@ const HubSearch = (() => {
         display: flex; align-items: center; justify-content: space-between;
         padding: 10px 16px; cursor: pointer; border-left: 3px solid transparent;
       }
-      .hs-row.selected { background: rgba(184,240,51,0.08); border-left-color: #b8f033; }
+      .hs-row.selected { background: var(--accent-dim); border-left-color: var(--accent); }
       .hs-row-label { font-size: 14px; color: #f0efe8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
       .hs-row-sub { font-size: 12px; color: #6d6c78; white-space: nowrap; margin-left: 10px; font-family: monospace; }
       .hs-footer {

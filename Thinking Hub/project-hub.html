@@ -9,6 +9,8 @@
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
   <script src="hub-bootstrap.js"></script>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="theme.css">
   <style>
     /* ONLY styles unique to this tool go here */
@@ -727,6 +729,52 @@
       padding: 0 2px;
     }
 
+    /* ── Task filter bar ────────────────────────────────────── */
+    .task-filter-bar {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .tf-chip {
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text3);
+      font-size: 11px;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .tf-chip.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .tf-chip:not(.active):hover { border-color: var(--border2); color: var(--text2); }
+    .tf-sep { width: 1px; height: 14px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
+    .tf-compact {
+      margin-left: auto;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text3);
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .tf-compact.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    /* ── Compact task mode ───────────────────────────────────── */
+    .compact-mode .task-item { padding: 5px 10px; align-items: center; }
+    .compact-mode .task-meta { display: none; }
+    .compact-mode .task-title { font-size: 12.5px; }
+    .compact-mode .task-item-actions { display: flex; }
+
     .task-item {
       display: flex;
       align-items: flex-start;
@@ -1182,6 +1230,30 @@
       color: var(--accent3);
     }
 
+    .task-action-btn.obsidian:hover {
+      background: var(--surface3);
+      color: var(--text2);
+    }
+
+    .obsidian-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: var(--surface3);
+      color: var(--text3);
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border2);
+      text-decoration: none;
+      flex-shrink: 0;
+      line-height: 1.4;
+      transition: background 0.12s, color 0.12s;
+    }
+    .obsidian-badge:hover { background: var(--surface2); color: var(--text); }
+
     /* ── VIEW TOGGLE ─────────────────────────────────────────── */
     .view-toggle {
       display: flex;
@@ -1383,7 +1455,7 @@
     </div>
   </div>
 
-  <div class="ui-modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+  <div class="ui-modal-overlay" id="modal-task" onclick="closeModal('modal-task')">
     <div class="ui-modal" onclick="event.stopPropagation()">
       <div class="modal-title">New Task</div>
       <div class="modal-sub">Add a task to the project</div>
@@ -1431,6 +1503,10 @@
           </select>
         </div>
       </div>
+      <div class="form-group">
+        <label class="form-label">Obsidian Note</label>
+        <input class="form-input" id="task-obsidian" placeholder="Optional: path/to/note.md">
+      </div>
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeModal('modal-task')">Cancel</button>
         <button class="btn btn-primary" onclick="saveTask()">Add Task</button>
@@ -1438,7 +1514,7 @@
     </div>
   </div>
 
-  <div class="ui-modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+  <div class="ui-modal-overlay" id="modal-milestone" onclick="closeModal('modal-milestone')">
     <div class="ui-modal" onclick="event.stopPropagation()">
       <div class="modal-title">New Milestone</div>
       <div class="modal-sub">Define a key milestone for this project</div>
@@ -1469,7 +1545,7 @@
     </div>
   </div>
 
-  <div class="ui-modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+  <div class="ui-modal-overlay" id="modal-goal" onclick="closeModal('modal-goal')">
     <div class="ui-modal" onclick="event.stopPropagation()">
       <div class="modal-title">New Goal</div>
       <div class="modal-sub">Define a high-level goal for this project</div>
@@ -1488,7 +1564,7 @@
     </div>
   </div>
 
-  <div class="ui-modal-overlay" id="modal-project" onclick="closeModal('modal-project')">
+  <div class="ui-modal-overlay" id="modal-member" onclick="closeModal('modal-member')">
     <div class="ui-modal" onclick="event.stopPropagation()">
       <div class="modal-title">Add Team Member</div>
       <div class="modal-sub">Add someone to the workspace</div>
@@ -1597,6 +1673,8 @@
       currentView: 'overview',
       currentSubView: 'list',
       currentTab: 'tasks',
+      taskFilter: { status: 'all', priority: 'all' },
+      compactMode: false,
     };
 
     // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -2060,6 +2138,22 @@
     }
 
     // ─── TASK HTML ────────────────────────────────────────────────────────────────
+    function _getObsidianVault() {
+      return (HubStorage.get('hub-settings-v1') || {}).obsidianVault || '';
+    }
+
+    function promptObsidianNote(e, taskId, projectId) {
+      e.stopPropagation();
+      const task = findTask(taskId, projectId);
+      if (!task) return;
+      const input = prompt('Obsidian note path (e.g. Projects/MyNote.md):\nLeave blank to remove the link.', task.obsidianNote || '');
+      if (input === null) return;
+      task.obsidianNote = input.trim();
+      saveState();
+      renderContent();
+      if (state.selectedProject === task.projectId) renderPanel(state.selectedProject);
+    }
+
     function taskHTML(task, showProject = false) {
       const assignee = getMember(task.assigneeId);
       const { bg, fg } = assignee ? avatarColors(assignee.color) : { bg: '#333', fg: '#999' };
@@ -2072,6 +2166,10 @@
       const linkBadge = linkCount > 0
         ? `<button class="hl-badge" onclick="event.stopPropagation();HubLinks.showLinksPopover('project-hub','${task.id}',this)">🔗 ${linkCount}</button>`
         : '';
+      const vault = _getObsidianVault();
+      const obsidianBadge = (task.obsidianNote && vault)
+        ? `<a class="obsidian-badge" href="obsidian://open?vault=${encodeURIComponent(vault)}&file=${encodeURIComponent(task.obsidianNote)}" title="Open in Obsidian" onclick="event.stopPropagation()">⟡ Note</a>`
+        : '';
       return `
     <div class="task-item" data-task-id="${task.id}" data-project-id="${task.projectId || ''}">
       <div class="task-check ${task.done ? 'done' : ''}" onclick="toggleTask(event,'${task.id}','${task.projectId || ''}')">${task.done ? '✓' : ''}</div>
@@ -2083,10 +2181,12 @@
           ${assignee ? `<span class="task-assignee"><div class="avatar" style="background:${bg};color:${fg};width:16px;height:16px;font-size:8px">${initials(assignee.name)}</div>${assignee.name}</span>` : ''}
           ${task.due ? `<span class="task-due ${overdue ? 'overdue' : ''}">${overdue ? '⚠ ' : ''}${formatDate(task.due)}</span>` : ''}
           ${linkBadge}
+          ${obsidianBadge}
         </div>
       </div>
       <div class="task-item-actions">
         <button class="hl-btn" title="Link to tool" onclick="event.stopPropagation();HubLinks.openModal('project-hub','${task.id}','${safeTitle}')">🔗</button>
+        <button class="task-action-btn obsidian" title="Link Obsidian note" onclick="promptObsidianNote(event,'${task.id}','${task.projectId || ''}')">⟡</button>
         <button class="task-action-btn edit" title="Rename" onclick="startInlineEdit(event,'${task.id}','${task.projectId || ''}')">✎</button>
         <button class="task-action-btn del" title="Delete" onclick="deleteTask(event,'${task.id}','${task.projectId || ''}')">✕</button>
       </div>
@@ -2263,19 +2363,65 @@
         addBtn.onclick = () => showAddTask(projId);
         body.appendChild(addBtn);
 
+        // ── Filter bar ──
+        const tf = state.taskFilter;
+        const filterBar = document.createElement('div');
+        filterBar.className = 'task-filter-bar';
+        const statusChips = [
+          { val: 'all', label: 'All' },
+          { val: 'open', label: 'Open' },
+          { val: 'done', label: 'Done' },
+        ];
+        const prioChips = [
+          { val: 'all', label: 'Any priority' },
+          { val: 'high', label: '↑ High' },
+          { val: 'medium', label: '– Med' },
+          { val: 'low', label: '↓ Low' },
+        ];
+        statusChips.forEach(c => {
+          const btn = document.createElement('button');
+          btn.className = 'tf-chip' + (tf.status === c.val ? ' active' : '');
+          btn.textContent = c.label;
+          btn.onclick = () => { state.taskFilter.status = c.val; renderPanel(projId); };
+          filterBar.appendChild(btn);
+        });
+        const sep = document.createElement('span'); sep.className = 'tf-sep';
+        filterBar.appendChild(sep);
+        prioChips.forEach(c => {
+          const btn = document.createElement('button');
+          btn.className = 'tf-chip' + (tf.priority === c.val ? ' active' : '');
+          btn.textContent = c.label;
+          btn.onclick = () => { state.taskFilter.priority = c.val; renderPanel(projId); };
+          filterBar.appendChild(btn);
+        });
+        const compactBtn = document.createElement('button');
+        compactBtn.className = 'tf-compact' + (state.compactMode ? ' active' : '');
+        compactBtn.textContent = state.compactMode ? '⊟ Compact' : '⊟ Compact';
+        compactBtn.onclick = () => { state.compactMode = !state.compactMode; renderPanel(projId); };
+        filterBar.appendChild(compactBtn);
+        body.appendChild(filterBar);
+
+        if (state.compactMode) body.classList.add('compact-mode');
+        else body.classList.remove('compact-mode');
+
+        // ── Apply filters ──
         let tasks = proj.tasks;
         if (state.selectedMemberFilter) tasks = tasks.filter(t => t.assigneeId === state.selectedMemberFilter);
+        if (tf.status === 'open') tasks = tasks.filter(t => !t.done);
+        else if (tf.status === 'done') tasks = tasks.filter(t => t.done);
+        if (tf.priority !== 'all') tasks = tasks.filter(t => t.priority === tf.priority);
+
         const open = tasks.filter(t => !t.done);
         const done = tasks.filter(t => t.done);
 
-        if (!tasks.length) { body.insertAdjacentHTML('beforeend', `<div class="empty-state"><div class="e-icon">☐</div><div class="e-title">No tasks yet</div></div>`); return; }
-        if (open.length) {
+        if (!tasks.length) { body.insertAdjacentHTML('beforeend', `<div class="empty-state"><div class="e-icon">☐</div><div class="e-title">No tasks match</div></div>`); return; }
+        if (tf.status !== 'done' && open.length) {
           const g = document.createElement('div'); g.className = 'task-group';
           g.innerHTML = `<div class="task-group-label">Open</div>`;
           open.forEach(t => g.insertAdjacentHTML('beforeend', taskHTML({ ...t, projectId: projId })));
           body.appendChild(g);
         }
-        if (done.length) {
+        if (tf.status !== 'open' && done.length) {
           const g = document.createElement('div'); g.className = 'task-group'; g.style.marginTop = '12px';
           g.innerHTML = `<div class="task-group-label">Done</div>`;
           done.forEach(t => g.insertAdjacentHTML('beforeend', taskHTML({ ...t, projectId: projId })));
@@ -2511,6 +2657,7 @@
       sel.onchange = () => populateTaskProjectDependents(sel.value);
       document.getElementById('task-title').value = '';
       document.getElementById('task-due').value = '';
+      document.getElementById('task-obsidian').value = '';
       const statusSel = document.getElementById('task-status');
       if (statusSel && preStatus) statusSel.value = preStatus;
       else if (statusSel) statusSel.value = 'todo';
@@ -2531,7 +2678,7 @@
       const projId = document.getElementById('task-project').value;
       const proj = getProject(projId); if (!proj) return;
       const statusVal = document.getElementById('task-status')?.value || 'todo';
-      proj.tasks.push({ id: uid(), title, milestoneId: document.getElementById('task-milestone').value, assigneeId: document.getElementById('task-assignee').value, priority: document.getElementById('task-priority').value, due: document.getElementById('task-due').value, done: statusVal === 'done', status: statusVal });
+      proj.tasks.push({ id: uid(), title, milestoneId: document.getElementById('task-milestone').value, assigneeId: document.getElementById('task-assignee').value, priority: document.getElementById('task-priority').value, due: document.getElementById('task-due').value, done: statusVal === 'done', status: statusVal, obsidianNote: document.getElementById('task-obsidian').value.trim() });
       saveState(); closeModal('modal-task'); showToast('Task added');
       renderContent();
       if (state.selectedProject === projId) renderPanel(projId);

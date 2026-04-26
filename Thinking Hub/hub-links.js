@@ -126,6 +126,18 @@ const HubLinks = (() => {
         }
         return items;
       }
+
+      if (toolId === 'canvas-hub') {
+        const data = HubStorage.get('canvas-v1');
+        if (!data || !data.nodes) return [];
+        return data.nodes
+          .filter(n => n.text)
+          .map(n => {
+            // strip HTML tags from rich-text node content
+            const tmp = n.text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            return { id: n.id, label: tmp.slice(0, 60) || '(canvas node)', subtitle: 'Canvas' };
+          });
+      }
     } catch { }
     return [];
   }
@@ -134,7 +146,7 @@ const HubLinks = (() => {
 
   function navigateTo(toolId, itemId) {
     try {
-      window.parent.postMessage({ type: 'hub-navigate', tool: toolId, itemId }, '*');
+      window.parent.postMessage({ type: 'hub-navigate', tool: toolId, itemId }, window.location.origin || '*');
     } catch { }
   }
 
@@ -169,8 +181,8 @@ const HubLinks = (() => {
         transition: opacity 0.12s, background 0.12s, color 0.12s;
       }
       .hl-btn:hover {
-        background: rgba(184,240,51,0.12);
-        color: #b8f033;
+        background: var(--accent-dim);
+        color: var(--accent);
       }
 
       /* Show link button on parent hover */
@@ -185,19 +197,19 @@ const HubLinks = (() => {
         display: inline-flex;
         align-items: center;
         gap: 3px;
-        background: rgba(184,240,51,0.1);
-        color: #b8f033;
+        background: var(--accent-dim);
+        color: var(--accent);
         border-radius: 999px;
         padding: 2px 7px;
         font-size: 11px;
         font-weight: 500;
         cursor: pointer;
-        border: 1px solid rgba(184,240,51,0.2);
+        border: 1px solid var(--accent-glow);
         transition: background 0.12s;
         flex-shrink: 0;
         line-height: 1.4;
       }
-      .hl-badge:hover { background: rgba(184,240,51,0.2); }
+      .hl-badge:hover { background: var(--accent-glow); }
 
       /* ── Link picker modal ──────────────────────────────── */
       #hl-modal-overlay {
@@ -271,9 +283,9 @@ const HubLinks = (() => {
       }
       .hl-tool-tab:hover { background: rgba(255,255,255,0.06); color: #f0efe8; }
       .hl-tool-tab.active {
-        background: rgba(184,240,51,0.1);
-        color: #b8f033;
-        border-color: rgba(184,240,51,0.3);
+        background: var(--accent-dim);
+        color: var(--accent);
+        border-color: var(--accent-glow);
       }
 
       .hl-items-list {
@@ -295,8 +307,8 @@ const HubLinks = (() => {
       }
       .hl-item-row:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); }
       .hl-item-row.selected {
-        background: rgba(184,240,51,0.08);
-        border-color: rgba(184,240,51,0.25);
+        background: var(--accent-dim);
+        border-color: var(--accent-glow);
       }
       .hl-item-row.hl-already-linked { opacity: 0.45; cursor: default; }
       .hl-item-label {
@@ -354,7 +366,7 @@ const HubLinks = (() => {
       .hl-btn-cancel:hover { color: #f0efe8; border-color: rgba(255,255,255,0.2); }
       .hl-btn-confirm {
         padding: 7px 16px;
-        background: #b8f033;
+        background: var(--accent);
         color: #111;
         border: none;
         border-radius: 8px;
@@ -400,7 +412,7 @@ const HubLinks = (() => {
       .hl-link-row:hover { background: rgba(255,255,255,0.06); }
       .hl-link-tool {
         font-size: 10px;
-        color: #b8f033;
+        color: var(--accent);
         flex-shrink: 0;
         font-family: 'JetBrains Mono', 'DM Mono', monospace;
         max-width: 80px;
@@ -614,7 +626,7 @@ const HubLinks = (() => {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     const prev = el.style.transition;
     el.style.transition = 'box-shadow 0.25s';
-    el.style.boxShadow = '0 0 0 2px #b8f033, 0 0 16px rgba(184,240,51,0.3)';
+    el.style.boxShadow = '0 0 0 2px var(--accent), 0 0 16px var(--accent-glow)';
     setTimeout(() => {
       el.style.boxShadow = '';
       el.style.transition = prev;

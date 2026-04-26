@@ -6,10 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KMQT Board (Standalone)</title>
   <script src="hub-storage.js"></script>
+  <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
   <script src="hub-bootstrap.js"></script>
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap">
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="theme.css">
   <style>
     /* Tool-specific CSS goes here. 
@@ -706,8 +707,28 @@
       <div class="pill"><span class="dot" style="background:#a78bfa"></span><span id="stat-links">0 links</span></div>
       <div class="pill"><span class="dot" style="background:var(--super)"></span><span id="stat-saved">autosaved</span>
       </div>
+      <button class="pill" style="cursor:pointer;border:1px solid var(--border);background:var(--surface2);font-size:12px;color:var(--text3);" onclick="document.getElementById('shortcut-overlay').classList.add('is-open')" title="Keyboard shortcuts">?</button>
     </div>
   </header>
+
+  <!-- Shortcut overlay (2C) -->
+  <div class="ui-modal-overlay" id="shortcut-overlay" onclick="if(event.target===this)this.classList.remove('is-open')">
+    <div class="ui-modal" style="max-width:380px">
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;margin-bottom:16px">Keyboard shortcuts</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+        <div style="display:flex;gap:8px;align-items:center"><kbd style="font-family:var(--font-mono);font-size:11px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">1</kbd><kbd style="font-family:var(--font-mono);font-size:11px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">2</kbd><kbd style="font-family:var(--font-mono);font-size:11px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">3</kbd><kbd style="font-family:var(--font-mono);font-size:11px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">4</kbd><span style="color:var(--text2)">Focus K / M / Q / T column input</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><kbd style="font-family:var(--font-mono);font-size:11px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">/</kbd><span style="color:var(--text2)">Focus quick-add input</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><kbd style="font-family:var(--font-mono);font-size:11px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">C</kbd><span style="color:var(--text2)">Toggle connect mode</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><kbd style="font-family:var(--font-mono);font-size:11px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">E</kbd><span style="color:var(--text2)">Edit selected item</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><kbd style="font-family:var(--font-mono);font-size:11px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">Del</kbd><span style="color:var(--text2)">Delete selected item or link</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><kbd style="font-family:var(--font-mono);font-size:11px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">Esc</kbd><span style="color:var(--text2)">Cancel / deselect</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--text3);font-size:11px">Drag items between columns to move them</span></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="document.getElementById('shortcut-overlay').classList.remove('is-open')">Close</button>
+      </div>
+    </div>
+  </div>
 
   <div class="main">
 
@@ -751,6 +772,7 @@
             <button class="sbtn accent" id="btn-move-q" title="Move selected to Q">→ Q</button>
             <button class="sbtn accent" id="btn-move-t" title="Move selected to T">→ T</button>
             <button class="sbtn danger" id="btn-delete" title="Delete selected">Delete</button>
+            <button class="sbtn" id="btn-log-decision" title="Log selected T item as a Decision" style="display:none;background:color-mix(in srgb,#a78bfa 12%,transparent);color:#a78bfa;border-color:#a78bfa40" onclick="logAsDecision()">→ Decision</button>
           </div>
         </div>
       </div>
@@ -1119,7 +1141,42 @@
       state.selectedLinkId = null;
       const item = getItem(itemId);
       el.selText.textContent = item ? item.text : '—';
+      const col = item ? getItemCol(itemId) : null;
+      const decBtn = document.getElementById('btn-log-decision');
+      if (decBtn) decBtn.style.display = col === 'T' ? '' : 'none';
       renderAll();
+    }
+
+    function getItemCol(itemId) {
+      for (const col of ['K', 'M', 'Q', 'T']) {
+        if (state.columns[col].some(i => i.id === itemId)) return col;
+      }
+      return null;
+    }
+
+    function logAsDecision() {
+      const item = getItem(state.selectedItemId);
+      if (!item) return;
+      const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const dh = HubStorage.get('decision-hub-v1') || {};
+      const entries = Array.isArray(dh) ? dh : (dh.entries || []);
+      const newEntry = {
+        id: uid(),
+        title: item.text,
+        statement: item.text,
+        context: 'Escalated from KMQT T (Thinking/Try) column',
+        status: 'open',
+        createdAt: new Date().toISOString()
+      };
+      entries.push(newEntry);
+      const saved = Array.isArray(dh) ? entries : { ...dh, entries };
+      HubStorage.set('decision-hub-v1', saved);
+      // Navigate to Decision Hub with this entry highlighted
+      if (typeof HubLinks !== 'undefined' && HubLinks.navigateTo) {
+        HubLinks.navigateTo('decision-hub', newEntry.id);
+      } else {
+        try { window.parent.postMessage({ type: 'hub-navigate', tool: 'decision-hub', itemId: newEntry.id }, window.location.origin || '*'); } catch {}
+      }
     }
 
     function selectLink(linkId) {
@@ -1189,7 +1246,14 @@
 
         if (!state.columns[col].length) {
           const label = (state.labels && state.labels[col]) || col;
-          container.innerHTML = `<div class="col-empty">No ${label} items yet.<br>Click <b>+</b> to add one.</div>`;
+          container.innerHTML = `<div class="col-empty">
+            <svg width="40" height="34" viewBox="0 0 40 34" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.35;margin-bottom:6px">
+              <rect x="2" y="2" width="36" height="10" rx="3" stroke="currentColor" stroke-width="1.2"/>
+              <rect x="2" y="15" width="36" height="10" rx="3" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+              <rect x="2" y="28" width="24" height="4" rx="2" fill="currentColor" opacity="0.2"/>
+            </svg>
+            <div>No ${label} items yet.<br>Click <b>+</b> to add one.</div>
+          </div>`;
         }
 
         state.columns[col].forEach(it => {

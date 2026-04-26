@@ -21,6 +21,7 @@
   /* Accent */
   --accent: #b8f033;
   --accent-dim: rgba(184, 240, 51, 0.1);
+  --accent-glow: rgba(184, 240, 51, 0.25);
 
   /* theme.css — semantic tokens */
   --accent-like: #2ecc7a;
@@ -44,6 +45,15 @@
   /* Radius */
   --r: 12px;
   --r-sm: 8px;
+
+  /* Z-index scale */
+  --z-base:    1;
+  --z-sticky:  100;
+  --z-popover: 500;
+  --z-overlay: 800;
+  --z-modal:   900;
+  --z-tooltip: 950;
+  --z-toast:   9999;
 
   /* Fonts */
   --font-display: 'Syne', sans-serif;
@@ -69,6 +79,63 @@
 
   --accent: #6fb400;
   --accent-dim: rgba(111, 180, 0, 0.12);
+  --accent-glow: rgba(111, 180, 0, 0.25);
+
+  --accent-like: #27a864;
+  --accent-super: #d4831a;
+  --accent-nope: #d03452;
+
+  --node-gray: #e4e4ea;
+  --node-blue: #bed8f5;
+  --node-green: #b8ecd4;
+  --node-yellow: #fae0a0;
+  --node-purple: #e0c8f8;
+  --node-red: #f5c0c0;
+
+  --border-gray: #8888a0;
+  --border-blue: #4a90c8;
+  --border-green: #2aaa6a;
+  --border-yellow: #b88020;
+  --border-purple: #7a40b0;
+  --border-red: #c04040;
+}
+
+/* =========================
+   MICRO-ANIMATIONS (4B)
+   ========================= */
+
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes check-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35); }
+  70%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fade-out-done {
+  0%   { opacity: 1; max-height: 120px; }
+  60%  { opacity: 0.3; }
+  100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0; }
+}
+
+/* Apply to newly created cards — add class via JS */
+.card-enter {
+  animation: card-enter 0.22s ease both;
+}
+
+/* Apply to the check icon when a task is marked done */
+.check-pop {
+  animation: check-pop 0.3s ease;
+}
+
+/* Apply to a task row being dismissed as done */
+.task-fade-done {
+  animation: fade-out-done 0.45s ease forwards;
+  overflow: hidden;
 }
 
 /* ── Toast notifications ─────────────────────────────────────────────────── */
@@ -98,12 +165,14 @@
 }
 
 .hub-toast--success {
+  border-color: var(--accent-glow);
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   color: var(--accent);
 }
 
 .hub-toast--error {
   --toast-error: #f0436b;
+  border-color: rgba(240, 67, 107, 0.4);
   border-color: color-mix(in srgb, var(--toast-error) 40%, transparent);
   color: var(--toast-error);
 }
@@ -201,7 +270,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #444458;
+  background: var(--surface3);
 }
 
 /* =========================
@@ -271,7 +340,7 @@ body {
   font-size: 11px;
   color: var(--text3);
   cursor: pointer;
-  font-family: var(--font-m);
+  font-family: var(--font-mono);
   padding: 3px 8px;
   border-radius: 5px;
   transition: all 0.12s;

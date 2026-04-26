@@ -9,6 +9,8 @@
   <script src="hub-links.js"></script>
   <script src="hub-data.js"></script>
   <script src="hub-bootstrap.js"></script>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="theme.css">
   <style>
     * {
@@ -280,6 +282,39 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* ── Workspace progressive disclosure ───────────────────── */
+    .ws-extra { display: none; }
+    .ws-extra.open { display: block; }
+    .ws-expand-btn {
+      margin-top: 6px;
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: 11.5px;
+      font-family: var(--font-body);
+      cursor: pointer;
+      padding: 2px 0;
+      transition: color 0.12s;
+    }
+    .ws-expand-btn:hover { color: var(--accent); }
+    .ws-action-bar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+    .ws-kmqt-btn {
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: var(--r-sm);
+      color: var(--text3);
+      font-size: 11.5px;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .ws-kmqt-btn:hover { color: var(--text); border-color: var(--accent); }
 
     /* ── OPTION MAP TABLE ────────────────────────────────────── */
     table {
@@ -593,6 +628,7 @@
         reason: '',
         tags: '',
         links: '',
+        obsidianNote: '',
         problemLens: {},
         decisionCanvas: {},
         optionMap: [],
@@ -656,6 +692,7 @@
         dec.summary = document.getElementById('i-summary').value;
         dec.reason = document.getElementById('i-reason').value;
         dec.tags = document.getElementById('i-tags').value;
+        dec.obsidianNote = (document.getElementById('i-obsidian')?.value || '').trim();
       }
       else if (currentTab === 'workspace') {
         PROBLEM_FIELDS.forEach(f => {
@@ -734,25 +771,49 @@
               <label class="form-label">Reasoning & Evidence</label>
               <textarea class="form-textarea" id="i-reason" style="min-height:100px">${dec.reason || ''}</textarea>
             </div>
+
+            <div class="form-group" style="display:flex;gap:10px;align-items:flex-end">
+              <div style="flex:1">
+                <label class="form-label">Obsidian Note</label>
+                <input class="form-input" id="i-obsidian" value="${(dec.obsidianNote || '').replace(/"/g, '&quot;')}" placeholder="Optional: path/to/note.md">
+              </div>
+              ${(() => { const v = (HubStorage.get('hub-settings-v1') || {}).obsidianVault || ''; return (dec.obsidianNote && v) ? `<a href="obsidian://open?vault=${encodeURIComponent(v)}&file=${encodeURIComponent(dec.obsidianNote)}" style="display:inline-flex;align-items:center;gap:4px;padding:8px 12px;background:var(--surface3);border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);text-decoration:none;font-size:12px;font-weight:500;white-space:nowrap;transition:background 0.12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface3)'">⟡ Open</a>` : ''; })()}
+            </div>
           </div>
         `;
       }
       else if (currentTab === 'workspace') {
-        const plHtml = PROBLEM_FIELDS.map(f => `
-          <div class="form-group">
-            <label class="form-label">${f.label}</label>
-            <textarea class="form-textarea" id="pl-${f.id}" placeholder="${f.placeholder}">${dec.problemLens?.[f.id] || ''}</textarea>
-          </div>
-        `).join('');
+        const plFirst = PROBLEM_FIELDS[0];
+        const plRest  = PROBLEM_FIELDS.slice(1);
+        const dcFirst = CANVAS_FIELDS[0];
+        const dcRest  = CANVAS_FIELDS.slice(1);
+        const plHasExtra = plRest.some(f => dec.problemLens?.[f.id]);
+        const dcHasExtra = dcRest.some(f => dec.decisionCanvas?.[f.id]);
 
-        const dcHtml = CANVAS_FIELDS.map(f => `
+        const fieldHtml = (f, prefix) => `
           <div class="form-group">
             <label class="form-label">${f.label}</label>
-            <textarea class="form-textarea" id="dc-${f.id}" placeholder="${f.placeholder}">${dec.decisionCanvas?.[f.id] || ''}</textarea>
+            <textarea class="form-textarea" id="${prefix}-${f.id}" placeholder="${f.placeholder}">${dec[prefix === 'pl' ? 'problemLens' : 'decisionCanvas']?.[f.id] || ''}</textarea>
+          </div>`;
+
+        const plHtml = `
+          ${fieldHtml(plFirst, 'pl')}
+          <div class="ws-extra${plHasExtra ? ' open' : ''}" id="pl-extra">
+            ${plRest.map(f => fieldHtml(f, 'pl')).join('')}
           </div>
-        `).join('');
+          <button class="ws-expand-btn" id="pl-expand-btn" onclick="toggleWsExtra('pl-extra','pl-expand-btn')">${plHasExtra ? 'Show less ↑' : 'Show more context ↓'}</button>`;
+
+        const dcHtml = `
+          ${fieldHtml(dcFirst, 'dc')}
+          <div class="ws-extra${dcHasExtra ? ' open' : ''}" id="dc-extra">
+            ${dcRest.map(f => fieldHtml(f, 'dc')).join('')}
+          </div>
+          <button class="ws-expand-btn" id="dc-expand-btn" onclick="toggleWsExtra('dc-extra','dc-expand-btn')">${dcHasExtra ? 'Show less ↑' : 'Show more context ↓'}</button>`;
 
         c.innerHTML = `
+          <div class="ws-action-bar">
+            <button class="ws-kmqt-btn" onclick="sendToKmqt()">⊞ Send as KMQT Question</button>
+          </div>
           <div class="grid-2">
             <div class="card">
               <div class="card-header"><div class="card-title">Problem Lens</div></div>
@@ -900,6 +961,40 @@
     }
 
     // Expose option helpers globally for inline onclick
+    function toggleWsExtra(extraId, btnId) {
+      const extra = document.getElementById(extraId);
+      const btn   = document.getElementById(btnId);
+      if (!extra || !btn) return;
+      const open = extra.classList.toggle('open');
+      btn.textContent = open ? 'Show less ↑' : 'Show more context ↓';
+    }
+
+    function sendToKmqt() {
+      const dec = decisions.find(d => d.id === currentId);
+      if (!dec) return;
+      const title = (dec.title || '').trim();
+      if (!title) { alert('Save a decision title first.'); return; }
+      const km = HubStorage.get('kmqt_current_v2') || { columns: { K: [], M: [], Q: [], T: [] }, labels: {} };
+      if (!km.columns) km.columns = { K: [], M: [], Q: [], T: [] };
+      if (!km.columns.Q) km.columns.Q = [];
+      km.columns.Q.push({
+        id: 'q-' + Math.random().toString(36).slice(2, 9),
+        text: `[Decision] ${title}`,
+        createdAt: new Date().toISOString()
+      });
+      HubStorage.set('kmqt_current_v2', km);
+      const toast = document.createElement('div');
+      toast.textContent = 'Sent to KMQT Q-column ✓';
+      Object.assign(toast.style, {
+        position:'fixed', bottom:'20px', left:'50%', transform:'translateX(-50%)',
+        background:'var(--surface3)', border:'1px solid var(--border2)', borderRadius:'8px',
+        padding:'8px 16px', fontSize:'12.5px', color:'var(--text)', zIndex:'999',
+        pointerEvents:'none', transition:'opacity 0.3s'
+      });
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 2000);
+    }
+
     window.updateOpt = (idx, key, val) => {
       const dec = decisions.find(d => d.id === currentId);
       if (dec && dec.optionMap[idx]) {
