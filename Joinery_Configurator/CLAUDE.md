@@ -186,6 +186,12 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | `door-sliding-apart` | Door Slide Apart (引分け扉) | `D-SLA` | Yes | Two door panels slide apart |
 | `door-free-swing` | Free Swing (自由戸) | `D-FS` | Yes | Swings both directions (café door) |
 | `door-bypass` | Bypass Door (立て引き) | `D-BP` | Yes | Two panels on overlapping tracks |
+| `shoji` | Shoji Screen (障子) | `W-SJ` | Yes | Cross-hatch grid + slide arrow |
+| `fusuma` | Fusuma Panel (襖) | `W-FM` | Yes | Solid rails + knob + slide arrow |
+| `ranma` | Ranma Transom (欄間) | `W-RN` | No | Dense kumiko lattice + diagonal accents |
+| `koshido` | Lattice Door (格子戸) | `D-KS` | Yes | Open lattice grid + threshold |
+| `shitomido` | Shitomido Shutter (蔀戸) | `D-ST` | Yes | Upper panel folds out-up |
+| `agedo` | Lift Door (上げ戸) | `D-AG` | Yes | Upward arrow + track rails + threshold |
 
 **Curtain Wall types** share the same operation IDs as windows but resolve to `CuPnl-*` BIM codes when `openingType = "curtain"`. Available subset: fixed, casement-left/right, casement-double, louvre, sliding-single, sliding-left, sliding-apart, projecting, tate-suberidashi, outward-tilt, pivot-v, door-parent-child.
 
@@ -203,6 +209,8 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | `Ctrl+E` | Export JSON |
 | `Ctrl+I` | Import JSON |
 | `Ctrl+N` | New composition |
+| `Ctrl+C` | Copy selected panel config |
+| `Ctrl+V` | Paste config onto selected panel |
 
 ---
 
@@ -275,6 +283,32 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 - [x] **New templates** — 3 extra window (両開き, 引分け, 4枚建引違い) + 4 curtain (Fixed, 片開き, 引分け, 両開き) presets in Templates modal
 - [x] **Elevation + plan symbols** — `drawSymbol()` and `renderPlanView()` cases for all 7 new types
 
+### ✅ Phase 12 — Auto-save + Glass Performance
+- [x] **Auto-save to localStorage** — composition saved on every render; `loadDraft()` on page load shows recovery banner; Load Draft / Dismiss buttons
+- [x] **Glass performance fields** — U-value (W/m²K), SHGC, VLT inputs per pane in inspector; colour-coded thermal rating badge (A++ → C)
+- [x] **GLASS_PRESETS auto-fill** — selecting a glass product (clear, low-e, laminated, etc.) auto-populates U-value, SHGC, VLT
+- [x] **JIS performance metadata accordion** — 気密/水密/耐風圧/断熱/遮音 selects in Frame inspector; stored as `frame.performance`; exported in JSON
+
+### ✅ Phase 13 — Traditional Japanese Types + Copy/Paste
+- [x] **6 traditional Japanese panel types** — 障子 (`W-SJ`), 襖 (`W-FM`), 欄間 (`W-RN`), 格子戸 (`D-KS`), 蔀戸 (`D-ST`), 上げ戸 (`D-AG`) with elevation symbols, plan view, EN/JA labels
+- [x] **Copy / Paste panes** — `Ctrl+C` copies selected pane config (type, glass, sash, label); `Ctrl+V` pastes onto selected pane; uses undo stack
+- [x] **4 new templates** — 障子 Screen, 欄間 Transom (window tab); 格子戸 Lattice Door, 上げ戸 Lift Door (door tab)
+
+### 🔲 Phase 14 — 連窓 Series Window + Bill of Materials
+- [ ] **連窓 (Renso) layout tool** — "Add to series" button chains identical compositions side-by-side with shared dimension line; exports as `SeriesComposition` wrapper
+- [ ] **Bill of Materials (BOM) export** — CSV/JSON with rows per panel type: BIM ref, qty, W×H, area (m²), glass product, sash thickness, material; summary row for totals
+
+### 🔲 Phase 15 — Multi-Select + Batch Assign
+- [ ] `Shift+Click` multi-select with dashed-ring highlight
+- [ ] Context toolbar "Assign type to all selected"
+- [ ] Aggregate area shown in dimensions table for selection
+
+### 🔲 Phase 16 — Technical Drawing / PDF Export
+- [ ] "Print Drawing" button → print-formatted SVG/HTML with elevation + plan views
+- [ ] Title block: project name, date, scale, drawn-by
+- [ ] BIM ref legend table + JIS performance metadata block
+- [ ] Pure client-side via `window.print()` + `@media print` stylesheet
+
 ---
 
 ## Schema Notes (v1.0 extensions, 2026-04-24)
@@ -296,3 +330,5 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | 2026-04-25 | v0.4 | Phase 9: Obayashi BIM type reference codes (W-FIX, W-CS-L, D-SL etc.) + plan/top view SVG in inspector |
 | 2026-04-25 | v0.5 | Phase 10: 8 Japanese JIS-aligned panel types (片引き, 上げ下げ窓, 突出し, 縦すべり出し, 引込戸, オーバーヘッド, アコーディオン, 親子扉) with elevation symbols, plan view, templates |
 | 2026-04-26 | v0.6 | Phase 11: 7 new Obayashi-derived types (両開き, 外倒し, 引分け, 片引き左, 引分け扉, 自由戸, 立て引き); EN/JA bilingual toggle; Curtain Wall 3rd category with CuPnl-* BIM codes; 7 new templates |
+| 2026-04-27 | v0.7 | Phase 12: auto-save to localStorage with draft recovery banner; glass U-value/SHGC/VLT fields with thermal rating badge; GLASS_PRESETS auto-fill; JIS 気密/水密/耐風圧/断熱/遮音 performance accordion |
+| 2026-04-27 | v0.8 | Phase 13: 6 traditional Japanese types (障子, 襖, 欄間, 格子戸, 蔀戸, 上げ戸) with elevation/plan symbols and templates; Ctrl+C/V copy-paste panes |

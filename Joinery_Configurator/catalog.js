@@ -50,6 +50,13 @@ const PANE_TYPE_LABELS = {
   'door-sliding-apart': 'Door Slide Apart',
   'door-free-swing':    'Free Swing',
   'door-bypass':        'Bypass Door',
+  // Traditional Japanese types
+  'shoji':              'Shoji Screen',
+  'fusuma':             'Fusuma',
+  'ranma':              'Ranma Transom',
+  'koshido':            'Lattice Door',
+  'shitomido':          'Shitomido Shutter',
+  'agedo':              'Lift Door',
 };
 
 // ── Type labels (Japanese / JIS A 0150) ──────────────────────
@@ -87,6 +94,12 @@ const PANE_TYPE_LABELS_JA = {
   'door-sliding-apart': '引分け扉',
   'door-free-swing':    '自由戸',
   'door-bypass':        '立て引き',
+  'shoji':              '障子',
+  'fusuma':             '襖',
+  'ranma':              '欄間',
+  'koshido':            '格子戸',
+  'shitomido':          '蔀戸',
+  'agedo':              '上げ戸',
 };
 
 // Returns label in current language
@@ -110,6 +123,7 @@ const PANE_TYPE_ICONS = {
   'door-pocket':'⇥','door-overhead':'⊟',
   'door-accordion':'〰','door-parent-child':'⊣',
   'door-sliding-apart':'⇔','door-free-swing':'↺','door-bypass':'⊡',
+  'shoji':'⊞','fusuma':'▤','ranma':'⊟','koshido':'⊡','shitomido':'⌬','agedo':'⇑',
 };
 
 const GLASS_COLORS = {
@@ -146,6 +160,23 @@ const GLASS_COLORS = {
   'door-sliding-apart': 'rgba(200,170,120,0.32)',
   'door-free-swing':    'rgba(200,170,120,0.32)',
   'door-bypass':        'rgba(200,170,120,0.32)',
+  // Traditional Japanese types — warm wood/paper tones
+  'shoji':              'rgba(240,228,195,0.55)',
+  'fusuma':             'rgba(205,188,158,0.60)',
+  'ranma':              'rgba(195,168,115,0.50)',
+  'koshido':            'rgba(175,152,108,0.52)',
+  'shitomido':          'rgba(155,142,108,0.55)',
+  'agedo':              'rgba(170,150,112,0.52)',
+};
+
+// ── Glass performance presets (per product, 24mm IGU defaults) ─
+const GLASS_PRESETS = {
+  'clear':      { uValue: 2.8, shgc: 0.76, vlt: 0.81 },
+  'low-e':      { uValue: 1.1, shgc: 0.35, vlt: 0.65 },
+  'laminated':  { uValue: 2.6, shgc: 0.72, vlt: 0.80 },
+  'obscure':    { uValue: 2.8, shgc: 0.74, vlt: 0.42 },
+  'tinted':     { uValue: 2.7, shgc: 0.48, vlt: 0.43 },
+  'reflective': { uValue: 2.5, shgc: 0.26, vlt: 0.21 },
 };
 
 const WINDOW_TYPES = [
@@ -153,11 +184,13 @@ const WINDOW_TYPES = [
   'awning','hopper','sliding-2t','sliding-3t','pivot-v','pivot-h','tilt-turn','louvre',
   'sliding-single','sliding-left','hung-double','projecting','tate-suberidashi',
   'casement-double','outward-tilt','sliding-apart',
+  'shoji','fusuma','ranma','shitomido',
 ];
 const DOOR_TYPES = [
   'door-single','door-double','door-sliding','door-bifold','door-french',
   'door-pocket','door-overhead','door-accordion','door-parent-child',
   'door-sliding-apart','door-free-swing','door-bypass',
+  'koshido','agedo',
 ];
 // Curtain wall panel types (subset of operation types, different BIM codes)
 const CURTAIN_TYPES = [
@@ -201,6 +234,12 @@ const TYPE_REFS = {
   'door-sliding-apart': 'D-SLA',
   'door-free-swing':    'D-FS',
   'door-bypass':        'D-BP',
+  'shoji':              'W-SJ',
+  'fusuma':             'W-FM',
+  'ranma':              'W-RN',
+  'koshido':            'D-KS',
+  'shitomido':          'D-ST',
+  'agedo':              'D-AG',
 };
 
 // Curtain wall overrides (Obayashi CuPnl series)
@@ -502,6 +541,75 @@ function drawSymbol(g, type, x, y, w, h) {
       g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
       break;
     }
+    // ── Traditional Japanese types ───────────────────────────────
+    case 'shoji': {
+      // Cross-hatch shoji grid + slide arrow
+      const nc = Math.max(3, Math.min(5, Math.floor(w/80)));
+      const nr = Math.max(3, Math.min(5, Math.floor(h/60)));
+      for (let i=1; i<nc; i++) g.append(line(x+w*i/nc, y+h*0.06, x+w*i/nc, y+h*0.94, col, sw*0.65));
+      for (let i=1; i<nr; i++) g.append(line(x+w*0.06, y+h*i/nr, x+w*0.94, y+h*i/nr, col, sw*0.65));
+      g.append(line(cx, y+h*0.87, cx+w*0.22, y+h*0.87, col, sw*0.9));
+      g.append(line(cx+w*0.22, y+h*0.87, cx+w*0.15, y+h*0.81, col, sw*0.9));
+      g.append(line(cx+w*0.22, y+h*0.87, cx+w*0.15, y+h*0.93, col, sw*0.9));
+      break;
+    }
+    case 'fusuma': {
+      // Two horizontal rails + central pull knob + slide arrow
+      const rH2 = h*0.04;
+      g.append(el('rect',{x:x+w*0.08,y:y+h*0.28-rH2,width:w*0.84,height:rH2*2,fill:'rgba(74,158,255,0.10)',stroke:col,'stroke-width':sw*0.7,'pointer-events':'none'}));
+      g.append(el('rect',{x:x+w*0.08,y:y+h*0.72-rH2,width:w*0.84,height:rH2*2,fill:'rgba(74,158,255,0.10)',stroke:col,'stroke-width':sw*0.7,'pointer-events':'none'}));
+      const kr = Math.min(w,h)*0.06;
+      g.append(el('circle',{cx,cy,r:kr,fill:'none',stroke:col,'stroke-width':sw*0.9,'pointer-events':'none'}));
+      g.append(el('circle',{cx,cy,r:kr*0.4,fill:col,'pointer-events':'none'}));
+      g.append(line(cx+kr*2.2, cy, cx+w*0.34, cy, col, sw*0.85));
+      g.append(line(cx+w*0.34, cy, cx+w*0.27, cy-h*0.04, col, sw*0.85));
+      g.append(line(cx+w*0.34, cy, cx+w*0.27, cy+h*0.04, col, sw*0.85));
+      break;
+    }
+    case 'ranma': {
+      // Dense kumiko-lattice with diagonal accent (decorative transom)
+      const nc3 = Math.max(4, Math.min(8, Math.floor(w/55)));
+      const nr3 = Math.max(2, Math.min(4, Math.floor(h/50)));
+      for (let i=1; i<nc3; i++) g.append(line(x+w*i/nc3, y+h*0.06, x+w*i/nc3, y+h*0.94, col, sw*0.60));
+      for (let i=1; i<nr3; i++) g.append(line(x+w*0.06, y+h*i/nr3, x+w*0.94, y+h*i/nr3, col, sw*0.60));
+      g.append(line(x+w*0.06, y+h*0.06, x+w*0.94, y+h*0.94, 'rgba(74,158,255,0.20)', sw*0.5));
+      g.append(line(x+w*0.94, y+h*0.06, x+w*0.06, y+h*0.94, 'rgba(74,158,255,0.20)', sw*0.5));
+      break;
+    }
+    case 'koshido': {
+      // Open lattice door — kumiko grid + threshold
+      const nc4 = Math.max(3, Math.min(6, Math.floor(w/70)));
+      const nr4 = Math.max(3, Math.min(6, Math.floor(h/70)));
+      for (let i=1; i<nc4; i++) g.append(line(x+w*i/nc4, y+h*0.06, x+w*i/nc4, y+h*0.92, col, sw*0.70));
+      for (let i=1; i<nr4; i++) g.append(line(x+w*0.06, y+h*i/nr4, x+w*0.94, y+h*i/nr4, col, sw*0.70));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
+    case 'shitomido': {
+      // Heian flip-up shutter: lower panel vertical, upper panel folded up
+      g.append(line(x+w*0.06, y+h/2, x+w*0.06, y+h*0.94, col, sw));
+      g.append(line(x+w*0.94, y+h/2, x+w*0.94, y+h*0.94, col, sw));
+      g.append(line(x+w*0.06, y+h*0.94, x+w*0.94, y+h*0.94, col, sw));
+      // Upper panel angled open (fold line at mid-height)
+      g.append(line(x+w*0.06, y+h/2, cx-w*0.08, y+h*0.10, col, sw));
+      g.append(line(x+w*0.94, y+h/2, cx+w*0.08, y+h*0.10, col, sw));
+      g.append(line(cx-w*0.08, y+h*0.10, cx+w*0.08, y+h*0.10, col, sw));
+      // Hinge line at mid
+      g.append(el('line',{x1:x+w*0.06,y1:y+h/2,x2:x+w*0.94,y2:y+h/2,stroke:'rgba(74,158,255,0.45)','stroke-width':sw*0.8,'stroke-dasharray':`${w*0.04},${w*0.03}`,'pointer-events':'none'}));
+      break;
+    }
+    case 'agedo': {
+      // Lift-up door: side track rails + raised panel (dashed) + upward arrow + threshold
+      g.append(el('line',{x1:x+w*0.09,y1:y+h*0.06,x2:x+w*0.09,y2:y+h*0.94,stroke:'rgba(74,158,255,0.40)','stroke-width':sw*0.7,'pointer-events':'none'}));
+      g.append(el('line',{x1:x+w*0.91,y1:y+h*0.06,x2:x+w*0.91,y2:y+h*0.94,stroke:'rgba(74,158,255,0.40)','stroke-width':sw*0.7,'pointer-events':'none'}));
+      g.append(el('rect',{x:x+w*0.13,y:y+h*0.07,width:w*0.74,height:h*0.28,fill:'rgba(74,158,255,0.06)',stroke:col,'stroke-width':sw*0.65,'stroke-dasharray':`${w*0.04},${w*0.03}`,'pointer-events':'none'}));
+      const ay7 = cy + h*0.18;
+      g.append(line(cx, ay7, cx, ay7-h*0.28, col, sw));
+      g.append(line(cx, ay7-h*0.28, cx-w*0.09, ay7-h*0.18, col, sw));
+      g.append(line(cx, ay7-h*0.28, cx+w*0.09, ay7-h*0.18, col, sw));
+      g.append(line(x, y+h, x+w, y+h, 'rgba(255,153,68,0.85)', sw*1.2));
+      break;
+    }
   }
 }
 
@@ -537,6 +645,12 @@ const TEMPLATES = {
     { name:'4枚建引違い 4-Track', desc:'4-panel sliding window',
       icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(80,210,190,0.38)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="5" y1="13" x2="31" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="10" y1="4" x2="10" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="18" y1="4" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/><line x1="26" y1="4" x2="26" y2="22" stroke="#4A9EFF" stroke-width="0.8" stroke-dasharray="2,2"/>',
       make(){ const c=mkComposition(); c.meta.name='4枚建引違い'; c.composition.type='sliding-3t'; c.frame.overallWidth=2000; return c; } },
+    { name:'障子 Shoji Screen', desc:'Traditional paper-screen sliding window',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(240,228,195,0.55)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="12" y1="2" x2="12" y2="24" stroke="#4A9EFF" stroke-width="0.8"/><line x1="22" y1="2" x2="22" y2="24" stroke="#4A9EFF" stroke-width="0.8"/><line x1="2" y1="10" x2="34" y2="10" stroke="#4A9EFF" stroke-width="0.8"/><line x1="2" y1="17" x2="34" y2="17" stroke="#4A9EFF" stroke-width="0.8"/>',
+      make(){ const c=mkComposition(); c.meta.name='障子 Shoji Screen'; c.composition.type='shoji'; c.frame.overallWidth=900; c.frame.overallHeight=1800; c.frame.material='timber'; return c; } },
+    { name:'欄間 Ranma Transom', desc:'Decorative carved transom above opening',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(195,168,115,0.50)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="10" y1="2" x2="10" y2="24" stroke="#4A9EFF" stroke-width="0.7"/><line x1="18" y1="2" x2="18" y2="24" stroke="#4A9EFF" stroke-width="0.7"/><line x1="26" y1="2" x2="26" y2="24" stroke="#4A9EFF" stroke-width="0.7"/><line x1="2" y1="9" x2="34" y2="9" stroke="#4A9EFF" stroke-width="0.7"/><line x1="2" y1="17" x2="34" y2="17" stroke="#4A9EFF" stroke-width="0.7"/><line x1="2" y1="3" x2="34" y2="23" stroke="#4A9EFF" stroke-width="0.5" stroke-dasharray="1,1"/>',
+      make(){ const c=mkComposition(); c.meta.name='欄間 Ranma'; const ranma=mkPane(); ranma.type='ranma'; const main=mkPane(); main.type='sliding-2t'; c.composition={id:uid(),kind:'split',axis:'H',dividers:[{ratio:0.25}],children:[ranma,main]}; c.frame.overallWidth=1800; c.frame.overallHeight=2100; c.frame.material='timber'; return c; } },
   ],
   door: [
     { name:'Single Door', desc:'Single swing door',
@@ -566,6 +680,12 @@ const TEMPLATES = {
     { name:'自由戸 Free Swing', desc:'Swings both directions (café door)',
       icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(200,170,120,0.32)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="2" y1="2" x2="2" y2="24" stroke="#4A9EFF" stroke-width="1.5"/><path d="M 2 24 A 20 20 0 0 1 22 4" stroke="#4A9EFF" stroke-width="1.2" fill="none"/><path d="M 2 24 A 20 20 0 0 0 22 4" stroke="#4A9EFF" stroke-width="1" fill="none" stroke-dasharray="3,2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.8"/>',
       make(){ const c=mkComposition(); c.meta.name='自由戸 Free Swing'; c.openingType='door'; c.composition.type='door-free-swing'; c.frame.overallWidth=900; c.frame.overallHeight=2100; return c; } },
+    { name:'格子戸 Lattice Door', desc:'Open kumiko-lattice traditional door',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(175,152,108,0.52)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="11" y1="2" x2="11" y2="22" stroke="#4A9EFF" stroke-width="0.9"/><line x1="18" y1="2" x2="18" y2="22" stroke="#4A9EFF" stroke-width="0.9"/><line x1="25" y1="2" x2="25" y2="22" stroke="#4A9EFF" stroke-width="0.9"/><line x1="2" y1="9" x2="34" y2="9" stroke="#4A9EFF" stroke-width="0.9"/><line x1="2" y1="17" x2="34" y2="17" stroke="#4A9EFF" stroke-width="0.9"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.5"/>',
+      make(){ const c=mkComposition(); c.meta.name='格子戸 Lattice Door'; c.openingType='door'; c.composition.type='koshido'; c.frame.overallWidth=900; c.frame.overallHeight=1900; c.frame.material='timber'; return c; } },
+    { name:'上げ戸 Lift Door', desc:'Panel slides vertically upward into wall',
+      icon:'<rect x="2" y="2" width="32" height="22" fill="rgba(170,150,112,0.52)" stroke="#5A5E6A" stroke-width="1.5"/><line x1="8" y1="2" x2="8" y2="24" stroke="#4A9EFF" stroke-width="0.8"/><line x1="28" y1="2" x2="28" y2="24" stroke="#4A9EFF" stroke-width="0.8"/><line x1="18" y1="18" x2="18" y2="8" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="8" x2="13" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="18" y1="8" x2="23" y2="13" stroke="#4A9EFF" stroke-width="1.2"/><line x1="2" y1="24" x2="34" y2="24" stroke="#FF9944" stroke-width="1.5"/>',
+      make(){ const c=mkComposition(); c.meta.name='上げ戸 Lift Door'; c.openingType='door'; c.composition.type='agedo'; c.frame.overallWidth=1800; c.frame.overallHeight=2400; c.frame.material='timber'; return c; } },
   ],
   curtain: [
     { name:'CuPnl 嵌殺し Fixed', desc:'Fixed curtain wall panel',
