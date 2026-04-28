@@ -349,6 +349,54 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
 .template-card-name { font-size:11px; font-weight:600; color:var(--text-primary); text-align:center; }
 .template-card-desc { font-size:9px; color:var(--text-muted); text-align:center; line-height:1.4; }
 
+/* ── JOINERY LIST MODAL ────────────────────────────────── */
+#list-modal {
+  position:fixed; inset:0; z-index:500;
+  background:rgba(0,0,0,0.72); display:none;
+  align-items:center; justify-content:center;
+}
+#list-modal.open { display:flex; }
+#list-box {
+  background:var(--bg-panel); border:1px solid var(--border);
+  border-radius:8px; width:820px; max-height:82vh;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+#list-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; border-bottom:1px solid var(--border); flex:none;
+  gap:8px;
+}
+#list-header h2 { font-size:13px; font-weight:600; flex:none; }
+#list-header-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+#list-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+  padding:14px 16px 16px; overflow-y:auto; flex:1;
+}
+.list-card {
+  border:1px solid var(--border); border-radius:6px;
+  background:var(--bg-surface); cursor:pointer;
+  transition:border-color 0.12s, background 0.12s;
+  display:flex; flex-direction:column; align-items:center;
+  padding:10px 8px 8px; gap:5px; position:relative;
+}
+.list-card:hover { border-color:var(--accent); background:var(--accent-glow); }
+.list-card-delete {
+  position:absolute; top:4px; right:4px;
+  font-size:9px; line-height:1; padding:2px 5px;
+  border-radius:3px; border:1px solid var(--border);
+  background:var(--bg-input); color:var(--text-muted);
+  cursor:pointer; opacity:0; transition:opacity 0.12s;
+}
+.list-card:hover .list-card-delete { opacity:1; }
+.list-card-delete:hover { background:rgba(255,95,87,0.2); border-color:var(--danger); color:var(--danger); }
+.list-card-preview { display:block; border-radius:3px; overflow:hidden; line-height:0; }
+.list-card-name { font-size:11px; font-weight:600; color:var(--text-primary); text-align:center; }
+.list-card-dims { font-size:9px; color:var(--text-muted); text-align:center; }
+.list-empty {
+  grid-column:1/-1; text-align:center; padding:48px 16px;
+  color:var(--text-dim); font-size:12px; line-height:1.9;
+}
+
 /* ── DIM INPUT ─────────────────────────────────────────── */
 .dim-input {
   background:transparent; border:none;
@@ -439,6 +487,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
   #topbar-actions { gap: 4px; }
   #window-title   { font-size: 12px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #btn-import     { display: none; }
+  #btn-list       { display: none; }
   #btn-undo       { padding: 5px 8px; font-size: 11px; }
   #btn-templates  { padding: 5px 8px; font-size: 11px; }
   #btn-new        { padding: 5px 8px; font-size: 11px; }
@@ -506,6 +555,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
     <div id="topbar-actions">
       <button class="btn" id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
       <button class="btn" id="btn-templates" title="Quick-Start Templates">Templates</button>
+      <button class="btn" id="btn-list" title="Joinery List / 建具リスト">List</button>
       <button class="btn" id="btn-new" title="New (Ctrl+N)">New</button>
       <button class="btn" id="btn-import" title="Import JSON">Import</button>
       <button class="btn btn-primary" id="btn-export" title="Export JSON (Ctrl+E)">Export</button>
@@ -1161,6 +1211,26 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
   </div>
 </div>
 
+<!-- ── JOINERY LIST MODAL ─────────────────────────────── -->
+<div id="list-modal">
+  <div id="list-box">
+    <div id="list-header">
+      <h2 id="list-title">Joinery List</h2>
+      <div id="list-header-actions">
+        <button class="btn" id="btn-list-add-file" title="Add individual composition JSON file(s)">+ Add File</button>
+        <button class="btn" id="btn-list-add-current" title="Add current canvas composition to list">+ Add Current</button>
+        <button class="btn" id="btn-list-import" title="Import a joinery-list JSON (multiple items)">↑ Import List</button>
+        <button class="btn btn-primary" id="btn-list-export" title="Export all items as joinery-list JSON">↓ Export List</button>
+        <button class="btn" id="btn-list-clear" title="Clear all items">Clear</button>
+        <button class="btn-icon" id="btn-close-list" title="Close">✕</button>
+      </div>
+    </div>
+    <div id="list-grid"></div>
+  </div>
+</div>
+<input type="file" id="file-list-import" accept=".json" style="display:none">
+<input type="file" id="file-list-add" accept=".json" multiple style="display:none">
+
 <div id="dim-tooltip"></div>
 
 <script src="catalog.js"></script>
@@ -1231,6 +1301,7 @@ const S = {
   showDims: true,       // dimension lines visibility toggle
   clipboard: null,      // copied pane config for Ctrl+C / Ctrl+V
   _anim: null,          // { id, target, startFraction, startTime, duration } — runtime only
+  joineryList: [],      // [{ id, name, composition }] — persisted to localStorage
 };
 
 // Pan/zoom viewport — null means "fit to content" on next render
@@ -2842,6 +2913,216 @@ function dismissDraft() {
 }
 
 // ============================================================
+// JOINERY LIST
+// ============================================================
+const LIST_KEY = 'joinery-list-v1';
+
+function saveJoineryList() {
+  try { localStorage.setItem(LIST_KEY, JSON.stringify(S.joineryList)); } catch(e) {}
+}
+
+function loadJoineryList() {
+  try {
+    const raw = localStorage.getItem(LIST_KEY);
+    if (raw) S.joineryList = JSON.parse(raw);
+  } catch(e) { S.joineryList = []; }
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function generatePreviewSVG(composition, thumbW, thumbH) {
+  thumbW = thumbW || 120;
+  thumbH = thumbH || 90;
+  const f = composition.frame;
+  const fw = frameWidths(f);
+  const W = f.overallWidth, H = f.overallHeight;
+  const xmlns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(xmlns, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.setAttribute('width', thumbW);
+  svg.setAttribute('height', thumbH);
+  svg.setAttribute('xmlns', xmlns);
+
+  // frame background
+  const bg = document.createElementNS(xmlns, 'rect');
+  bg.setAttribute('x','0'); bg.setAttribute('y','0');
+  bg.setAttribute('width', W); bg.setAttribute('height', H);
+  bg.setAttribute('fill','#2A2D35'); bg.setAttribute('stroke','#4A9EFF');
+  bg.setAttribute('stroke-width', Math.max(W,H)*0.02);
+  svg.appendChild(bg);
+
+  // inner frame inset rect
+  const fi = document.createElementNS(xmlns, 'rect');
+  fi.setAttribute('x', fw.left); fi.setAttribute('y', fw.top);
+  fi.setAttribute('width', W - fw.left - fw.right);
+  fi.setAttribute('height', H - fw.top - fw.bottom);
+  fi.setAttribute('fill','none'); fi.setAttribute('stroke','#3E4250');
+  fi.setAttribute('stroke-width', Math.max(W,H)*0.008);
+  svg.appendChild(fi);
+
+  // recursive pane fill
+  function drawNode(node, x, y, w, h) {
+    if (node.kind === 'pane') {
+      const color = (typeof GLASS_COLORS !== 'undefined' && GLASS_COLORS[node.type]) || 'rgba(140,195,230,0.35)';
+      const r = document.createElementNS(xmlns, 'rect');
+      r.setAttribute('x', x); r.setAttribute('y', y);
+      r.setAttribute('width', w); r.setAttribute('height', h);
+      r.setAttribute('fill', color);
+      r.setAttribute('stroke', '#5A5E6A');
+      r.setAttribute('stroke-width', Math.max(W,H)*0.006);
+      svg.appendChild(r);
+    } else if (node.kind === 'split') {
+      let pos = 0;
+      node.children.forEach((child, i) => {
+        const ratio = i < node.dividers.length ? node.dividers[i].ratio : 1;
+        const nextRatio = (i + 1 < node.dividers.length) ? node.dividers[i + 1].ratio : 1;
+        if (node.axis === 'V') {
+          const segStart = i === 0 ? 0 : node.dividers[i-1].ratio;
+          const segEnd   = i < node.dividers.length ? node.dividers[i].ratio : 1;
+          const cx = x + segStart * w;
+          const cw = (segEnd - segStart) * w;
+          drawNode(child, cx, y, cw, h);
+        } else {
+          const segStart = i === 0 ? 0 : node.dividers[i-1].ratio;
+          const segEnd   = i < node.dividers.length ? node.dividers[i].ratio : 1;
+          const cy = y + segStart * h;
+          const ch = (segEnd - segStart) * h;
+          drawNode(child, x, cy, w, ch);
+        }
+      });
+    }
+  }
+  const ix = fw.left, iy = fw.top;
+  const iw = W - fw.left - fw.right, ih = H - fw.top - fw.bottom;
+  drawNode(composition.composition, ix, iy, iw, ih);
+
+  return svg.outerHTML;
+}
+
+function openListModal() {
+  renderListGrid();
+  document.getElementById('list-modal').classList.add('open');
+}
+
+function closeListModal() {
+  document.getElementById('list-modal').classList.remove('open');
+}
+
+function renderListGrid() {
+  const grid = document.getElementById('list-grid');
+  if (!S.joineryList.length) {
+    grid.innerHTML = '<div class="list-empty">No items yet.<br>Use <b>+ Add Current</b> to save the canvas, <b>+ Add File</b> to load individual JSON files,<br>or <b>↑ Import List</b> to load a joinery-list JSON.</div>';
+    return;
+  }
+  grid.innerHTML = S.joineryList.map(item => {
+    const svgStr = generatePreviewSVG(item.composition);
+    const w = item.composition.frame.overallWidth;
+    const h = item.composition.frame.overallHeight;
+    return '<div class="list-card" data-id="' + item.id + '">' +
+      '<button class="list-card-delete" data-id="' + item.id + '" title="Remove">✕</button>' +
+      '<div class="list-card-preview">' + svgStr + '</div>' +
+      '<div class="list-card-name">' + escHtml(item.name) + '</div>' +
+      '<div class="list-card-dims">W' + w + ' × H' + h + '</div>' +
+      '</div>';
+  }).join('');
+  grid.querySelectorAll('.list-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.classList.contains('list-card-delete')) return;
+      loadListItem(card.dataset.id);
+    });
+  });
+  grid.querySelectorAll('.list-card-delete').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      removeFromList(btn.dataset.id);
+    });
+  });
+}
+
+function addCurrentToList() {
+  const comp = clone(S.c);
+  const name = (comp.meta && comp.meta.name) ? comp.meta.name : 'Untitled';
+  S.joineryList.push({ id: uid(), name: name, composition: comp });
+  saveJoineryList();
+  renderListGrid();
+}
+
+function removeFromList(id) {
+  S.joineryList = S.joineryList.filter(it => it.id !== id);
+  saveJoineryList();
+  renderListGrid();
+}
+
+function loadListItem(id) {
+  const item = S.joineryList.find(it => it.id === id);
+  if (!item) return;
+  if (S.dirty && !confirm('Load this joinery? Unsaved changes will be lost.')) return;
+  pushUndo();
+  S.c = clone(item.composition);
+  S._anim = null;
+  S.sel = null;
+  S.dirty = false;
+  S.undoStack = [];
+  syncOpeningType(S.c.openingType || 'window');
+  closeListModal();
+  resetViewBox();
+  render();
+}
+
+function importJoineryList(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.schema !== 'joinery-list-v1' || !Array.isArray(data.items))
+        throw new Error('Not a joinery-list-v1 file');
+      const existingIds = new Set(S.joineryList.map(it => it.id));
+      const newItems = data.items.filter(it => !existingIds.has(it.id));
+      S.joineryList.push.apply(S.joineryList, newItems);
+      saveJoineryList();
+      renderListGrid();
+    } catch(err) { alert('Invalid joinery list file: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+function addFilesToList(files) {
+  let pending = files.length;
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const comp = JSON.parse(e.target.result);
+        if (!comp.frame || !comp.composition) throw new Error('Not a composition');
+        migrateParsedJSON(comp);
+        const name = (comp.meta && comp.meta.name) ? comp.meta.name : file.name.replace(/\.json$/i, '');
+        S.joineryList.push({ id: uid(), name: name, composition: comp });
+      } catch(err) { /* skip invalid files */ }
+      if (--pending === 0) { saveJoineryList(); renderListGrid(); }
+    };
+    reader.readAsText(file);
+  });
+}
+
+function exportJoineryList() {
+  if (!S.joineryList.length) { alert('Joinery list is empty.'); return; }
+  const data = { schema: 'joinery-list-v1', exportedAt: new Date().toISOString(), items: S.joineryList };
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
+  a.download = 'joinery-list.json';
+  a.click();
+}
+
+function clearJoineryList() {
+  if (!confirm('Clear all items from the Joinery List?')) return;
+  S.joineryList = [];
+  saveJoineryList();
+  renderListGrid();
+}
+
+// ============================================================
 // COPY / PASTE
 // ============================================================
 function copyPane() {
@@ -2977,6 +3258,10 @@ function applyLang() {
   ['ctx-door-optgroup','pane-door-optgroup'].forEach(id=>{const e=document.getElementById(id);if(e)e.label=LANG==='ja'?'扉':'Doors';});
   ['ctx-curtain-optgroup','pane-curtain-optgroup'].forEach(id=>{const e=document.getElementById(id);if(e)e.label=LANG==='ja'?'カーテンウォール':'Curtain Wall';});
   document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active', b.dataset.lang===LANG));
+  const _btnList = document.getElementById('btn-list');
+  if (_btnList) _btnList.textContent = LANG==='ja' ? '建具リスト' : 'List';
+  const _listTitle = document.getElementById('list-title');
+  if (_listTitle) _listTitle.textContent = LANG==='ja' ? '建具リスト' : 'Joinery List';
 }
 document.querySelectorAll('.lang-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{ setLang(btn.dataset.lang); applyLang(); render(); });
@@ -2988,6 +3273,20 @@ document.getElementById('btn-templates').addEventListener('click', openTemplates
 document.getElementById('btn-close-templates').addEventListener('click', closeTemplatesModal);
 document.getElementById('templates-modal').addEventListener('click', e=>{ if(e.target===document.getElementById('templates-modal')) closeTemplatesModal(); });
 document.querySelectorAll('.tpl-tab').forEach(btn=>{ btn.addEventListener('click', ()=>renderTemplatesGrid(btn.dataset.ttype)); });
+
+// Joinery List
+document.getElementById('btn-list').addEventListener('click', openListModal);
+document.getElementById('btn-close-list').addEventListener('click', closeListModal);
+document.getElementById('list-modal').addEventListener('click', e=>{ if(e.target===document.getElementById('list-modal')) closeListModal(); });
+document.getElementById('btn-list-add-current').addEventListener('click', addCurrentToList);
+document.getElementById('btn-list-clear').addEventListener('click', clearJoineryList);
+document.getElementById('btn-list-export').addEventListener('click', exportJoineryList);
+const _fileListImport = document.getElementById('file-list-import');
+document.getElementById('btn-list-import').addEventListener('click', ()=>_fileListImport.click());
+_fileListImport.addEventListener('change', e=>{ if(e.target.files[0]) importJoineryList(e.target.files[0]); e.target.value=''; });
+const _fileListAdd = document.getElementById('file-list-add');
+document.getElementById('btn-list-add-file').addEventListener('click', ()=>_fileListAdd.click());
+_fileListAdd.addEventListener('change', e=>{ if(e.target.files.length) addFilesToList(e.target.files); e.target.value=''; });
 
 // Inspector — pane
 document.getElementById('pane-type-select').addEventListener('change', e=>{ if(S.sel) assignType(S.sel,e.target.value); });
@@ -3090,6 +3389,10 @@ document.querySelectorAll('.accordion-header').forEach(h=>{
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e=>{
+  if (document.getElementById('list-modal').classList.contains('open')) {
+    if (e.key==='Escape') { closeListModal(); return; }
+    return;
+  }
   if (document.getElementById('templates-modal').classList.contains('open')) {
     if (e.key==='Escape') { closeTemplatesModal(); return; }
     return;
@@ -3183,6 +3486,7 @@ if (_btnDismissDraft) _btnDismissDraft.addEventListener('click', ()=>{ dismissDr
 
 // Check for saved draft on load
 loadDraft();
+loadJoineryList();
 
 // ============================================================
 // MOBILE: TAB BAR + TOUCH SUPPORT
