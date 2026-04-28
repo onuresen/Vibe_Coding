@@ -1054,6 +1054,14 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
                 </select>
               </div>
             </div>
+            <div id="pane-anim-section" style="display:none;padding:10px 14px 12px;border-top:1px solid var(--frame-edge);">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">Preview</div>
+              <div style="display:flex;gap:8px;">
+                <button id="btn-anim-open"  class="btn" style="flex:1;font-size:12px;">Open</button>
+                <button id="btn-anim-close" class="btn" style="flex:1;font-size:12px;">Close</button>
+              </div>
+              <div id="anim-status" style="font-size:10px;color:var(--text-dim);margin-top:6px;text-align:center;">Closed</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1141,13 +1149,31 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
 const MIN_PANE_MM = 60;
 const SVG_MARGIN = 160;
 
+// ── ANIMATION TYPE SETS ───────────────────────────────────────
+const SLIDE_H_TYPES  = new Set(['sliding-2t','sliding-3t','sliding-single','sliding-left',
+  'sliding-apart','door-sliding','door-sliding-apart','door-bypass','shoji','fusuma','door-pocket']);
+const SLIDE_V_TYPES  = new Set(['hung-double','agedo','door-overhead']);
+const HINGE_L_TYPES  = new Set(['casement-left','door-single','door-free-swing','koshido','tate-suberidashi']);
+const HINGE_R_TYPES  = new Set(['casement-right']);
+const HINGE_T_TYPES  = new Set(['casement-top','awning','outward-tilt','shitomido','projecting']);
+const HINGE_B_TYPES  = new Set(['casement-bottom','hopper']);
+const DOUBLE_H_TYPES = new Set(['casement-double','door-double','door-french','door-parent-child']);
+const FOLD_TYPES     = new Set(['door-bifold','door-accordion']);
+const PIVOT_TYPES    = new Set(['pivot-v','pivot-h','tilt-turn']);
+const LOUVRE_ANIM    = new Set(['louvre']);
+const ANIMATABLE_TYPES = new Set([
+  ...SLIDE_H_TYPES, ...SLIDE_V_TYPES, ...HINGE_L_TYPES, ...HINGE_R_TYPES,
+  ...HINGE_T_TYPES, ...HINGE_B_TYPES, ...DOUBLE_H_TYPES, ...FOLD_TYPES,
+  ...PIVOT_TYPES,   ...LOUVRE_ANIM
+]);
+
 // ============================================================
 // STATE
 // ============================================================
 function uid() { return crypto.randomUUID(); }
 
 function mkPane() {
-  return { id:uid(), kind:'pane', type:'fixed', label:'',
+  return { id:uid(), kind:'pane', type:'fixed', label:'', openFraction:0,
     glass:{ product:'clear', thickness:24, uValue:null, shgc:null, vlt:null },
     sash:{ thickness:50, direction:null, handleSide:'right' } };
 }
@@ -1179,6 +1205,7 @@ const S = {
   dirty: false,
   showDims: true,       // dimension lines visibility toggle
   clipboard: null,      // copied pane config for Ctrl+C / Ctrl+V
+  _anim: null,          // { id, target, startFraction, startTime, duration } — runtime only
 };
 
 // Pan/zoom viewport — null means "fit to content" on next render
@@ -1305,6 +1332,8 @@ function assignType(id, type) {
   if (!node || node.kind !== 'pane') return;
   pushUndo();
   node.type = type;
+  node.openFraction = 0;
+  S._anim = null;
   if (type !== 'fixed' && !node.sash) node.sash = { thickness:50, direction:null, handleSide:'right' };
   S.dirty = true; S.c.meta.modifiedAt = new Date().toISOString();
   render();
@@ -1375,6 +1404,45 @@ function setNodeDimension(nodeId, axis, targetMm) {
 // ============================================================
 let _nodeRects = {};
 
+// ============================================================
+// ANIMATION CONTROLLER
+// ============================================================
+function startPaneAnimation(paneId, targetFraction) {
+  S._anim = null;
+  const pane = findNode(S.c.composition, paneId);
+  if (!pane || pane.kind !== 'pane') return;
+  const startFraction = pane.openFraction || 0;
+  if (Math.abs(startFraction - targetFraction) < 0.01) {
+    pane.openFraction = targetFraction; renderCanvas(); _updateAnimStatus(); return;
+  }
+  S._anim = { id: paneId, target: targetFraction, startFraction,
+               startTime: performance.now(), duration: 480 };
+  requestAnimationFrame(_animStep);
+}
+
+function _animStep(ts) {
+  const a = S._anim;
+  if (!a) return;
+  const t = Math.min(1, (ts - a.startTime) / a.duration);
+  const ease = 1 - Math.pow(1 - t, 3);
+  const pane = findNode(S.c.composition, a.id);
+  if (!pane) { S._anim = null; return; }
+  pane.openFraction = a.startFraction + (a.target - a.startFraction) * ease;
+  renderCanvas();
+  _updateAnimStatus();
+  if (t < 1) { requestAnimationFrame(_animStep); }
+  else { pane.openFraction = a.target; S._anim = null; renderCanvas(); _updateAnimStatus(); }
+}
+
+function _updateAnimStatus() {
+  const statusEl = document.getElementById('anim-status');
+  if (!statusEl || !S.sel) return;
+  const pane = findNode(S.c.composition, S.sel);
+  if (!pane || pane.kind !== 'pane') return;
+  const f = pane.openFraction || 0;
+  statusEl.textContent = f < 0.05 ? 'Closed' : f > 0.95 ? 'Fully open' : `${Math.round(f * 100)}% open`;
+}
+
 function renderCanvas() {
   const svg = document.getElementById('main-svg');
   svg.innerHTML = '';
@@ -1387,12 +1455,13 @@ function renderCanvas() {
   svg.setAttribute('viewBox', `${_vbox.x} ${_vbox.y} ${_vbox.w} ${_vbox.h}`);
   updateZoomIndicator();
 
-  // Defs
+  // Defs (exposed as _renderDefs so renderPaneAnimated can add clipPaths)
   const defs = el('defs', {});
   const pat = el('pattern', {id:'gg',x:0,y:0,width:60,height:60,patternUnits:'userSpaceOnUse'});
   pat.append(el('line',{x1:0,y1:0,x2:60,y2:0,stroke:'rgba(255,255,255,0.025)','stroke-width':1}));
   pat.append(el('line',{x1:0,y1:0,x2:0,y2:60,stroke:'rgba(255,255,255,0.025)','stroke-width':1}));
   defs.append(pat);
+  window._renderDefs = defs;
   svg.append(defs);
 
   // Canvas background
@@ -1475,9 +1544,16 @@ function renderNodeRec(g, node, x, y, w, h) {
 
 function renderPane(g, node, x, y, w, h) {
   const gColor = GLASS_COLORS[node.type] || GLASS_COLORS['fixed'];
-  const isSelected = S.sel === node.id;
-
   const paneG = el('g', {'data-id':node.id, cursor:'pointer'});
+
+  // Route to animated rendering when pane has an open fraction
+  const openF = node.openFraction || 0;
+  if (openF > 0 && ANIMATABLE_TYPES.has(node.type)) {
+    renderPaneAnimated(paneG, node, x, y, w, h, openF, gColor);
+    paneG.addEventListener('click', (e)=>{ e.stopPropagation(); S.sel=node.id; render(); });
+    g.append(paneG);
+    return;
+  }
 
   // Glass fill
   paneG.append(el('rect',{x,y,width:w,height:h,fill:gColor}));
@@ -1549,6 +1625,273 @@ function renderSplit(g, node, x, y, w, h) {
       ? el('line',{x1:x+ratio*w,y1:y,x2:x+ratio*w,y2:y+h,stroke:'rgba(80,90,110,0.8)','stroke-width':1.5,'pointer-events':'none'})
       : el('line',{x1:x,y1:y+ratio*h,x2:x+w,y2:y+ratio*h,stroke:'rgba(80,90,110,0.8)','stroke-width':1.5,'pointer-events':'none'});
     g.append(dline);
+  }
+}
+
+// ============================================================
+// ANIMATED PANE RENDERING
+// ============================================================
+function _addClipRect(id, x, y, w, h) {
+  if (!window._renderDefs) return;
+  const cp = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+  cp.setAttribute('id', id);
+  cp.append(el('rect', {x, y, width: w, height: h}));
+  window._renderDefs.append(cp);
+}
+
+function _sashPanel(gInner, px, py, pw, ph, gColor, opacity) {
+  if (pw <= 0 || ph <= 0) return;
+  const sashG = el('g', opacity < 1 ? {opacity} : {});
+  sashG.append(el('rect', {x:px, y:py, width:pw, height:ph, fill:gColor}));
+  sashG.append(el('rect', {x:px, y:py, width:pw, height:ph, fill:'url(#gg)', 'pointer-events':'none'}));
+  sashG.append(el('rect', {x:px, y:py, width:pw, height:ph, fill:'none',
+    stroke:'rgba(80,90,110,0.9)', 'stroke-width':2, 'pointer-events':'none'}));
+  gInner.append(sashG);
+}
+
+function _thresholdLine(gInner, x, y, w) {
+  gInner.append(el('line', {x1:x, y1:y+w-1, x2:x+w, y2:y+w-1,  // actually: threshold at bottom
+    stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+}
+
+function renderPaneAnimated(g, node, x, y, w, h, openF, gColor) {
+  const type = node.type;
+  const clipId = `aclip-${node.id}`;
+  _addClipRect(clipId, x, y, w, h);
+
+  // Clipped inner group — all sash drawing goes inside
+  const gInner = el('g', {'clip-path': `url(#${clipId})`});
+  // Frame-interior background revealed as sash opens
+  gInner.append(el('rect', {x, y, width:w, height:h, fill:'#1A1D24'}));
+
+  const hasDoorThreshold = SLIDE_V_TYPES.has(type) && type==='door-overhead' ||
+    ['door-sliding','door-sliding-apart','door-bypass','door-pocket',
+     'door-single','door-double','door-french','door-parent-child',
+     'door-free-swing','koshido','door-bifold','door-accordion'].includes(type);
+
+  // ── A: HORIZONTAL SLIDE ─────────────────────────────────
+  if (SLIDE_H_TYPES.has(type)) {
+    if (type === 'sliding-2t' || type === 'shoji' || type === 'fusuma') {
+      // Panel B stays right (back track), Panel A slides right
+      const shift = openF * (w / 2);
+      _sashPanel(gInner, x + w/2, y, w/2, h, gColor, 0.65);
+      _sashPanel(gInner, x + shift, y, w/2, h, gColor, 1);
+    } else if (type === 'sliding-3t') {
+      // All 3 panels slide rightward together, opening left 1/3
+      const shift = openF * (w / 3);
+      _sashPanel(gInner, x + w*2/3 + shift, y, w/3, h, gColor, 0.6);
+      _sashPanel(gInner, x + w/3  + shift, y, w/3, h, gColor, 0.8);
+      _sashPanel(gInner, x        + shift, y, w/3, h, gColor, 1);
+    } else if (type === 'sliding-single') {
+      // Fixed right half, sliding left half slides right
+      const shift = openF * (w / 2);
+      _sashPanel(gInner, x + w/2, y, w/2, h, gColor, 0.65);
+      _sashPanel(gInner, x + shift, y, w/2, h, gColor, 1);
+    } else if (type === 'sliding-left') {
+      // Fixed left half, sliding right half slides left
+      const shift = openF * (w / 2);
+      _sashPanel(gInner, x, y, w/2, h, gColor, 0.65);
+      _sashPanel(gInner, x + w/2 - shift, y, w/2, h, gColor, 1);
+    } else if (type === 'sliding-apart' || type === 'door-sliding-apart') {
+      // Two panels slide outward from centre
+      const shift = openF * (w / 2);
+      _sashPanel(gInner, x - shift, y, w/2, h, gColor, 1);
+      _sashPanel(gInner, x + w/2 + shift, y, w/2, h, gColor, 1);
+      if (type === 'door-sliding-apart') gInner.append(el('line', {x1:x, y1:y+h, x2:x+w, y2:y+h, stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    } else if (type === 'door-sliding') {
+      // Single door slides right
+      const shift = openF * w;
+      _sashPanel(gInner, x + shift, y, w, h, gColor, 1);
+      gInner.append(el('line', {x1:x, y1:y+h, x2:x+w, y2:y+h, stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    } else if (type === 'door-bypass') {
+      // Panel A (front) slides right, panel B (back) stays
+      const shift = openF * (w * 0.5);
+      _sashPanel(gInner, x + w*0.45, y, w*0.55, h, gColor, 0.6);
+      _sashPanel(gInner, x + shift,  y, w*0.55, h, gColor, 1);
+      gInner.append(el('line', {x1:x, y1:y+h, x2:x+w, y2:y+h, stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    } else if (type === 'door-pocket') {
+      // Panel slides left into pocket
+      const shift = openF * w;
+      _sashPanel(gInner, x - shift, y, w, h, gColor, 1);
+      gInner.append(el('line', {x1:x, y1:y+h, x2:x+w, y2:y+h, stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    }
+
+  // ── B: VERTICAL SLIDE ───────────────────────────────────
+  } else if (SLIDE_V_TYPES.has(type)) {
+    if (type === 'hung-double') {
+      const shift = openF * (h / 2);
+      _sashPanel(gInner, x, y + h/2, w, h/2, gColor, 0.65);
+      _sashPanel(gInner, x, y - shift, w, h/2, gColor, 1);
+      _sashPanel(gInner, x, y + h/2 + shift, w, h/2, gColor, 0.85);
+    } else if (type === 'agedo') {
+      const shift = openF * h;
+      _sashPanel(gInner, x, y - shift, w, h, gColor, 1);
+      gInner.append(el('line', {x1:x, y1:y+h, x2:x+w, y2:y+h, stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    } else if (type === 'door-overhead') {
+      const shift = openF * h;
+      _sashPanel(gInner, x, y - shift, w, h, gColor, 1);
+      gInner.append(el('line', {x1:x, y1:y+h, x2:x+w, y2:y+h, stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    }
+
+  // ── C: HINGE LEFT ────────────────────────────────────────
+  } else if (HINGE_L_TYPES.has(type)) {
+    const projW = Math.max(0, w * (1 - openF));
+    if (projW > 3) {
+      _sashPanel(gInner, x, y, projW, h, gColor, 1);
+    } else {
+      gInner.append(el('line', {x1:x+2, y1:y, x2:x+2, y2:y+h,
+        stroke:'rgba(80,90,110,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    }
+    // Sweep arc (faded)
+    if (openF > 0.05) {
+      const angle = openF * 80 * Math.PI / 180;
+      const r = w;
+      const ax = x + r * Math.sin(angle);
+      const ay = (y + h/2) - r * (1 - Math.cos(angle));
+      gInner.append(el('path', {d:`M ${x} ${y+h/2} A ${r} ${r} 0 0 1 ${ax} ${ay}`,
+        stroke:'rgba(74,158,255,0.3)', fill:'none', 'stroke-width':1.5,
+        'stroke-dasharray':'8,6', 'pointer-events':'none'}));
+    }
+    if (['door-single','door-free-swing','koshido'].includes(type)) {
+      gInner.append(el('line', {x1:x, y1:y+h, x2:x+w, y2:y+h, stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    }
+
+  // ── D: HINGE RIGHT ───────────────────────────────────────
+  } else if (HINGE_R_TYPES.has(type)) {
+    const projW = Math.max(0, w * (1 - openF));
+    if (projW > 3) {
+      _sashPanel(gInner, x + w - projW, y, projW, h, gColor, 1);
+    } else {
+      gInner.append(el('line', {x1:x+w-2, y1:y, x2:x+w-2, y2:y+h,
+        stroke:'rgba(80,90,110,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    }
+    if (openF > 0.05) {
+      const angle = openF * 80 * Math.PI / 180;
+      const r = w;
+      const ax = (x + w) - r * Math.sin(angle);
+      const ay = (y + h/2) - r * (1 - Math.cos(angle));
+      gInner.append(el('path', {d:`M ${x+w} ${y+h/2} A ${r} ${r} 0 0 0 ${ax} ${ay}`,
+        stroke:'rgba(74,158,255,0.3)', fill:'none', 'stroke-width':1.5,
+        'stroke-dasharray':'8,6', 'pointer-events':'none'}));
+    }
+
+  // ── E: HINGE TOP ─────────────────────────────────────────
+  } else if (HINGE_T_TYPES.has(type)) {
+    const projH = Math.max(0, h * (1 - openF));
+    if (projH > 3) {
+      _sashPanel(gInner, x, y, w, projH, gColor, 1);
+    } else {
+      gInner.append(el('line', {x1:x, y1:y+2, x2:x+w, y2:y+2,
+        stroke:'rgba(80,90,110,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    }
+    if (openF > 0.05) {
+      const r = h;
+      const angle = openF * 75 * Math.PI / 180;
+      const ay = y + r * Math.sin(angle);
+      const ax = (x + w/2) - r * (1 - Math.cos(angle));
+      gInner.append(el('path', {d:`M ${x+w/2} ${y} A ${r} ${r} 0 0 0 ${ax} ${ay}`,
+        stroke:'rgba(74,158,255,0.3)', fill:'none', 'stroke-width':1.5,
+        'stroke-dasharray':'8,6', 'pointer-events':'none'}));
+    }
+
+  // ── F: HINGE BOTTOM ──────────────────────────────────────
+  } else if (HINGE_B_TYPES.has(type)) {
+    const projH = Math.max(0, h * (1 - openF));
+    if (projH > 3) {
+      _sashPanel(gInner, x, y + h - projH, w, projH, gColor, 1);
+    } else {
+      gInner.append(el('line', {x1:x, y1:y+h-2, x2:x+w, y2:y+h-2,
+        stroke:'rgba(80,90,110,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    }
+    if (openF > 0.05) {
+      const r = h;
+      const angle = openF * 75 * Math.PI / 180;
+      const ay = (y + h) - r * Math.sin(angle);
+      const ax = (x + w/2) + r * (1 - Math.cos(angle));
+      gInner.append(el('path', {d:`M ${x+w/2} ${y+h} A ${r} ${r} 0 0 1 ${ax} ${ay}`,
+        stroke:'rgba(74,158,255,0.3)', fill:'none', 'stroke-width':1.5,
+        'stroke-dasharray':'8,6', 'pointer-events':'none'}));
+    }
+
+  // ── G: DOUBLE HINGE ──────────────────────────────────────
+  } else if (DOUBLE_H_TYPES.has(type)) {
+    let lFrac = 0.5, rFrac = 0.5;
+    if (type === 'door-parent-child') { lFrac = 0.7; rFrac = 0.3; }
+    const projL = Math.max(0, w * lFrac * (1 - openF));
+    const projR = Math.max(0, w * rFrac * (1 - openF));
+    if (projL > 3) _sashPanel(gInner, x, y, projL, h, gColor, 1);
+    else gInner.append(el('line', {x1:x+2, y1:y, x2:x+2, y2:y+h, stroke:'rgba(80,90,110,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    if (projR > 3) _sashPanel(gInner, x + w - projR, y, projR, h, gColor, 1);
+    else gInner.append(el('line', {x1:x+w-2, y1:y, x2:x+w-2, y2:y+h, stroke:'rgba(80,90,110,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    if (['door-double','door-french','door-parent-child'].includes(type)) {
+      gInner.append(el('line', {x1:x, y1:y+h, x2:x+w, y2:y+h, stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+    }
+
+  // ── H: FOLD (BIFOLD / ACCORDION) ─────────────────────────
+  } else if (FOLD_TYPES.has(type)) {
+    if (type === 'door-bifold') {
+      const vis = Math.max(0, (w / 2) * (1 - openF));
+      _sashPanel(gInner, x,           y, vis, h, gColor, 1);
+      _sashPanel(gInner, x + vis,     y, vis, h, gColor, 0.75);
+    } else if (type === 'door-accordion') {
+      const N = 4;
+      for (let i = 0; i < N; i++) {
+        const vis = Math.max(0, (w / N) * (1 - openF));
+        _sashPanel(gInner, x + i * vis, y, vis, h, gColor, 1 - i * 0.12);
+      }
+    }
+    gInner.append(el('line', {x1:x, y1:y+h, x2:x+w, y2:y+h, stroke:'rgba(255,153,68,0.9)', 'stroke-width':3, 'pointer-events':'none'}));
+
+  // ── I: PIVOT ─────────────────────────────────────────────
+  } else if (PIVOT_TYPES.has(type)) {
+    if (type === 'pivot-v' || type === 'tilt-turn') {
+      const projW = Math.max(0, w * (1 - openF));
+      const cx2 = x + w / 2;
+      _sashPanel(gInner, cx2 - projW/2, y, projW/2, h, gColor, 1);
+      _sashPanel(gInner, cx2,           y, projW/2, h, gColor, 0.7);
+    } else if (type === 'pivot-h') {
+      const projH = Math.max(0, h * (1 - openF));
+      const cy2 = y + h / 2;
+      _sashPanel(gInner, x, cy2 - projH/2, w, projH/2, gColor, 1);
+      _sashPanel(gInner, x, cy2,           w, projH/2, gColor, 0.7);
+    }
+
+  // ── J: LOUVRE ────────────────────────────────────────────
+  } else if (LOUVRE_ANIM.has(type)) {
+    // Draw glass background (partially visible through louvres)
+    gInner.append(el('rect', {x, y, width:w, height:h, fill:gColor, opacity:0.25}));
+    const N = Math.max(3, Math.floor(h / 55));
+    const slotH = h / N;
+    const angle = openF * 60; // degrees
+    const sw2 = Math.max(1.5, Math.min(w, h) * 0.015);
+    for (let i = 0; i < N; i++) {
+      const sy = y + slotH * i + slotH / 2;
+      const slat = el('g', {transform: `rotate(${angle}, ${x+w/2}, ${sy})`});
+      slat.append(el('rect', {x, y: sy - slotH*0.38, width:w, height: slotH*0.76,
+        fill:gColor, stroke:'rgba(80,90,110,0.8)', 'stroke-width':1.2, 'pointer-events':'none'}));
+      gInner.append(slat);
+    }
+  }
+
+  g.append(gInner);
+
+  // Border + label + badge drawn on top (unclipped)
+  g.append(el('rect', {x, y, width:w, height:h, fill:'none',
+    stroke:'rgba(80,90,110,0.6)', 'stroke-width':1, 'pointer-events':'none'}));
+
+  if (node.label && w > 80 && h > 40) {
+    const fs = Math.min(24, Math.max(10, Math.min(w, h) * 0.07));
+    const t = el('text', {x:x+w/2, y:y+h/2, 'text-anchor':'middle', 'dominant-baseline':'middle',
+      fill:'rgba(255,255,255,0.55)', 'font-size':fs, 'font-family':'system-ui', 'pointer-events':'none'});
+    t.textContent = node.label;
+    g.append(t);
+  }
+  if (w > 120 && h > 70) {
+    const fs2 = Math.min(18, w * 0.055);
+    const badge = el('text', {x:x+6, y:y+h-6, fill:'rgba(255,255,255,0.28)',
+      'font-size':fs2, 'font-family':'system-ui', 'pointer-events':'none'});
+    badge.textContent = PANE_TYPE_LABELS[node.type] || node.type;
+    g.append(badge);
   }
 }
 
@@ -1671,6 +2014,7 @@ function svgPt(svg, cx, cy) {
 }
 
 function startDrag(e, splitId, divIdx, axis, px, py, pw, ph) {
+  S._anim = null; // cancel any running animation
   const svg = document.getElementById('main-svg');
   const sp = svgPt(svg, e.clientX, e.clientY);
   S.drag = { splitId, divIdx, axis, parentX:px, parentY:py, parentW:pw, parentH:ph,
@@ -2053,6 +2397,18 @@ function renderPaneForm() {
   const sashSec = document.getElementById('pane-sash-section');
   sashSec.style.display = node.type==='fixed' ? 'none' : 'block';
   if (node.sash) { setVal('pane-sash-thickness', node.sash.thickness); setVal('pane-handle-side', node.sash.handleSide||'right'); }
+
+  // Animation preview section
+  const animSec = document.getElementById('pane-anim-section');
+  if (animSec) {
+    const isAnim = ANIMATABLE_TYPES.has(node.type);
+    animSec.style.display = isAnim ? 'block' : 'none';
+    if (isAnim) {
+      const f = node.openFraction || 0;
+      const statusEl = document.getElementById('anim-status');
+      if (statusEl) statusEl.textContent = f < 0.05 ? 'Closed' : f > 0.95 ? 'Fully open' : `${Math.round(f * 100)}% open`;
+    }
+  }
 }
 
 function updateThermalBadge(uVal) {
@@ -2225,7 +2581,10 @@ function setVal(id, val) {
 // IMPORT / EXPORT
 // ============================================================
 function annotateRefs(node) {
-  if (node.kind === 'pane') return { ref: getRef(node.type, S.c.openingType), ...node };
+  if (node.kind === 'pane') {
+    const { openFraction, ...rest } = node;
+    return { ref: getRef(rest.type, S.c.openingType), ...rest };
+  }
   if (node.kind === 'split') return { ...node, children: node.children.map(annotateRefs) };
   return node;
 }
@@ -2250,6 +2609,7 @@ function migrateParsedJSON(data) {
     if (n.kind==='pane') {
       if (!('shgc' in n.glass)) n.glass.shgc = null;
       if (!('vlt'  in n.glass)) n.glass.vlt  = null;
+      n.openFraction = 0;
     } else if (n.kind==='split') { n.children.forEach(migrateNode); }
   }
   migrateNode(data.composition);
@@ -2279,7 +2639,7 @@ function importJSON() {
 
 function newComposition() {
   if (S.dirty && !confirm('Unsaved changes will be lost. Create new window?')) return;
-  S.c=mkComposition(); S.sel=null; S.dirty=false; S.undoStack=[];
+  S._anim=null; S.c=mkComposition(); S.sel=null; S.dirty=false; S.undoStack=[];
   resetViewBox();
   render();
 }
@@ -2318,7 +2678,7 @@ function applyDraft() {
     const data = JSON.parse(raw);
     if (!data || data.schemaVersion !== '1.0') return;
     migrateParsedJSON(data);
-    S.c = data; S.sel = null; S.dirty = false; S.undoStack = [];
+    S._anim=null; S.c = data; S.sel = null; S.dirty = false; S.undoStack = [];
     syncOpeningType(S.c.openingType || 'window');
     resetViewBox(); render();
   } catch(e) {}
@@ -2348,6 +2708,7 @@ function pastePane() {
   node.label = S.clipboard.label;
   node.glass = JSON.parse(JSON.stringify(S.clipboard.glass));
   node.sash  = S.clipboard.sash ? JSON.parse(JSON.stringify(S.clipboard.sash)) : null;
+  node.openFraction = 0;
   S.dirty = true; render();
 }
 
@@ -2537,6 +2898,17 @@ document.getElementById('pane-handle-side').addEventListener('change', e=>{
   if (!S.sel) return;
   const node=findNode(S.c.composition,S.sel);
   if (node&&node.kind==='pane'&&node.sash) { node.sash.handleSide=e.target.value; S.dirty=true; updateTopbar(); }
+});
+
+document.getElementById('btn-anim-open').addEventListener('click', ()=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane'&&ANIMATABLE_TYPES.has(node.type)) startPaneAnimation(S.sel, 1);
+});
+document.getElementById('btn-anim-close').addEventListener('click', ()=>{
+  if (!S.sel) return;
+  const node=findNode(S.c.composition,S.sel);
+  if (node&&node.kind==='pane') startPaneAnimation(S.sel, 0);
 });
 
 // Accordion toggles

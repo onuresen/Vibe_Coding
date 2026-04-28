@@ -294,7 +294,14 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 - [x] **Copy / Paste panes** — `Ctrl+C` copies selected pane config (type, glass, sash, label); `Ctrl+V` pastes onto selected pane; uses undo stack
 - [x] **4 new templates** — 障子 Screen, 欄間 Transom (window tab); 格子戸 Lattice Door, 上げ戸 Lift Door (door tab)
 
-### 🔲 Phase 14 — 連窓 Series Window + Bill of Materials
+### ✅ Phase 14 — Open/Close Animation Preview
+- [x] **Animation type sets** — `SLIDE_H_TYPES`, `SLIDE_V_TYPES`, `HINGE_L/R/T/B_TYPES`, `DOUBLE_H_TYPES`, `FOLD_TYPES`, `PIVOT_TYPES`, `LOUVRE_ANIM` — covers all 39 animatable operation types
+- [x] **`openFraction` per pane** — runtime-only (0 = closed, 1 = fully open); stripped from JSON export; reset on type change, paste, new/import
+- [x] **Animation controller** — `startPaneAnimation(id, target)` + `_animStep()` rAF loop; cubic ease-out over 480ms; calls `renderCanvas()` only (no autosave during playback)
+- [x] **`renderPaneAnimated()`** — 10 animation categories: horizontal slide, vertical slide, hinge-left/right/top/bottom, double-hinge, fold, pivot, louvre; SVG clipPath per pane for clean edge clipping
+- [x] **Inspector "Preview" UI** — Open / Close buttons + status label ("Closed" / "47% open" / "Fully open"); shown only for animatable types; hidden for fixed/ranma
+
+### 🔲 Phase 15 — 連窓 Series Window + Bill of Materials
 - [ ] **連窓 (Renso) layout tool** — "Add to series" button chains identical compositions side-by-side with shared dimension line; exports as `SeriesComposition` wrapper
 - [ ] **Bill of Materials (BOM) export** — CSV/JSON with rows per panel type: BIM ref, qty, W×H, area (m²), glass product, sash thickness, material; summary row for totals
 
@@ -332,3 +339,4 @@ Divider handles are SVG `<rect>` elements (8px wide/tall). On mousedown, `AppSta
 | 2026-04-26 | v0.6 | Phase 11: 7 new Obayashi-derived types (両開き, 外倒し, 引分け, 片引き左, 引分け扉, 自由戸, 立て引き); EN/JA bilingual toggle; Curtain Wall 3rd category with CuPnl-* BIM codes; 7 new templates |
 | 2026-04-27 | v0.7 | Phase 12: auto-save to localStorage with draft recovery banner; glass U-value/SHGC/VLT fields with thermal rating badge; GLASS_PRESETS auto-fill; JIS 気密/水密/耐風圧/断熱/遮音 performance accordion |
 | 2026-04-27 | v0.8 | Phase 13: 6 traditional Japanese types (障子, 襖, 欄間, 格子戸, 蔀戸, 上げ戸) with elevation/plan symbols and templates; Ctrl+C/V copy-paste panes |
+| 2026-04-28 | v0.9 | Phase 14: open/close animation preview for all 39 animatable types (slide, hinge, fold, pivot, louvre); cubic ease-out rAF loop; inspector Open/Close buttons; openFraction stripped from JSON export |
