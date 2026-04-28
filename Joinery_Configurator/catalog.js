@@ -266,6 +266,82 @@ function getRef(typeId, openingCategory) {
 }
 
 // ============================================================
+// REVIT FAMILY MAPPING
+// ============================================================
+
+// Maps each pane type → Obayashi WPS family name + panel abbreviation letter
+const WPS_FAMILY_MAP = {
+  'fixed':              { family: 'WPS_F_嵌殺し',        abbrev: 'F'  },
+  'casement-left':      { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'casement-right':     { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'casement-top':       { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'casement-bottom':    { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'casement-double':    { family: 'WPS_R_両開き',         abbrev: 'R'  },
+  'awning':             { family: 'WPS_T_外倒し',         abbrev: 'T'  },
+  'hopper':             { family: 'WPS_T_外倒し',         abbrev: 'T'  },
+  'outward-tilt':       { family: 'WPS_T_外倒し',         abbrev: 'T'  },
+  'sliding-2t':         { family: 'WPS_Z_引違い',         abbrev: 'Z'  },
+  'sliding-3t':         { family: 'WPS_Zm_4枚建引違い',  abbrev: 'Zm' },
+  'sliding-single':     { family: 'WPS_H_片引き右勝手',   abbrev: 'H'  },
+  'sliding-left':       { family: 'WPS_H_片引き左勝手',   abbrev: 'H'  },
+  'sliding-apart':      { family: 'WPS_Hm_引分け',        abbrev: 'Hm' },
+  'tate-suberidashi':   { family: 'WPS_S_縦辷出し',       abbrev: 'S'  },
+  'projecting':         { family: 'WPS_P_突出し',         abbrev: 'P'  },
+  'pivot-v':            { family: 'WPS_A_縦軸回転',       abbrev: 'A'  },
+  'pivot-h':            { family: 'WPS_A_縦軸回転',       abbrev: 'A'  },
+  'louvre':             { family: 'WPS_G_ガラリ',         abbrev: 'G'  },
+  'tilt-turn':          { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'hung-double':        { family: 'WPS_Z_引違い',         abbrev: 'Z'  },
+  // Door types
+  'door-single':        { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'door-double':        { family: 'WPS_R_両開き',         abbrev: 'R'  },
+  'door-french':        { family: 'WPS_R_両開き',         abbrev: 'R'  },
+  'door-sliding':       { family: 'WPS_Z_引違い',         abbrev: 'Z'  },
+  'door-sliding-apart': { family: 'WPS_Hm_引分け',        abbrev: 'Hm' },
+  'door-bifold':        { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'door-pocket':        { family: 'WPS_H_片引き右勝手',   abbrev: 'H'  },
+  'door-overhead':      { family: 'WPS_T_外倒し',         abbrev: 'T'  },
+  'door-accordion':     { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'door-parent-child':  { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'door-free-swing':    { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'door-bypass':        { family: 'WPS_H_片引き左勝手',   abbrev: 'H'  },
+  // Traditional Japanese
+  'shoji':              { family: 'WPS_Z_引違い',         abbrev: 'Z'  },
+  'fusuma':             { family: 'WPS_Z_引違い',         abbrev: 'Z'  },
+  'ranma':              { family: 'WPS_F_嵌殺し',         abbrev: 'F'  },
+  'koshido':            { family: 'WPS_D_片開き',         abbrev: 'D'  },
+  'shitomido':          { family: 'WPS_T_外倒し',         abbrev: 'T'  },
+  'agedo':              { family: 'WPS_T_外倒し',         abbrev: 'T'  },
+};
+
+// Standard Obayashi sash frame families (no version suffix)
+const SASH_FRAME_FAMILIES = [
+  { value: '_AW_ALC',  label: '_AW_ALC  — AW アルミ / ALC外壁' },
+  { value: '_AW_RC',   label: '_AW_RC   — AW アルミ / RC外壁'  },
+  { value: '_AWG_ALC', label: '_AWG_ALC — AWG ガラス張 / ALC外壁' },
+  { value: '_AWG_RC',  label: '_AWG_RC  — AWG ガラス張 / RC外壁' },
+];
+
+// Returns WPS family name + abbreviation for a pane type
+function getWpsInfo(paneType) {
+  return WPS_FAMILY_MAP[paneType] ?? { family: 'WPS_F_嵌殺し', abbrev: 'F' };
+}
+
+// Returns true when dividers are evenly spaced (within 2% tolerance)
+function isEqualSplit(dividers) {
+  const n = dividers.length + 1;
+  return dividers.every((d, i) => Math.abs(d.ratio - (i + 1) / n) < 0.02);
+}
+
+// Maps split axis + child count + equality → WPUh/WPUv family name
+function getWpuFamily(axis, count, equal) {
+  if (axis === 'H') return `WPUv_${Math.min(count, 5)}段`;
+  if (count === 2) return equal ? 'WPUh_2連均等' : 'WPUh_2連不均等';
+  if (count === 3) return equal ? 'WPUh_3連均等' : 'WPUh_3連不均等';
+  return equal ? 'WPUh_多連均等' : 'WPUh_多連不均等奇数連';
+}
+
+// ============================================================
 // SVG HELPERS
 // ============================================================
 function el(tag, attrs) {
