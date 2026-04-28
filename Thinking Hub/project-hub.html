@@ -737,6 +737,7 @@
       flex-wrap: wrap;
       margin-bottom: 10px;
     }
+
     .tf-chip {
       padding: 3px 9px;
       border-radius: 999px;
@@ -748,13 +749,26 @@
       cursor: pointer;
       transition: all 0.12s;
     }
+
     .tf-chip.active {
       border-color: var(--accent);
       color: var(--accent);
       background: var(--accent-dim);
     }
-    .tf-chip:not(.active):hover { border-color: var(--border2); color: var(--text2); }
-    .tf-sep { width: 1px; height: 14px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
+
+    .tf-chip:not(.active):hover {
+      border-color: var(--border2);
+      color: var(--text2);
+    }
+
+    .tf-sep {
+      width: 1px;
+      height: 14px;
+      background: var(--border);
+      margin: 0 2px;
+      flex-shrink: 0;
+    }
+
     .tf-compact {
       margin-left: auto;
       padding: 3px 8px;
@@ -767,13 +781,30 @@
       cursor: pointer;
       transition: all 0.12s;
     }
-    .tf-compact.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    .tf-compact.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
 
     /* ── Compact task mode ───────────────────────────────────── */
-    .compact-mode .task-item { padding: 5px 10px; align-items: center; }
-    .compact-mode .task-meta { display: none; }
-    .compact-mode .task-title { font-size: 12.5px; }
-    .compact-mode .task-item-actions { display: flex; }
+    .compact-mode .task-item {
+      padding: 5px 10px;
+      align-items: center;
+    }
+
+    .compact-mode .task-meta {
+      display: none;
+    }
+
+    .compact-mode .task-title {
+      font-size: 12.5px;
+    }
+
+    .compact-mode .task-item-actions {
+      display: flex;
+    }
 
     .task-item {
       display: flex;
@@ -1252,7 +1283,11 @@
       line-height: 1.4;
       transition: background 0.12s, color 0.12s;
     }
-    .obsidian-badge:hover { background: var(--surface2); color: var(--text); }
+
+    .obsidian-badge:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
 
     /* ── VIEW TOGGLE ─────────────────────────────────────────── */
     .view-toggle {
@@ -1416,7 +1451,7 @@
       <div class="modal-sub">Set up a new project workspace</div>
       <div class="form-group">
         <label class="form-label">Project Name</label>
-        <input class="form-input" id="proj-name" placeholder="e.g. Playbook Redesign">
+        <input class="form-input" id="proj-name" placeholder="e.g. Architectural Redesign">
       </div>
       <div class="form-group">
         <label class="form-label">Description</label>
@@ -1601,42 +1636,42 @@
     // ─── DEFAULTS ────────────────────────────────────────────────────────────────
     const DEFAULT_STATE = {
       members: [
-        { id: 'm0', name: 'Takahashi', role: 'Lead', color: '#c8f03e,#111' },
-        { id: 'm1', name: 'Esen', role: 'Engineer', color: '#c8f03e,#111' },
-        { id: 'm2', name: 'Morimoto', role: 'Architect', color: '#3ecdf0,#111' },
-        { id: 'm3', name: 'Moriyama', role: 'Engineer', color: '#f03e6e,#fff' },
+        { id: 'm0', name: 'Sato', role: 'Lead', color: '#c8f03e,#111' },
+        { id: 'm1', name: 'Onur', role: 'Engineer', color: '#c8f03e,#111' },
+        { id: 'm2', name: 'Sarah', role: 'Architect', color: '#3ecdf0,#111' },
+
       ],
       projects: [
         {
-          id: 'p1', name: '技術鑑定', desc: 'Technical Appraisal and Portfoilio Management',
+          id: 'p1', name: 'TPM', desc: 'Technical Appraisal and Portfoilio Management',
           status: 'active', color: '#c8f03e', members: ['m1', 'm2', 'm3'],
           goals: [
             { id: 'g1', name: 'Complete Framework', desc: 'Stalegate is complete, reference available.', progress: 70 },
             { id: 'g2', name: 'Solution List', desc: 'Complete list of potential solutions.', progress: 30 },
           ],
           milestones: [
-            { id: 'ms1', name: 'Kacho verification', date: '2026-05-15', color: '#c8f03e' },
-            { id: 'ms2', name: 'Bucho validation', date: '2026-07-01', color: '#3ecdf0' },
+            { id: 'ms1', name: 'Team verification', date: '2026-05-15', color: '#c8f03e' },
+            { id: 'ms2', name: 'Manager validation', date: '2026-07-01', color: '#3ecdf0' },
           ],
           tasks: [
             { id: 't1', title: 'Stalegate update', milestoneId: 'ms1', assigneeId: 'm1', priority: 'high', done: false, due: '2026-04-20', status: 'todo' },
             { id: 't2', title: 'Framework reference', milestoneId: 'ms1', assigneeId: 'm2', priority: 'medium', done: true, due: '2026-04-15', status: 'done' },
-            { id: 't3', title: 'Japanese sentence fix', milestoneId: 'ms2', assigneeId: 'm3', priority: 'high', done: false, due: '2026-06-10', status: 'inprogress' },
+            { id: 't3', title: 'Manual update', milestoneId: 'ms2', assigneeId: 'm3', priority: 'high', done: false, due: '2026-06-10', status: 'inprogress' },
             { id: 't4', title: 'Excel list update', milestoneId: '', assigneeId: 'm1', priority: 'low', done: false, due: '2026-05-01', status: 'todo' },
           ]
         },
         {
-          id: 'p2', name: 'Revit MCP Server', desc: 'Claude Desktop ↔ Revit integration via Model Context Protocol',
+          id: 'p2', name: 'MCP Server', desc: 'Integration via Model Context Protocol',
           status: 'active', color: '#9b3ef0', members: ['m1'],
           goals: [
-            { id: 'g3', name: 'Phase 1: Read-only Vault Access', desc: 'Claude can query Revit model data via MCP tools.', progress: 85 },
-            { id: 'g4', name: 'Phase 2: BHoM Integration', desc: 'Typed objects flow through BHoM middleware.', progress: 10 },
+            { id: 'g3', name: 'Phase 1: Read-only Vault Access', desc: 'Claude can query  model data via MCP tools.', progress: 85 },
+            { id: 'g4', name: 'Phase 2: Semantic data integration', desc: 'Typed objects flow through middleware.', progress: 10 },
           ],
           milestones: [
             { id: 'ms3', name: 'Working Prototype', date: '2026-04-30', color: '#9b3ef0' },
           ],
           tasks: [
-            { id: 't5', title: 'Wrap Revit API in MCP tool schema', milestoneId: 'ms3', assigneeId: 'm1', priority: 'high', done: true, due: '2026-04-10', status: 'done' },
+            { id: 't5', title: 'Wrap  API in MCP tool schema', milestoneId: 'ms3', assigneeId: 'm1', priority: 'high', done: true, due: '2026-04-10', status: 'done' },
             { id: 't6', title: 'Graphic override tool implementation', milestoneId: 'ms3', assigneeId: 'm1', priority: 'medium', done: false, due: '2026-04-25', status: 'inprogress' },
             { id: 't7', title: 'Write SCHEMA.md contract', milestoneId: '', assigneeId: 'm1', priority: 'low', done: false, due: '2026-05-05', status: 'todo' },
           ]
