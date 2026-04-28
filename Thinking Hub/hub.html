@@ -981,6 +981,54 @@
         icon: '◇',
         file: 'assumptions-hub.html',
         desc: 'Track key assumptions through their lifecycle — from assumed to validated'
+      },
+      {
+        id: 'goals-hub',
+        label: 'Goals Hub',
+        group: 'PLAN',
+        icon: '◎',
+        file: 'goals-hub.html',
+        desc: 'Quarterly OKRs — connect daily work to strategic objectives'
+      },
+      {
+        id: 'matrix-hub',
+        label: 'Priority Matrix',
+        group: 'PLAN',
+        icon: '⊞',
+        file: 'matrix-hub.html',
+        desc: 'Eisenhower matrix — sort tasks by urgency and importance'
+      },
+      {
+        id: 'learning-hub',
+        label: 'Learning Log',
+        group: 'THINK',
+        icon: '◈',
+        file: 'learning-hub.html',
+        desc: 'Track books, articles, and courses with highlights and key insights'
+      },
+      {
+        id: 'meetings-hub',
+        label: 'Meeting Notes',
+        group: 'PLAN',
+        icon: '▦',
+        file: 'meetings-hub.html',
+        desc: 'Structured meeting notes with action items that flow into Project Hub'
+      },
+      {
+        id: 'stakeholder-hub',
+        label: 'Stakeholder Map',
+        group: 'TEAM',
+        icon: '◇',
+        file: 'stakeholder-hub.html',
+        desc: 'Power/interest grid for mapping and managing project stakeholders'
+      },
+      {
+        id: 'risk-hub',
+        label: 'Risk Register',
+        group: 'DECIDE',
+        icon: '◈',
+        file: 'risk-hub.html',
+        desc: 'Track project risks with probability/impact heat-map and mitigation plans'
       }
     ];
 
@@ -1286,6 +1334,40 @@
         }
       } catch { }
 
+      // ── Goals Hub (goals-hub-v1) ──────────────────────────────────────────────
+      try {
+        const gh = JSON.parse(localStorage.getItem('goals-hub-v1') || '{}');
+        const quarters = (gh.quarters || []).filter(q => !q.archived);
+        if (quarters.length) {
+          const qtr = quarters[quarters.length - 1];
+          const objs = qtr.objectives || [];
+          if (objs.length) {
+            const pct = objs.length
+              ? Math.round(objs.reduce((s, o) => {
+                  const krs = o.keyResults || [];
+                  const op = krs.length ? Math.round(krs.reduce((ks, kr) => {
+                    if (kr.type === 'checkbox') return ks + (kr.done ? 100 : 0);
+                    return ks + Math.min(100, Math.round(((parseFloat(kr.current)||0) / (parseFloat(kr.target)||1)) * 100));
+                  }, 0) / krs.length) : 0;
+                  return s + op;
+                }, 0) / objs.length)
+              : 0;
+            const shown = objs.slice(0, 3);
+            const rows = shown.map(o => `<div class="stat-item" data-tool="goals-hub" data-item-id="${_esc(o.id || '')}">
+              <div class="stat-item-dot" style="background:${o.color || 'var(--accent)'}"></div>
+              <div class="stat-item-text">${_esc(o.title || 'Objective')}</div>
+              <div class="stat-item-meta">${(o.keyResults||[]).length} KR</div>
+            </div>`).join('');
+            widgets.push({
+              id: 'goals-hub', icon: '◎', title: `Goals — ${_esc(qtr.label || '')}`,
+              count: `${pct}% overall`,
+              body: rows,
+              more: objs.length > 3 ? `+${objs.length - 3} more` : ''
+            });
+          }
+        }
+      } catch { }
+
       if (!widgets.length) { section.style.display = 'none'; return; }
 
       section.style.display = '';
@@ -1348,6 +1430,7 @@
       HubStorage.subscribe('kmqt_current_v2', buildStatusWidgets);
       HubStorage.subscribe('decision-log-v1', buildStatusWidgets);
       HubStorage.subscribe('schedule-v1', buildStatusWidgets);
+      HubStorage.subscribe('goals-hub-v1', buildStatusWidgets);
     }
 
     function updateCloudUI(status) {
