@@ -938,6 +938,30 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-app); color: v
         </div>
       </div>
 
+      <!-- Revit Setup accordion -->
+      <div class="accordion">
+        <div class="accordion-header" data-target="revit-body">
+          <span class="acc-arrow" style="transform:rotate(-90deg)">▼</span> Revit Family Setup
+        </div>
+        <div class="accordion-body hidden" id="revit-body" style="display:none">
+          <div class="form-row">
+            <label>Frame Family</label>
+            <select id="revit-frame-family" style="width:160px;font-size:11px">
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Type Prefix</label>
+            <input id="revit-type-prefix" type="text" placeholder="e.g. AW-T-1" style="width:120px">
+          </div>
+          <div class="form-row" style="margin-top:6px">
+            <label style="color:var(--text-dim);font-size:10px">Type Name Preview</label>
+          </div>
+          <div class="form-row">
+            <div id="revit-type-preview" style="font-size:11px;color:var(--accent);font-family:monospace;padding:3px 6px;background:var(--bg-surface);border-radius:4px;width:100%;box-sizing:border-box;min-height:20px;word-break:break-all"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Selected Panel accordion -->
       <div class="accordion">
         <div class="accordion-header" data-target="pane-body">
@@ -1180,13 +1204,14 @@ function mkPane() {
 
 function mkComposition() {
   return {
-    schemaVersion:'1.0',
+    schemaVersion:'1.1',
     openingType:'window',
     meta:{ id:uid(), name:'New Window', createdAt:new Date().toISOString(), modifiedAt:new Date().toISOString() },
     frame:{ overallWidth:1200, overallHeight:900, unit:'mm', thickness:60, depth:100,
       topWidth:null, bottomWidth:null, leftWidth:null, rightWidth:null,
       innerOffset:0, outerOffset:0, material:'aluminium', finish:'',
       performance:{ air:'', water:'', wind:'', insulation:'', sound:'' } },
+    revit:{ frameFamily:'_AW_ALC', typePrefix:'' },
     composition: mkPane()
   };
 }
@@ -1583,6 +1608,20 @@ function renderPane(g, node, x, y, w, h) {
     const badge = el('text',{x:x+6,y:y+h-6,fill:'rgba(255,255,255,0.28)','font-size':fs2,'font-family':'system-ui','pointer-events':'none'});
     badge.textContent = PANE_TYPE_LABELS[node.type] || node.type;
     paneG.append(badge);
+  }
+
+  // WPS abbreviation chip (top-left corner)
+  if (w > 60 && h > 40) {
+    const abbrev = getWpsInfo(node.type).abbrev;
+    const chipFs = Math.min(13, Math.max(8, w * 0.045));
+    const chipPadX = chipFs * 0.45, chipPadY = chipFs * 0.3;
+    const chipW = abbrev.length * chipFs * 0.62 + chipPadX * 2;
+    const chipH = chipFs + chipPadY * 2;
+    const chipX = x + 5, chipY = y + 5;
+    paneG.append(el('rect',{x:chipX,y:chipY,width:chipW,height:chipH,rx:2,fill:'rgba(20,25,40,0.72)','pointer-events':'none'}));
+    const chipT = el('text',{x:chipX+chipPadX,y:chipY+chipPadY+chipFs*0.82,fill:'rgba(160,210,255,0.95)','font-size':chipFs,'font-family':'system-ui','font-weight':'600','pointer-events':'none'});
+    chipT.textContent = abbrev;
+    paneG.append(chipT);
   }
 
   // Border (subtle)
@@ -2373,6 +2412,39 @@ function renderFrameForm() {
   ['pane-window-optgroup','ctx-window-optgroup'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=otype==='window'?'':'none';});
   ['pane-door-optgroup','ctx-door-optgroup'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=otype==='door'?'':'none';});
   ['pane-curtain-optgroup','ctx-curtain-optgroup'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=otype==='curtain'?'':'none';});
+  // Revit Setup fields
+  const rv = S.c.revit || {};
+  const ffSel = document.getElementById('revit-frame-family');
+  if (ffSel) {
+    if (!ffSel.options.length) {
+      SASH_FRAME_FAMILIES.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt.value; o.textContent = opt.label;
+        ffSel.appendChild(o);
+      });
+    }
+    ffSel.value = rv.frameFamily || '_AW_ALC';
+  }
+  const pfx = document.getElementById('revit-type-prefix');
+  if (pfx) pfx.value = rv.typePrefix || '';
+  updateRevitPreview();
+}
+
+function updateRevitPreview() {
+  const prev = document.getElementById('revit-type-preview');
+  if (!prev) return;
+  const rv = S.c.revit || {};
+  const f  = S.c.frame;
+  const abbrevStr = collectLeafAbbrevs(S.c.composition).join('');
+  const prefix = (rv.typePrefix || '').trim();
+  const name = [prefix, `${f.overallWidth}×${f.overallHeight}`, abbrevStr].filter(Boolean).join(' ');
+  prev.textContent = name || '—';
+}
+
+function collectLeafAbbrevs(node) {
+  if (node.kind === 'pane') return [getWpsInfo(node.type).abbrev];
+  if (node.kind === 'split') return node.children.flatMap(collectLeafAbbrevs);
+  return [];
 }
 
 function renderPaneForm() {
@@ -2514,7 +2586,15 @@ function renderOutlineNode(c, node, depth) {
   d.className='outline-item'+(node.id===S.sel?' selected':'');
   d.style.paddingLeft=`${8+depth*16}px`;
   const icon=node.kind==='split'?(node.axis==='V'?'⊞':'⊟'):(PANE_TYPE_ICONS[node.type]||'▭');
-  const lbl=node.kind==='split'?`Split ${node.axis} (${node.children.length})`:(node.label||PANE_TYPE_LABELS[node.type]||node.type);
+  let lbl;
+  if (node.kind==='split') {
+    const wpuName = getWpuFamily(node.axis, node.children.length, isEqualSplit(node.dividers));
+    lbl = `<span style="color:var(--text-muted)">${wpuName}</span>`;
+  } else {
+    const abbrev = getWpsInfo(node.type).abbrev;
+    const typeLbl = node.label || PANE_TYPE_LABELS[node.type] || node.type;
+    lbl = `<span style="color:var(--accent);font-weight:600;margin-right:4px">[${abbrev}]</span>${typeLbl}`;
+  }
   d.innerHTML=`<span class="outline-icon">${icon}</span><span class="outline-label">${lbl}</span>`;
   d.addEventListener('click',()=>{S.sel=node.id;render();});
   c.appendChild(d);
@@ -2589,9 +2669,80 @@ function annotateRefs(node) {
   return node;
 }
 
+// Builds the Revit-specific block for the JSON export.
+// sasshiFrame = parent family + auto-generated type name
+// nesting = recursive WPS/WPUh/WPUv structure the Revit addin needs to assemble the window
+function buildRevitBlock() {
+  const { frame, composition, revit } = S.c;
+  const rv = revit || {};
+  const abbrevStr = collectLeafAbbrevs(composition).join('');
+  const w = frame.overallWidth, h = frame.overallHeight;
+  const prefix = (rv.typePrefix || '').trim();
+  const parts = [prefix, `${w}×${h}`, abbrevStr].filter(Boolean);
+  const typeName = parts.join(' ');
+
+  return {
+    frameFamily:  rv.frameFamily || '_AW_ALC',
+    typePrefix:   rv.typePrefix  || '',
+    sasshiFrame: {
+      familyName:  rv.frameFamily || '_AW_ALC',
+      typeName,
+      width:  w,
+      height: h,
+      panelParam: 'タイプ_窓_パネル<窓>',
+    },
+    nesting: buildRevitNestingNode(composition),
+  };
+}
+
+function buildRevitNestingNode(node) {
+  if (node.kind === 'pane') {
+    const info = getWpsInfo(node.type);
+    return { kind:'panel', familyName:info.family, abbrev:info.abbrev, paneId:node.id, paneType:node.type };
+  }
+  const count = node.children.length;
+  const equal = isEqualSplit(node.dividers);
+  const wpuFamily = getWpuFamily(node.axis, count, equal);
+  const childAbbrevs = node.children.map(c => collectLeafAbbrevs(c).join(''));
+
+  const isH = node.axis === 'V'; // V-axis = left/right (horizontal layout)
+  let posLabels, paramNames;
+  if (isH) {
+    posLabels  = count === 2 ? ['左','右']             : node.children.map((_,i)=>`パネル${i+1}`);
+    paramNames = count === 2 ? ['左パネル<窓>','右パネル<窓>'] : node.children.map((_,i)=>`Panel${i+1}Type`);
+  } else {
+    posLabels  = count === 2 ? ['上','下']             : node.children.map((_,i)=>`段${i+1}`);
+    paramNames = node.children.map((_,i)=>`Panel${i+1}Type`);
+  }
+
+  return {
+    kind: 'group',
+    familyName: wpuFamily,
+    typeName: childAbbrevs.join(','),
+    axis: node.axis,
+    isEqual: equal,
+    children: node.children.map((child, i) => {
+      const startRatio = i === 0 ? 0 : node.dividers[i-1].ratio;
+      const endRatio   = i === node.dividers.length ? 1 : node.dividers[i]?.ratio ?? 1;
+      return {
+        position:  i,
+        posLabel:  posLabels[i],
+        paramName: paramNames[i],
+        ratio: Math.round((endRatio - startRatio) * 1000) / 1000,
+        ...buildRevitNestingNode(child),
+      };
+    }),
+  };
+}
+
 function exportJSON() {
   S.c.meta.modifiedAt=new Date().toISOString();
-  const exportData = { ...S.c, composition: annotateRefs(S.c.composition) };
+  const exportData = {
+    ...S.c,
+    schemaVersion: '1.1',
+    composition: annotateRefs(S.c.composition),
+    revit: buildRevitBlock(),
+  };
   const json=JSON.stringify(exportData, null, 2);
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
@@ -2604,6 +2755,7 @@ function migrateParsedJSON(data) {
   if (!('openingType' in data)) data.openingType = 'window';
   if (!('topWidth' in data.frame)) { data.frame.topWidth=null; data.frame.bottomWidth=null; data.frame.leftWidth=null; data.frame.rightWidth=null; }
   if (!data.frame.performance) data.frame.performance = { air:'', water:'', wind:'', insulation:'', sound:'' };
+  if (!data.revit) data.revit = { frameFamily:'_AW_ALC', typePrefix:'' };
   // Migrate pane glass fields
   function migrateNode(n) {
     if (n.kind==='pane') {
@@ -2625,7 +2777,7 @@ function importJSON() {
       try {
         const data=JSON.parse(ev.target.result);
         if (!data.schemaVersion) { alert('Not a valid Window Configurator JSON.'); return; }
-        if (data.schemaVersion!=='1.0') { alert(`Unsupported schema version: ${data.schemaVersion}`); return; }
+        if (data.schemaVersion!=='1.0' && data.schemaVersion!=='1.1') { alert(`Unsupported schema version: ${data.schemaVersion}`); return; }
         migrateParsedJSON(data);
         S.c=data; S.sel=null; S.dirty=false; S.undoStack=[];
         resetViewBox();
@@ -2664,7 +2816,7 @@ function loadDraft() {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    if (data && data.schemaVersion === '1.0') {
+    if (data && (data.schemaVersion === '1.0' || data.schemaVersion === '1.1')) {
       const banner = document.getElementById('draft-banner');
       if (banner) banner.style.display = 'flex';
     }
@@ -2676,7 +2828,7 @@ function applyDraft() {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    if (!data || data.schemaVersion !== '1.0') return;
+    if (!data || (data.schemaVersion !== '1.0' && data.schemaVersion !== '1.1')) return;
     migrateParsedJSON(data);
     S._anim=null; S.c = data; S.sel = null; S.dirty = false; S.undoStack = [];
     syncOpeningType(S.c.openingType || 'window');
@@ -2887,6 +3039,20 @@ document.getElementById('pane-glass-product').addEventListener('change', e=>{
     if (!S.c.frame.performance) S.c.frame.performance={};
     S.c.frame.performance[k]=e.target.value; S.dirty=true; updateTopbar();
   });
+});
+
+// Revit Setup fields
+const _revitFF = document.getElementById('revit-frame-family');
+if (_revitFF) _revitFF.addEventListener('change', e=>{
+  if (!S.c.revit) S.c.revit={};
+  S.c.revit.frameFamily = e.target.value;
+  S.dirty=true; updateTopbar(); updateRevitPreview();
+});
+const _revitPfx = document.getElementById('revit-type-prefix');
+if (_revitPfx) _revitPfx.addEventListener('input', e=>{
+  if (!S.c.revit) S.c.revit={};
+  S.c.revit.typePrefix = e.target.value;
+  S.dirty=true; updateTopbar(); updateRevitPreview();
 });
 
 document.getElementById('pane-sash-thickness').addEventListener('change', e=>{
