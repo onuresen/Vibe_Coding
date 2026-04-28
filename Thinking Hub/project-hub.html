@@ -729,6 +729,94 @@
       padding: 0 2px;
     }
 
+    /* ── Overview / All-Tasks filter bar ───────────────────── */
+    .ov-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      padding: 2px 0 14px;
+    }
+
+    .ov-filter-search {
+      flex: 1;
+      min-width: 150px;
+      max-width: 220px;
+      font-size: 0.82rem;
+      padding: 5px 10px;
+    }
+
+    .ov-filter-chips {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .ov-chip {
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--surface2);
+      border: 1px solid transparent;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      color: var(--text2);
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .ov-chip:hover { background: var(--surface3); }
+
+    .ov-chip.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .ov-chip-av {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 0.58rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .ov-filter-sep {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .ov-filter-sort {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .ov-filter-sort:focus { border-color: var(--accent); }
+
+    .ov-filter-count {
+      margin-left: auto;
+      font-size: 0.72rem;
+      color: var(--text3);
+      white-space: nowrap;
+      font-family: var(--font-mono);
+    }
+
     /* ── Task filter bar ────────────────────────────────────── */
     .task-filter-bar {
       display: flex;
@@ -1704,7 +1792,8 @@
     let state = {
       ...persisted,
       selectedProject: null,
-      selectedMemberFilter: null,
+      overviewFilter: { members: [], status: 'all', search: '', sort: 'manual' },
+      allTasksFilter: { members: [], status: 'all', priority: 'all' },
       currentView: 'overview',
       currentSubView: 'list',
       currentTab: 'tasks',
@@ -1821,7 +1910,8 @@
 
           // Reset transient UI state
           state.selectedProject = null;
-          state.selectedMemberFilter = null;
+          state.overviewFilter = { members: [], status: 'all', search: '', sort: 'manual' };
+          state.allTasksFilter = { members: [], status: 'all', priority: 'all' };
           state.currentTab = 'tasks';
 
           // Close any open modals
@@ -1853,7 +1943,8 @@
       state = {
         ...fresh,
         selectedProject: null,
-        selectedMemberFilter: null,
+        overviewFilter: { members: [], status: 'all', search: '', sort: 'manual' },
+        allTasksFilter: { members: [], status: 'all', priority: 'all' },
         currentView: 'overview',
         currentSubView: 'list',
         currentTab: 'tasks',
@@ -1871,13 +1962,13 @@
       container.innerHTML = '';
       state.members.forEach(m => {
         const { bg, fg } = avatarColors(m.color);
-        const selected = state.selectedMemberFilter === m.id;
+        const selected = state.overviewFilter.members.includes(m.id);
         const div = document.createElement('div');
         div.className = 'user-pill' + (selected ? ' selected' : '');
         div.style.position = 'relative';
         div.innerHTML = `
-      <div class="avatar" style="background:${bg};color:${fg};cursor:pointer" onclick="toggleMemberFilter('${m.id}')">${initials(m.name)}</div>
-      <div class="user-pill-info" style="cursor:pointer;flex:1" onclick="toggleMemberFilter('${m.id}')">
+      <div class="avatar" style="background:${bg};color:${fg};cursor:pointer" onclick="toggleOverviewMember('${m.id}')">${initials(m.name)}</div>
+      <div class="user-pill-info" style="cursor:pointer;flex:1" onclick="toggleOverviewMember('${m.id}')">
         <div class="user-pill-name">${m.name}</div>
         <div class="user-pill-role">${m.role}</div>
       </div>
@@ -1893,9 +1984,18 @@
       });
     }
 
-    function toggleMemberFilter(id) {
-      state.selectedMemberFilter = state.selectedMemberFilter === id ? null : id;
+    function toggleOverviewMember(id) {
+      const idx = state.overviewFilter.members.indexOf(id);
+      if (idx === -1) state.overviewFilter.members.push(id);
+      else state.overviewFilter.members.splice(idx, 1);
       renderSidebarUsers(); renderContent();
+    }
+
+    function toggleAllTasksMember(id) {
+      const idx = state.allTasksFilter.members.indexOf(id);
+      if (idx === -1) state.allTasksFilter.members.push(id);
+      else state.allTasksFilter.members.splice(idx, 1);
+      renderContent();
     }
 
     // ─── BADGES ──────────────────────────────────────────────────────────────────
@@ -1959,16 +2059,22 @@
       const allTasks = state.projects.flatMap(p => p.tasks);
       const open = allTasks.filter(t => !t.done);
       const overdue = open.filter(t => isOverdue(t.due));
-      const myFilter = state.selectedMemberFilter;
-      const myTasks = myFilter ? open.filter(t => t.assigneeId === myFilter) : open;
+      const of = state.overviewFilter;
+      const filteredMembers = of.members;
+      const myTasks = filteredMembers.length > 0 ? open.filter(t => filteredMembers.includes(t.assigneeId)) : open;
 
       const statsDiv = document.createElement('div');
       statsDiv.className = 'stats-row animate-in';
+      const memberLabel = filteredMembers.length === 1
+        ? 'assigned to ' + getMember(filteredMembers[0])?.name
+        : filteredMembers.length > 1
+          ? `assigned to ${filteredMembers.length} members`
+          : 'across all projects';
       statsDiv.innerHTML = `
     <div class="stat-card c-accent">
       <div class="stat-card-top"><div class="stat-label">Open Tasks</div><div class="stat-icon">✓</div></div>
       <div class="stat-value">${myTasks.length}</div>
-      <div class="stat-sub">${myFilter ? 'assigned to ' + getMember(myFilter)?.name : 'across all projects'}</div>
+      <div class="stat-sub">${memberLabel}</div>
     </div>
     <div class="stat-card">
       <div class="stat-card-top"><div class="stat-label">Projects</div><div class="stat-icon" style="background:var(--surface3)">▦</div></div>
@@ -1988,15 +2094,104 @@
   `;
       container.appendChild(statsDiv);
 
+      // ── Overview filter bar ──
+      const filterBar = document.createElement('div');
+      filterBar.className = 'ov-filter-bar animate-in';
+
+      // Search input
+      const searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.className = 'input ov-filter-search';
+      searchInput.placeholder = 'Search projects…';
+      searchInput.value = of.search;
+      searchInput.oninput = e => { state.overviewFilter.search = e.target.value; renderContent(); };
+      filterBar.appendChild(searchInput);
+
+      // Member chips
+      if (state.members.length) {
+        const memberWrap = document.createElement('div');
+        memberWrap.className = 'ov-filter-chips';
+        const allMemberChip = document.createElement('button');
+        allMemberChip.className = 'ov-chip' + (filteredMembers.length === 0 ? ' active' : '');
+        allMemberChip.textContent = 'All';
+        allMemberChip.title = 'Show all members';
+        allMemberChip.onclick = () => { state.overviewFilter.members = []; renderSidebarUsers(); renderContent(); };
+        memberWrap.appendChild(allMemberChip);
+        state.members.forEach(m => {
+          const { bg, fg } = avatarColors(m.color);
+          const sel = filteredMembers.includes(m.id);
+          const chip = document.createElement('button');
+          chip.className = 'ov-chip member-chip' + (sel ? ' active' : '');
+          chip.title = m.name;
+          chip.innerHTML = `<span class="ov-chip-av" style="background:${bg};color:${fg}">${initials(m.name)}</span>${m.name}`;
+          chip.onclick = () => toggleOverviewMember(m.id);
+          memberWrap.appendChild(chip);
+        });
+        filterBar.appendChild(memberWrap);
+      }
+
+      // Separator
+      const sep1 = document.createElement('span'); sep1.className = 'ov-filter-sep'; filterBar.appendChild(sep1);
+
+      // Status chips
+      const statusWrap = document.createElement('div');
+      statusWrap.className = 'ov-filter-chips';
+      [{ val: 'all', label: 'All' }, { val: 'active', label: 'Active' }, { val: 'planning', label: 'Planning' }, { val: 'onhold', label: 'On Hold' }, { val: 'done', label: 'Done' }].forEach(s => {
+        const chip = document.createElement('button');
+        chip.className = 'ov-chip' + (of.status === s.val ? ' active' : '');
+        chip.textContent = s.label;
+        chip.onclick = () => { state.overviewFilter.status = s.val; renderContent(); };
+        statusWrap.appendChild(chip);
+      });
+      filterBar.appendChild(statusWrap);
+
+      // Sort select
+      const sortSel = document.createElement('select');
+      sortSel.className = 'ov-filter-sort';
+      sortSel.title = 'Sort projects';
+      [{ val: 'manual', label: '⇅ Manual' }, { val: 'name', label: 'A–Z Name' }, { val: 'status', label: 'By Status' }, { val: 'tasks', label: 'Open Tasks' }].forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.val; opt.textContent = o.label; opt.selected = of.sort === o.val;
+        sortSel.appendChild(opt);
+      });
+      sortSel.onchange = e => { state.overviewFilter.sort = e.target.value; renderContent(); };
+      filterBar.appendChild(sortSel);
+
+      container.appendChild(filterBar);
+
       const hdr = document.createElement('div');
       hdr.innerHTML = `<div class="ui-section-header"><div class="ui-section-title">Projects</div><div class="ui-section-line"></div><div class="ui-section-action" onclick="showAddProject()">+ New</div></div>`; container.appendChild(hdr);
 
       const grid = document.createElement('div');
       grid.className = 'project-grid animate-in';
-      const visible = myFilter ? state.projects.filter(p => p.members.includes(myFilter)) : state.projects;
+
+      // ── Apply filters & sort ──
+      let visible = [...state.projects];
+      if (filteredMembers.length > 0)
+        visible = visible.filter(p => filteredMembers.some(m => p.members.includes(m)));
+      if (of.status !== 'all')
+        visible = visible.filter(p => p.status === of.status);
+      if (of.search.trim()) {
+        const q = of.search.trim().toLowerCase();
+        visible = visible.filter(p => p.name.toLowerCase().includes(q) || (p.desc || '').toLowerCase().includes(q));
+      }
+      if (of.sort === 'name') visible.sort((a, b) => a.name.localeCompare(b.name));
+      else if (of.sort === 'status') {
+        const ord = { active: 0, planning: 1, onhold: 2, done: 3 };
+        visible.sort((a, b) => (ord[a.status] ?? 9) - (ord[b.status] ?? 9));
+      } else if (of.sort === 'tasks')
+        visible.sort((a, b) => b.tasks.filter(t => !t.done).length - a.tasks.filter(t => !t.done).length);
+
+      // Count badge
+      const countEl = document.createElement('div');
+      countEl.className = 'ov-filter-count';
+      const isFiltered = filteredMembers.length > 0 || of.status !== 'all' || of.search.trim();
+      countEl.textContent = isFiltered ? `${visible.length} of ${state.projects.length} projects` : `${state.projects.length} project${state.projects.length !== 1 ? 's' : ''}`;
+      filterBar.appendChild(countEl);
 
       if (!visible.length) {
-        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="e-icon">◈</div><div class="e-title">No projects yet</div><div class="e-sub">Click "+ Project" to create one</div></div>`;
+        const emptyMsg = state.projects.length === 0 ? 'Click "+ Project" to create one' : 'No projects match your filters';
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="e-icon">◈</div><div class="e-title">${state.projects.length === 0 ? 'No projects yet' : 'No matches'}</div><div class="e-sub">${emptyMsg}</div></div>`;
       }
       visible.forEach(proj => {
         const card = document.createElement('div');
@@ -2064,15 +2259,76 @@
 
     // ─── ALL TASKS (LIST) ─────────────────────────────────────────────────────────
     function renderAllTasks(container) {
+      const atf = state.allTasksFilter;
       let tasks = state.projects.flatMap(p => p.tasks.map(t => ({ ...t, projectId: p.id, projectName: p.name, projectColor: p.color })));
-      if (state.selectedMemberFilter) tasks = tasks.filter(t => t.assigneeId === state.selectedMemberFilter);
+
+      // ── All Tasks filter bar ──
+      const filterBar = document.createElement('div');
+      filterBar.className = 'ov-filter-bar animate-in';
+      filterBar.style.marginBottom = '12px';
+
+      // Member chips
+      if (state.members.length) {
+        const memberWrap = document.createElement('div');
+        memberWrap.className = 'ov-filter-chips';
+        const allChip = document.createElement('button');
+        allChip.className = 'ov-chip' + (atf.members.length === 0 ? ' active' : '');
+        allChip.textContent = 'All';
+        allChip.onclick = () => { state.allTasksFilter.members = []; renderContent(); };
+        memberWrap.appendChild(allChip);
+        state.members.forEach(m => {
+          const { bg, fg } = avatarColors(m.color);
+          const sel = atf.members.includes(m.id);
+          const chip = document.createElement('button');
+          chip.className = 'ov-chip member-chip' + (sel ? ' active' : '');
+          chip.title = m.name;
+          chip.innerHTML = `<span class="ov-chip-av" style="background:${bg};color:${fg}">${initials(m.name)}</span>${m.name}`;
+          chip.onclick = () => toggleAllTasksMember(m.id);
+          memberWrap.appendChild(chip);
+        });
+        filterBar.appendChild(memberWrap);
+        const sep = document.createElement('span'); sep.className = 'ov-filter-sep'; filterBar.appendChild(sep);
+      }
+
+      // Status chips
+      const statusWrap = document.createElement('div');
+      statusWrap.className = 'ov-filter-chips';
+      [{ val: 'all', label: 'All' }, { val: 'open', label: 'Open' }, { val: 'done', label: 'Done' }].forEach(s => {
+        const chip = document.createElement('button');
+        chip.className = 'ov-chip' + (atf.status === s.val ? ' active' : '');
+        chip.textContent = s.label;
+        chip.onclick = () => { state.allTasksFilter.status = s.val; renderContent(); };
+        statusWrap.appendChild(chip);
+      });
+      filterBar.appendChild(statusWrap);
+      const sep2 = document.createElement('span'); sep2.className = 'ov-filter-sep'; filterBar.appendChild(sep2);
+
+      // Priority chips
+      const prioWrap = document.createElement('div');
+      prioWrap.className = 'ov-filter-chips';
+      [{ val: 'all', label: 'Any' }, { val: 'high', label: '↑ High' }, { val: 'medium', label: '– Med' }, { val: 'low', label: '↓ Low' }].forEach(p => {
+        const chip = document.createElement('button');
+        chip.className = 'ov-chip' + (atf.priority === p.val ? ' active' : '');
+        chip.textContent = p.label;
+        chip.onclick = () => { state.allTasksFilter.priority = p.val; renderContent(); };
+        prioWrap.appendChild(chip);
+      });
+      filterBar.appendChild(prioWrap);
+      container.appendChild(filterBar);
+
+      // ── Apply filters ──
+      if (atf.members.length > 0) tasks = tasks.filter(t => atf.members.includes(t.assigneeId));
+      if (atf.status === 'open') tasks = tasks.filter(t => !t.done);
+      else if (atf.status === 'done') tasks = tasks.filter(t => t.done);
+      if (atf.priority !== 'all') tasks = tasks.filter(t => t.priority === atf.priority);
+
       const open = tasks.filter(t => !t.done);
       const done = tasks.filter(t => t.done);
 
       const wrap = document.createElement('div');
       wrap.className = 'animate-in';
       if (!open.length && !done.length) {
-        wrap.innerHTML = `<div class="empty-state"><div class="e-icon">☐</div><div class="e-title">No tasks</div><div class="e-sub">Add tasks via the "+ Task" button</div></div>`;
+        wrap.innerHTML = `<div class="empty-state"><div class="e-icon">☐</div><div class="e-title">No tasks match</div><div class="e-sub">Try adjusting your filters</div></div>`;
       } else {
         if (open.length) {
           const g = document.createElement('div'); g.className = 'task-group';
@@ -2101,7 +2357,9 @@
 
     function renderKanban(container) {
       let allTasks = state.projects.flatMap(p => p.tasks.map(t => ({ ...t, projectId: p.id, projectName: p.name, projectColor: p.color })));
-      if (state.selectedMemberFilter) allTasks = allTasks.filter(t => t.assigneeId === state.selectedMemberFilter);
+      const atf = state.allTasksFilter;
+      if (atf.members.length > 0) allTasks = allTasks.filter(t => atf.members.includes(t.assigneeId));
+      if (atf.priority !== 'all') allTasks = allTasks.filter(t => t.priority === atf.priority);
 
       const board = document.createElement('div');
       board.className = 'kanban-board animate-in';
@@ -2441,7 +2699,7 @@
 
         // ── Apply filters ──
         let tasks = proj.tasks;
-        if (state.selectedMemberFilter) tasks = tasks.filter(t => t.assigneeId === state.selectedMemberFilter);
+        if (state.overviewFilter.members.length > 0) tasks = tasks.filter(t => state.overviewFilter.members.includes(t.assigneeId));
         if (tf.status === 'open') tasks = tasks.filter(t => !t.done);
         else if (tf.status === 'done') tasks = tasks.filter(t => t.done);
         if (tf.priority !== 'all') tasks = tasks.filter(t => t.priority === tf.priority);
@@ -2862,7 +3120,8 @@
         p.members = p.members.filter(id => id !== memberId);
         p.tasks.forEach(t => { if (t.assigneeId === memberId) t.assigneeId = ''; });
       });
-      if (state.selectedMemberFilter === memberId) state.selectedMemberFilter = null;
+      state.overviewFilter.members = state.overviewFilter.members.filter(id => id !== memberId);
+      state.allTasksFilter.members = state.allTasksFilter.members.filter(id => id !== memberId);
       saveState(); renderSidebarUsers(); renderContent();
       if (state.selectedProject) renderPanel(state.selectedProject);
       showToast('Member deleted');

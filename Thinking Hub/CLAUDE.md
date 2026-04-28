@@ -161,9 +161,14 @@ Workspace tab has 9 fields across 3 lenses — overwhelming on first open. Show 
 
 ---
 
-### Priority 5 — Project Hub task filtering `[group: project-ux]`
-**ID:** 2E  
-Add a filter bar above the task list: status chips (all / todo / in-progress / done) and priority chips. State persists per-project in session memory (no new storage key needed).  
+### ~~Priority 5 — Project Hub task filtering~~ ✓ Done `[group: project-ux]`
+**ID:** 2E — **Implemented.**  
+- Task filter bar (status + priority chips) exists in the single-project detail panel.  
+- Overview filter bar added: **multi-select member chips**, project **status chips** (Active/Planning/On Hold/Done), **search input**, and **sort** (Manual/Name/Status/Open Tasks). Count badge shows "X of Y projects".  
+- All Tasks view filter bar added: **multi-select member chips**, status chips (All/Open/Done), priority chips (All/High/Med/Low).  
+- Kanban view respects `allTasksFilter` (member + priority).  
+- Sidebar member pills now multi-select and sync with overview filter.  
+- State keys: `overviewFilter { members[], status, search, sort }` and `allTasksFilter { members[], status, priority }` — session memory only, no new storage key.  
 **Files:** `project-hub.html`
 
 ---
