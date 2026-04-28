@@ -318,3 +318,78 @@ Quick action in Decision Hub workspace: "Send to KMQT as Question". Creates a KM
 **ID:** 1F  
 Add a canvas item resolver in `hub-links.js` `resolveItems()`. Each canvas node (text content) becomes a searchable item. Navigate-to highlights the node on canvas.  
 **Files:** `hub-links.js`, `canvas-hub.html` (expose node list + highlight handler)
+
+---
+
+### Priority 26 — New tool: Priority / Impact Matrix `[group: new-tools-solo]`
+**ID:** 3F  
+`matrix-hub.html` — Eisenhower-style 2×2 quadrant (Do / Schedule / Delegate / Eliminate) for sorting tasks by Urgency × Importance.
+- Receive tasks from Project Hub via hub-links postMessage, or add inline
+- Each card shows task title + project tag; drag between quadrants
+- "Flush to Project Hub" button updates task priority based on quadrant placement
+- Export as SVG  
+**Storage key:** `matrix-hub-v1`  
+**Files:** New `matrix-hub.html`; register in `hub.html`
+
+---
+
+### Priority 27 — New tool: Meeting Notes `[group: new-tools-team]`
+**ID:** 3G  
+`meetings-hub.html` — Structured meeting notes with action item extraction that flows into Project Hub.
+- Create meeting: title, date, project link, attendees (freeform tags)
+- Side-by-side agenda + notes layout
+- Inline action-item extraction: highlight text → "Make Action" → creates task in Project Hub via HubStorage write (reuse write path from Priority 1)
+- Past meetings list with quick-view panel; searchable via Cmd+K  
+**Storage key:** `meetings-hub-v1`  
+**Files:** New `meetings-hub.html`; register in `hub.html`; `hub-data.js` write path
+
+---
+
+### Priority 28 — New tool: OKR / Goals Hub `[group: new-tools-solo]`
+**ID:** 3H  
+`goals-hub.html` — Quarterly objectives with measurable key results; the "north star" layer connecting daily tasks to strategic intent.
+- Quarterly objective cards (title + why it matters) with 2–4 Key Results each
+- Key Result progress via numeric slider or checkbox
+- Projects in Project Hub can declare which Objective they serve
+- Dashboard widget in hub.html shows current quarter OKRs + overall progress %
+- Archive past quarters (read-only collapse)  
+**Storage key:** `goals-hub-v1`  
+**Files:** New `goals-hub.html`; register in `hub.html`; hub.html dashboard widget; `hub-data.js` read extension
+
+---
+
+### Priority 29 — New tool: Reading & Learning Log `[group: new-tools-solo]`
+**ID:** 3I  
+`learning-hub.html` — Track books, articles, courses, and videos with highlights and key insights; upstream of idea-swiper.
+- Add items: book / article / course / video — with URL, author, status (To Read / Reading / Done)
+- Per-item highlights/notes section (textarea per item)
+- Tag system with sidebar filter
+- "Send to Idea Swiper" button seeds a new swipeable idea card from a highlight
+- Searchable via Cmd+K  
+**Storage key:** `learning-hub-v1`  
+**Files:** New `learning-hub.html`; register in `hub.html`; `idea-swiper.html` (accept deep-link seeding)
+
+---
+
+### Priority 30 — New tool: Stakeholder Map `[group: new-tools-team]`
+**ID:** 3J  
+`stakeholder-hub.html` — Visual power/interest grid for stakeholder mapping; replaces the 5 old standalone Stakeholder-Alignment versions with a proper hub-integrated tool.
+- Power/Interest 2×2 grid: Manage Closely / Keep Satisfied / Keep Informed / Monitor
+- Stakeholder cards: name, role, project tags, stance (Champion / Neutral / Resistant), notes
+- Filter by project (links to project-hub items); quick-add from project member list
+- Export as PNG via html2canvas (already a dependency)  
+**Storage key:** `stakeholder-hub-v1`  
+**Files:** New `stakeholder-hub.html`; register in `hub.html`
+
+---
+
+### Priority 31 — New tool: Risk Register `[group: new-tools-team]`
+**ID:** 3K  
+`risk-hub.html` — Track project risks with probability/impact heat-map and mitigation plans. Pair with assumptions-hub (Priority 10) once that's done.
+- Risk cards: title, category (Technical / Resource / Schedule / External), probability (1–5), impact (1–5)
+- Heat-map grid auto-positions each risk by probability × impact score
+- Status: Open / Mitigating / Closed; mitigation notes field
+- Link to project via hub-links; when linked project is Done, risks auto-archive
+- Filter by project / category / severity band  
+**Storage key:** `risk-hub-v1`  
+**Files:** New `risk-hub.html`; register in `hub.html`
